@@ -4,6 +4,13 @@ import Link from "next/link";
 import { call } from "./client";
 import { factorNames, type Factor } from "@/lib/scoring";
 import { sourceName } from "@/lib/catalog";
+import {
+  countries,
+  regions,
+  geographyFor,
+  matchesGeography,
+} from "@/lib/geography";
+import type { SourceHealth } from "@/lib/source-health";
 import type { Edition, Item } from "@/lib/model";
 type State = Record<string, { is_read: boolean; saved: boolean }>;
 export function Newspaper({
@@ -12,18 +19,22 @@ export function Newspaper({
   mode = "public",
   title,
   description,
+  health,
 }: {
   edition?: Edition | null;
   initialItems?: Item[];
   mode?: "public" | "saved" | "named";
   title?: string;
   description?: string;
+  health?: SourceHealth | null;
 }) {
   const [items, setItems] = useState<Item[]>(
       initialItems || edition?.data.items || [],
     ),
     [tab, setTab] = useState("news"),
     [topic, setTopic] = useState("All"),
+    [country, setCountry] = useState(""),
+    [region, setRegion] = useState(""),
     [hideRead, setHideRead] = useState(false),
     [state, setState] = useState<State>({}),
     [signed, setSigned] = useState(false),
@@ -61,6 +72,10 @@ export function Newspaper({
       })
       .catch(() => {});
   }, [mode]);
+  const geography = useMemo(
+    () => new Map(items.map((i) => [i.id, geographyFor(i)])),
+    [items],
+  );
   const visible = useMemo(
     () =>
       items.filter(
@@ -70,11 +85,14 @@ export function Newspaper({
               ? i.kind === "podcast"
               : i.kind !== "podcast")) &&
           (topic === "All" || i.topic === topic) &&
+          matchesGeography(geography.get(i.id)!, country, region) &&
           (!hideRead || !state[i.id]?.is_read),
       ),
-    [items, tab, topic, hideRead, state, mode],
+    [items, tab, topic, hideRead, state, mode, geography, country, region],
   );
-  const topics = [...new Set(items.map((i) => i.topic))].sort();
+  const topics = [...new Set(items.map((i) => i.topic))]
+    .filter((t) => t !== "Portugal" && t !== "Europe")
+    .sort();
   async function mutate(
     id: string,
     field: "saved" | "is_read",
@@ -232,12 +250,65 @@ export function Newspaper({
             key={t}
             onClick={() => {
               setTopic(t);
+              if (t === "All") {
+                setCountry("");
+                setRegion("");
+              }
               setCursor(-1);
             }}
           >
             {t}
           </button>
         ))}
+      </div>
+      <div className="geography-filters">
+        <select
+          aria-label="Select a country"
+          value={country}
+          onChange={(e) => {
+            setCountry(e.target.value);
+            setRegion("");
+            setCursor(-1);
+          }}
+        >
+          <option value="">Select a country</option>
+          {countries.map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="Select a region"
+          value={region}
+          onChange={(e) => {
+            setRegion(e.target.value);
+            setCountry("");
+            setCursor(-1);
+          }}
+        >
+          <option value="">Select a region</option>
+          {regions.map((r) => (
+            <option key={r} value={r}>
+              {r}
+            </option>
+          ))}
+        </select>
+        {(country || region) && (
+          <button
+            onClick={() => {
+              setCountry("");
+              setRegion("");
+              setCursor(-1);
+            }}
+          >
+            Clear location
+          </button>
+        )}
+        <span className="geography-note">
+          Filters this edition by places mentioned in the headlines and
+          summaries.
+        </span>
       </div>
       {help && (
         <p className="notice">
@@ -263,7 +334,7 @@ export function Newspaper({
             {mode === "saved"
               ? "Use Save beside any story."
               : edition
-                ? "Try another topic or show read stories."
+                ? "No stories match these filters in this edition. Try another topic or location, clear the filters with All, or show read stories."
                 : "The newspaper will appear here when the first collection completes. Reading never requires an account."}
           </p>
         </div>
@@ -351,12 +422,51 @@ export function Newspaper({
           ))}
         </section>
       )}
-      {edition && (
-        <p className="source-stats">
-          {edition.data.feedsOk} sources available · {edition.data.feedsFailed}{" "}
-          unavailable at last collection ·{" "}
-          <Link href="/account">Choose your sources</Link>
-        </p>
+      {health ? (
+        <div className="source-stats">
+          <p>
+            {health.healthy} sources reachable · {health.unavailable}{" "}
+            unavailable
+            {health.unchecked > 0 ? ` · ${health.unchecked} not checked` : ""} ·{" "}
+            <Link href="/account/sources">Choose your sources</Link>
+          </p>
+          {health.checkedAt && (
+            <p>
+              Latest source check:{" "}
+              {new Date(health.checkedAt).toLocaleString("en-GB", {
+                timeZone: "UTC",
+              })}{" "}
+              UTC
+            </p>
+          )}
+          {health.issues.length > 0 && (
+            <details>
+              <summary>View unavailable sources</summary>
+              <ul>
+                {health.issues.map((issue) => (
+                  <li key={issue.name}>
+                    <a
+                      href={issue.homepage}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {issue.name}
+                    </a>
+                    : {issue.reason}.
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
+      ) : (
+        edition && (
+          <p className="source-stats">
+            {edition.data.feedsOk} sources available ·{" "}
+            {edition.data.feedsFailed} unavailable when this edition was
+            collected · <Link href="/account/sources">Choose your sources</Link>
+          </p>
+        )
       )}
     </>
   );

@@ -9,14 +9,14 @@ export function publicAddress(ip: string) {
       !ip.includes(".")
     );
   if (isIP(ip) !== 4) return false;
-  const [a, b] = ip.split(".").map(Number);
+  const [a, b, c] = ip.split(".").map(Number);
   return !(
     a === 0 ||
     a === 10 ||
     a === 127 ||
     (a === 169 && b === 254) ||
     (a === 172 && b >= 16 && b <= 31) ||
-    (a === 192 && (b === 168 || b === 0)) ||
+    (a === 192 && (b === 168 || (b === 0 && c === 0))) ||
     (a === 100 && b >= 64 && b <= 127) ||
     a >= 224 ||
     (a === 198 && (b === 18 || b === 19))
@@ -69,9 +69,14 @@ export async function safeFetch(
         current = new URL(next, current).toString();
         continue;
       }
-      if (!r.ok) throw Error(`Source returned HTTP ${r.status}`);
-      if (Number(r.headers.get("content-length")) > maxBytes)
+      if (!r.ok) {
+        await r.body?.cancel();
+        throw Error(`Source returned HTTP ${r.status}`);
+      }
+      if (Number(r.headers.get("content-length")) > maxBytes) {
+        await r.body?.cancel();
         throw Error("Source response is too large");
+      }
       let size = 0;
       const chunks: Uint8Array[] = [];
       for await (const chunk of r.body!) {

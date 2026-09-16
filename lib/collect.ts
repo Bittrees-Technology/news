@@ -47,10 +47,11 @@ function item(
   };
 }
 export async function fetchSource(s: Source, owner?: string): Promise<Item[]> {
-  const body = await safeFetch(
-    s.url,
-    s.kind === "defillama" ? 8_000_000 : 2_000_000,
-  );
+  // Catalogue feeds often include years of episodes. Keep custom endpoints on
+  // the smaller limit and enforce a hard byte limit on every response.
+  const catalogued =
+    !owner && sources.some((entry) => entry.id === s.id && entry.url === s.url);
+  const body = await safeFetch(s.url, catalogued ? 32_000_000 : 2_000_000);
   const now = new Date().toISOString();
   const list: (Item | null)[] = [];
   if (s.kind === "hfpapers") {
