@@ -1,1 +1,8 @@
-import {Account} from '@/components/account';export default function Page(){return <Account/>;}
+import { Account } from "@/components/account";
+export default function Page() {
+  return (
+    <div data-insights-ignore="true">
+      <Account />
+    </div>
+  );
+}

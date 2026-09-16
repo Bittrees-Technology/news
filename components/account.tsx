@@ -1,27 +1,649 @@
-'use client';
-import {useEffect,useState} from 'react';import {call} from './client';import {sources,topics} from '@/lib/catalog';import {defaults,type Preferences} from '@/lib/model';
-type Identity={kind:string;value:string};type Destination={id:string;kind:string;value:string;enabled:boolean;cadence:string;reachable:boolean;nextDelivery:string|null};type Connection={id:string;name:string;url:string;status:string;error?:string};type Delivery={id:string;period:string;status:string;value:string;error?:string};type AccountData={account:{id:string}|null;preferences?:Preferences;identities?:Identity[];destinations?:Destination[];connections?:Connection[];deliveries?:Delivery[];emailReady:boolean;walletReady?:boolean};
-async function walletProof(purpose:string){const ethereum=(window as unknown as {ethereum?:{request:(args:{method:string;params?:unknown[]})=>Promise<unknown>}}).ethereum;if(!ethereum)throw Error('Open this site in your Ethereum wallet browser, or enable your browser wallet extension.');const accounts=await ethereum.request({method:'eth_requestAccounts'}) as string[];const chain=await ethereum.request({method:'eth_chainId'}) as string;const c=await call('auth/start',{kind:'wallet',value:accounts[0],purpose,chainId:parseInt(chain,16)});const bytes=new TextEncoder().encode(c.message);const hex='0x'+Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join('');const proof=await ethereum.request({method:'personal_sign',params:[hex,accounts[0]]});await call('auth/verify',{id:c.id,proof});}
-export function Account(){const [data,setData]=useState<AccountData|null>(null),[prefs,setPrefs]=useState<Preferences>(defaults),[status,setStatus]=useState(''),[busy,setBusy]=useState(false),[email,setEmail]=useState(''),[code,setCode]=useState(''),[challenge,setChallenge]=useState<{id:string;purpose:string}|null>(null),[search,setSearch]=useState(''),[feedName,setFeedName]=useState(''),[feedUrl,setFeedUrl]=useState(''),[feedTopic,setFeedTopic]=useState('Tech'),[sourceStatuses,setSourceStatuses]=useState<Record<string,string>>({}),[deleteConfirm,setDeleteConfirm]=useState(false);
- async function load(){const d=await call('account');setData(d);if(d.preferences)setPrefs(d.preferences);}
- useEffect(()=>{load().catch(e=>setStatus(e.message));call('sources').then(d=>setSourceStatuses(Object.fromEntries(d.sources.map((s:{id:string;status:string})=>[s.id,s.status||'unchecked'])))).catch(()=>{});},[]);
- async function run(fn:()=>Promise<void>){setBusy(true);setStatus('');try{await fn();}catch(e){setStatus((e as Error).message);}finally{setBusy(false);}}
- async function startEmail(purpose:string){await run(async()=>{const d=await call('auth/start',{kind:'email',value:email,purpose});setChallenge({id:d.id,purpose});setStatus('Check your inbox for an eight-digit code.');});}
- async function verifyEmail(){await run(async()=>{await call('auth/verify',{id:challenge!.id,proof:code});setChallenge(null);setCode('');setEmail('');await load();setStatus('Email verified.');});}
- async function wallet(purpose:string){await run(async()=>{await walletProof(purpose);await load();setStatus(purpose==='destination'?'Wallet verified. Choose a schedule once its messaging inbox is ready.':'Wallet verified.');});}
- const statusBox=status?<p className="notice" role="status">{status}</p>:null;
- if(!data)return <div className="empty">{status||'Loading your account…'}</div>;
- const emailForm=(purpose:string)=><><label className="field">Email address<input type="email" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com"/></label>{challenge?<><label className="field">Verification code<input value={code} onChange={e=>setCode(e.target.value)} inputMode="numeric" autoComplete="one-time-code" maxLength={8}/></label><div className="button-row"><button className="primary" disabled={busy||code.length!==8} onClick={verifyEmail}>Verify email</button><button onClick={()=>setChallenge(null)}>Start again</button></div></>:<button className="primary" disabled={busy||!email||!data.emailReady} onClick={()=>startEmail(purpose)}>Send verification code</button>}{!data.emailReady&&<p>Email verification is being activated. You can sign in with a wallet.</p>}</>;
- if(!data.account)return <><div className="edition-head"><div><h1>Your newspaper, your way.</h1><p className="account-intro muted">Reading is free and needs no account. Sign up to choose your sources, save stories across devices, and receive your own digest.</p></div></div><section className="panel auth-box"><h2>Sign in or create an account</h2>{emailForm('login')}<div className="button-row"><button disabled={busy} onClick={()=>wallet('login')}>Continue with a wallet</button></div><p>Ethereum-compatible wallets. Signing in never authorizes a transaction.</p>{statusBox}<p>By continuing, you agree to the <a href="/terms">terms</a> and acknowledge the <a href="/privacy">privacy notice</a>.</p></section></>;
- const filtered=sources.filter(s=>(s.name+' '+s.topic+' '+s.type).toLowerCase().includes(search.toLowerCase()));
- function toggle(key:'topics'|'sources',value:string){setPrefs(p=>({...p,[key]:p[key].includes(value)?p[key].filter(x=>x!==value):[...p[key],value]}));}
- return <><div className="edition-head"><div><h1>Your newspaper</h1><p className="muted">Your selections shape your edition and deliveries. The public newspaper stays open to everyone.</p></div></div>{statusBox}
- <section className="panel"><h2>Topics & interests</h2><p>Leave every topic unselected to include all topics.</p><div className="checks">{topics.map(t=><label key={t}><input type="checkbox" checked={prefs.topics.includes(t)} onChange={()=>toggle('topics',t)}/>{t}</label>)}</div><label className="field">What would you like more of?<textarea value={prefs.interests} onChange={e=>setPrefs({...prefs,interests:e.target.value})} maxLength={1000} placeholder="e.g. European energy, open-source models, public infrastructure"/></label><div className="form-grid"><label className="field">Exclude words or phrases, one per line<textarea value={prefs.blocked.join('\n')} onChange={e=>setPrefs({...prefs,blocked:e.target.value.split('\n').filter(Boolean)})}/></label><label className="field">Stories per delivery<input type="number" min={5} max={50} value={prefs.length} onChange={e=>setPrefs({...prefs,length:Number(e.target.value)})}/><span className="muted">Between 5 and 50, subject to available stories.</span></label></div></section>
- <section className="panel"><h2>Sources & public data connections</h2><p>{sources.length} curated endpoints. Leave sources unselected to include all. These public connections do not require sharing an account or API key.</p><label className="field">Find a source<input type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Publisher, topic, podcast or data…"/></label><div className="button-row"><button onClick={()=>setPrefs({...prefs,sources:[]})}>Include all sources</button><span className="muted">{prefs.sources.length?`${prefs.sources.length} selected`:'All sources included'}</span></div><div className="source-picker">{filtered.map(s=><label className="source-option" key={s.id}><input type="checkbox" checked={prefs.sources.includes(s.id)} onChange={()=>toggle('sources',s.id)}/><div><span>{s.name}</span><small>{s.topic} · {s.type==='data'?'Data connection':s.type==='podcast'?'Podcast':'News / research'} · {sourceStatuses[s.id]||'Not checked yet'}</small></div></label>)}</div></section>
- <div className="sticky-save"><button className="primary" disabled={busy} onClick={()=>run(async()=>{await call('preferences',prefs);setStatus('Preferences saved. Your edition and upcoming deliveries will use them.');})}>{busy?'Working…':'Save preferences'}</button><a href="/">Read the newspaper</a></div>
- <section className="panel"><h2>Your own feeds</h2><p>Add up to ten public RSS or Atom feeds. They are visible only in your account and personal deliveries.</p>{data.connections?.map(c=><div className="connection" key={c.id}><strong>{c.name}</strong><p>{c.status}{c.error?': '+c.error:''}</p><button onClick={()=>run(async()=>{await call('connections',{id:c.id},'DELETE');await load();})}>Remove feed</button></div>)}<div className="form-grid"><label className="field">Feed name<input value={feedName} onChange={e=>setFeedName(e.target.value)}/></label><label className="field">Topic<select value={feedTopic} onChange={e=>setFeedTopic(e.target.value)}>{topics.map(t=><option key={t}>{t}</option>)}</select></label></div><label className="field">HTTPS feed URL<input type="url" value={feedUrl} onChange={e=>setFeedUrl(e.target.value)} placeholder="https://example.org/feed.xml"/></label><button disabled={busy||!feedName||!feedUrl} onClick={()=>run(async()=>{await call('connections',{name:feedName,url:feedUrl,topic:feedTopic});setFeedName('');setFeedUrl('');await load();setStatus('Feed checked and connected.');})}>Check & add feed</button></section>
- <section className="panel"><h2>Digest delivery</h2><p>Email comes from main@bittrees.org. Wallet delivery uses Chirpy / XMTP when the Bittrees sender is active. Each destination is verified separately and starts paused.</p><p>Daily at 12:00 UTC. Weekly on Monday. Monthly on the first. Delivery follows the main 11:57 edition.</p>{!data.walletReady&&<p className="notice">Chirpy delivery is awaiting sender authorization. You can verify your destination now; sending stays paused.</p>}{data.destinations?.map(d=><div className="destination" key={d.id}><strong>{d.value}</strong><p>{d.kind==='email'?'Verified email':d.reachable?'Verified wallet · XMTP available':'Verified wallet · awaiting XMTP availability'}</p><div className="button-row"><select aria-label={'Delivery frequency for '+d.value} value={d.cadence} onChange={e=>run(async()=>{await call('destinations',{id:d.id,enabled:false,cadence:e.target.value});await load();})}><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select><button className={d.enabled?'':'primary'} disabled={busy||d.kind==='wallet'&&(!data.walletReady||!d.reachable)} onClick={()=>run(async()=>{await call('destinations',{id:d.id,enabled:!d.enabled,cadence:d.cadence});await load();})}>{d.enabled?'Pause delivery':'Enable delivery'}</button><button onClick={()=>run(async()=>{await call('destinations',{id:d.id},'DELETE');await load();})}>Remove</button></div><p>{d.enabled?'Next delivery: '+new Date(d.nextDelivery!).toLocaleString('en-GB',{timeZone:'UTC'})+' UTC':'Paused. No scheduled messages will be sent.'}</p></div>)}<h3>Add a forwarding destination</h3>{emailForm('destination')}<div className="button-row"><button disabled={busy} onClick={()=>wallet('destination')}>Verify a wallet destination</button></div></section>
- <section className="panel"><h2>Delivery history</h2>{!data.deliveries?.length?<p>No deliveries yet. Verified destinations begin paused until you enable them.</p>:data.deliveries.map(d=><div className="connection" key={d.id}><strong>{d.period}</strong><p>{d.value} · {d.status}</p>{d.error&&<p>{d.error}</p>}</div>)}</section>
- <section className="panel"><h2>Sign-in methods</h2>{data.identities?.map(i=><p key={i.kind+i.value}>{i.kind==='wallet'?'Wallet':'Email'}: {i.value}</p>)}<p>Link another sign-in method only if you control it. Forwarding destinations are separate from sign-in methods.</p><div className="button-row"><button disabled={busy} onClick={()=>wallet('link')}>Link a wallet</button><button onClick={()=>{setChallenge(null);setStatus('Enter the email below, then verify it to link a sign-in method.');}}>Link an email</button></div>{emailForm('link')}<div className="button-row"><button onClick={()=>run(async()=>{await call('auth/logout',{});window.location.assign('/');})}>Sign out</button><button className="danger" onClick={()=>setDeleteConfirm(!deleteConfirm)}>Delete account</button></div>{deleteConfirm&&<div className="notice"><p>This removes your preferences, identities, saved items, personal feeds and delivery subscriptions. Published newspaper editions remain public.</p><button className="danger" disabled={busy} onClick={()=>run(async()=>{await call('account',{},'DELETE');window.location.assign('/');})}>Permanently delete my account</button></div>}</section>
- </>;
+"use client";
+import { useEffect, useState } from "react";
+import { call } from "./client";
+import { sources, topics } from "@/lib/catalog";
+import { defaults, type Preferences } from "@/lib/model";
+type Identity = { kind: string; value: string };
+type Destination = {
+  id: string;
+  kind: string;
+  value: string;
+  enabled: boolean;
+  cadence: string;
+  reachable: boolean;
+  nextDelivery: string | null;
+};
+type Connection = {
+  id: string;
+  name: string;
+  url: string;
+  status: string;
+  error?: string;
+};
+type Delivery = {
+  id: string;
+  period: string;
+  status: string;
+  value: string;
+  error?: string;
+};
+type AccountData = {
+  account: { id: string } | null;
+  preferences?: Preferences;
+  identities?: Identity[];
+  destinations?: Destination[];
+  connections?: Connection[];
+  deliveries?: Delivery[];
+  emailReady: boolean;
+  walletReady?: boolean;
+};
+async function walletProof(purpose: string) {
+  const ethereum = (
+    window as unknown as {
+      ethereum?: {
+        request: (args: {
+          method: string;
+          params?: unknown[];
+        }) => Promise<unknown>;
+      };
+    }
+  ).ethereum;
+  if (!ethereum)
+    throw Error(
+      "Open this site in your Ethereum wallet browser, or enable your browser wallet extension.",
+    );
+  const accounts = (await ethereum.request({
+    method: "eth_requestAccounts",
+  })) as string[];
+  const chain = (await ethereum.request({ method: "eth_chainId" })) as string;
+  const c = await call("auth/start", {
+    kind: "wallet",
+    value: accounts[0],
+    purpose,
+    chainId: parseInt(chain, 16),
+  });
+  const bytes = new TextEncoder().encode(c.message);
+  const hex =
+    "0x" +
+    Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  const proof = await ethereum.request({
+    method: "personal_sign",
+    params: [hex, accounts[0]],
+  });
+  await call("auth/verify", { id: c.id, proof });
+}
+export function Account() {
+  const [data, setData] = useState<AccountData | null>(null),
+    [prefs, setPrefs] = useState<Preferences>(defaults),
+    [status, setStatus] = useState(""),
+    [busy, setBusy] = useState(false),
+    [email, setEmail] = useState(""),
+    [code, setCode] = useState(""),
+    [challenge, setChallenge] = useState<{
+      id: string;
+      purpose: string;
+    } | null>(null),
+    [search, setSearch] = useState(""),
+    [feedName, setFeedName] = useState(""),
+    [feedUrl, setFeedUrl] = useState(""),
+    [feedTopic, setFeedTopic] = useState("Tech"),
+    [sourceStatuses, setSourceStatuses] = useState<Record<string, string>>({}),
+    [deleteConfirm, setDeleteConfirm] = useState(false);
+  async function load() {
+    const d = await call("account");
+    setData(d);
+    if (d.preferences) setPrefs(d.preferences);
+  }
+  useEffect(() => {
+    load().catch((e) => setStatus(e.message));
+    call("sources")
+      .then((d) =>
+        setSourceStatuses(
+          Object.fromEntries(
+            d.sources.map((s: { id: string; status: string }) => [
+              s.id,
+              s.status || "unchecked",
+            ]),
+          ),
+        ),
+      )
+      .catch(() => {});
+  }, []);
+  async function run(fn: () => Promise<void>) {
+    setBusy(true);
+    setStatus("");
+    try {
+      await fn();
+    } catch (e) {
+      setStatus((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function startEmail(purpose: string) {
+    await run(async () => {
+      const d = await call("auth/start", {
+        kind: "email",
+        value: email,
+        purpose,
+      });
+      setChallenge({ id: d.id, purpose });
+      setStatus("Check your inbox for an eight-digit code.");
+    });
+  }
+  async function verifyEmail() {
+    await run(async () => {
+      await call("auth/verify", { id: challenge!.id, proof: code });
+      setChallenge(null);
+      setCode("");
+      setEmail("");
+      await load();
+      setStatus("Email verified.");
+    });
+  }
+  async function wallet(purpose: string) {
+    await run(async () => {
+      await walletProof(purpose);
+      await load();
+      setStatus(
+        purpose === "destination"
+          ? "Wallet verified. Choose a schedule once its messaging inbox is ready."
+          : "Wallet verified.",
+      );
+    });
+  }
+  const statusBox = status ? (
+    <p className="notice" role="status">
+      {status}
+    </p>
+  ) : null;
+  if (!data)
+    return <div className="empty">{status || "Loading your account…"}</div>;
+  const emailForm = (purpose: string) => (
+    <>
+      <label className="field">
+        Email address
+        <input
+          type="email"
+          autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+        />
+      </label>
+      {challenge ? (
+        <>
+          <label className="field">
+            Verification code
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={8}
+            />
+          </label>
+          <div className="button-row">
+            <button
+              className="primary"
+              disabled={busy || code.length !== 8}
+              onClick={verifyEmail}
+            >
+              Verify email
+            </button>
+            <button onClick={() => setChallenge(null)}>Start again</button>
+          </div>
+        </>
+      ) : (
+        <button
+          className="primary"
+          disabled={busy || !email || !data.emailReady}
+          onClick={() => startEmail(purpose)}
+        >
+          Send verification code
+        </button>
+      )}
+      {!data.emailReady && (
+        <p>
+          Email verification is being activated. You can sign in with a wallet.
+        </p>
+      )}
+    </>
+  );
+  if (!data.account)
+    return (
+      <>
+        <div className="edition-head">
+          <div>
+            <h1>Your newspaper, your way.</h1>
+            <p className="account-intro muted">
+              Reading is free and needs no account. Sign up to choose your
+              sources, save stories across devices, and receive your own digest.
+            </p>
+          </div>
+        </div>
+        <section className="panel auth-box">
+          <h2>Sign in or create an account</h2>
+          {emailForm("login")}
+          <div className="button-row">
+            <button disabled={busy} onClick={() => wallet("login")}>
+              Continue with a wallet
+            </button>
+          </div>
+          <p>
+            Ethereum-compatible wallets. Signing in never authorizes a
+            transaction.
+          </p>
+          {statusBox}
+          <p>
+            By continuing, you agree to the <a href="/terms">terms</a> and
+            acknowledge the <a href="/privacy">privacy notice</a>.
+          </p>
+        </section>
+      </>
+    );
+  const filtered = sources.filter((s) =>
+    (s.name + " " + s.topic + " " + s.type)
+      .toLowerCase()
+      .includes(search.toLowerCase()),
+  );
+  function toggle(key: "topics" | "sources", value: string) {
+    setPrefs((p) => ({
+      ...p,
+      [key]: p[key].includes(value)
+        ? p[key].filter((x) => x !== value)
+        : [...p[key], value],
+    }));
+  }
+  return (
+    <>
+      <div className="edition-head">
+        <div>
+          <h1>Your newspaper</h1>
+          <p className="muted">
+            Your selections shape your edition and deliveries. The public
+            newspaper stays open to everyone.
+          </p>
+        </div>
+      </div>
+      {statusBox}
+      <section className="panel">
+        <h2>Topics & interests</h2>
+        <p>Leave every topic unselected to include all topics.</p>
+        <div className="checks">
+          {topics.map((t) => (
+            <label key={t}>
+              <input
+                type="checkbox"
+                checked={prefs.topics.includes(t)}
+                onChange={() => toggle("topics", t)}
+              />
+              {t}
+            </label>
+          ))}
+        </div>
+        <label className="field">
+          What would you like more of?
+          <textarea
+            value={prefs.interests}
+            onChange={(e) => setPrefs({ ...prefs, interests: e.target.value })}
+            maxLength={1000}
+            placeholder="e.g. European energy, open-source models, public infrastructure"
+          />
+        </label>
+        <div className="form-grid">
+          <label className="field">
+            Exclude words or phrases, one per line
+            <textarea
+              value={prefs.blocked.join("\n")}
+              onChange={(e) =>
+                setPrefs({
+                  ...prefs,
+                  blocked: e.target.value.split("\n").filter(Boolean),
+                })
+              }
+            />
+          </label>
+          <label className="field">
+            Stories per delivery
+            <input
+              type="number"
+              min={5}
+              max={50}
+              value={prefs.length}
+              onChange={(e) =>
+                setPrefs({ ...prefs, length: Number(e.target.value) })
+              }
+            />
+            <span className="muted">
+              Between 5 and 50, subject to available stories.
+            </span>
+          </label>
+        </div>
+      </section>
+      <section className="panel">
+        <h2>Sources & public data connections</h2>
+        <p>
+          {sources.length} curated endpoints. Leave sources unselected to
+          include all. These public connections do not require sharing an
+          account or API key.
+        </p>
+        <label className="field">
+          Find a source
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Publisher, topic, podcast or data…"
+          />
+        </label>
+        <div className="button-row">
+          <button onClick={() => setPrefs({ ...prefs, sources: [] })}>
+            Include all sources
+          </button>
+          <span className="muted">
+            {prefs.sources.length
+              ? `${prefs.sources.length} selected`
+              : "All sources included"}
+          </span>
+        </div>
+        <div className="source-picker">
+          {filtered.map((s) => (
+            <label className="source-option" key={s.id}>
+              <input
+                type="checkbox"
+                checked={prefs.sources.includes(s.id)}
+                onChange={() => toggle("sources", s.id)}
+              />
+              <div>
+                <span>{s.name}</span>
+                <small>
+                  {s.topic} ·{" "}
+                  {s.type === "data"
+                    ? "Data connection"
+                    : s.type === "podcast"
+                      ? "Podcast"
+                      : "News / research"}{" "}
+                  · {sourceStatuses[s.id] || "Not checked yet"}
+                </small>
+              </div>
+            </label>
+          ))}
+        </div>
+      </section>
+      <div className="sticky-save">
+        <button
+          className="primary"
+          disabled={busy}
+          onClick={() =>
+            run(async () => {
+              await call("preferences", prefs);
+              setStatus(
+                "Preferences saved. Your edition and upcoming deliveries will use them.",
+              );
+            })
+          }
+        >
+          {busy ? "Working…" : "Save preferences"}
+        </button>
+        <a href="/">Read the newspaper</a>
+      </div>
+      <section className="panel">
+        <h2>Your own feeds</h2>
+        <p>
+          Add up to ten public RSS or Atom feeds. They are visible only in your
+          account and personal deliveries.
+        </p>
+        {data.connections?.map((c) => (
+          <div className="connection" key={c.id}>
+            <strong>{c.name}</strong>
+            <p>
+              {c.status}
+              {c.error ? ": " + c.error : ""}
+            </p>
+            <button
+              onClick={() =>
+                run(async () => {
+                  await call("connections", { id: c.id }, "DELETE");
+                  await load();
+                })
+              }
+            >
+              Remove feed
+            </button>
+          </div>
+        ))}
+        <div className="form-grid">
+          <label className="field">
+            Feed name
+            <input
+              value={feedName}
+              onChange={(e) => setFeedName(e.target.value)}
+            />
+          </label>
+          <label className="field">
+            Topic
+            <select
+              value={feedTopic}
+              onChange={(e) => setFeedTopic(e.target.value)}
+            >
+              {topics.map((t) => (
+                <option key={t}>{t}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <label className="field">
+          HTTPS feed URL
+          <input
+            type="url"
+            value={feedUrl}
+            onChange={(e) => setFeedUrl(e.target.value)}
+            placeholder="https://example.org/feed.xml"
+          />
+        </label>
+        <button
+          disabled={busy || !feedName || !feedUrl}
+          onClick={() =>
+            run(async () => {
+              await call("connections", {
+                name: feedName,
+                url: feedUrl,
+                topic: feedTopic,
+              });
+              setFeedName("");
+              setFeedUrl("");
+              await load();
+              setStatus("Feed checked and connected.");
+            })
+          }
+        >
+          Check & add feed
+        </button>
+      </section>
+      <section className="panel">
+        <h2>Digest delivery</h2>
+        <p>
+          Email comes from main@bittrees.org. Wallet delivery uses Chirpy / XMTP
+          when the Bittrees sender is active. Each destination is verified
+          separately and starts paused.
+        </p>
+        <p>
+          Daily at 12:00 UTC. Weekly on Monday. Monthly on the first. Delivery
+          follows the main 11:57 edition.
+        </p>
+        {!data.walletReady && (
+          <p className="notice">
+            Chirpy delivery is awaiting sender authorization. You can verify
+            your destination now; sending stays paused.
+          </p>
+        )}
+        {data.destinations?.map((d) => (
+          <div className="destination" key={d.id}>
+            <strong>{d.value}</strong>
+            <p>
+              {d.kind === "email"
+                ? "Verified email"
+                : d.reachable
+                  ? "Verified wallet · XMTP available"
+                  : "Verified wallet · awaiting XMTP availability"}
+            </p>
+            <div className="button-row">
+              <select
+                aria-label={"Delivery frequency for " + d.value}
+                value={d.cadence}
+                onChange={(e) =>
+                  run(async () => {
+                    await call("destinations", {
+                      id: d.id,
+                      enabled: false,
+                      cadence: e.target.value,
+                    });
+                    await load();
+                  })
+                }
+              >
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+              <button
+                className={d.enabled ? "" : "primary"}
+                disabled={
+                  busy ||
+                  (d.kind === "wallet" && (!data.walletReady || !d.reachable))
+                }
+                onClick={() =>
+                  run(async () => {
+                    await call("destinations", {
+                      id: d.id,
+                      enabled: !d.enabled,
+                      cadence: d.cadence,
+                    });
+                    await load();
+                  })
+                }
+              >
+                {d.enabled ? "Pause delivery" : "Enable delivery"}
+              </button>
+              <button
+                onClick={() =>
+                  run(async () => {
+                    await call("destinations", { id: d.id }, "DELETE");
+                    await load();
+                  })
+                }
+              >
+                Remove
+              </button>
+            </div>
+            <p>
+              {d.enabled
+                ? "Next delivery: " +
+                  new Date(d.nextDelivery!).toLocaleString("en-GB", {
+                    timeZone: "UTC",
+                  }) +
+                  " UTC"
+                : "Paused. No scheduled messages will be sent."}
+            </p>
+          </div>
+        ))}
+        <h3>Add a forwarding destination</h3>
+        {emailForm("destination")}
+        <div className="button-row">
+          <button disabled={busy} onClick={() => wallet("destination")}>
+            Verify a wallet destination
+          </button>
+        </div>
+      </section>
+      <section className="panel">
+        <h2>Delivery history</h2>
+        {!data.deliveries?.length ? (
+          <p>
+            No deliveries yet. Verified destinations begin paused until you
+            enable them.
+          </p>
+        ) : (
+          data.deliveries.map((d) => (
+            <div className="connection" key={d.id}>
+              <strong>{d.period}</strong>
+              <p>
+                {d.value} · {d.status}
+              </p>
+              {d.error && <p>{d.error}</p>}
+            </div>
+          ))
+        )}
+      </section>
+      <section className="panel">
+        <h2>Sign-in methods</h2>
+        {data.identities?.map((i) => (
+          <p key={i.kind + i.value}>
+            {i.kind === "wallet" ? "Wallet" : "Email"}: {i.value}
+          </p>
+        ))}
+        <p>
+          Link another sign-in method only if you control it. Forwarding
+          destinations are separate from sign-in methods.
+        </p>
+        <div className="button-row">
+          <button disabled={busy} onClick={() => wallet("link")}>
+            Link a wallet
+          </button>
+          <button
+            onClick={() => {
+              setChallenge(null);
+              setStatus(
+                "Enter the email below, then verify it to link a sign-in method.",
+              );
+            }}
+          >
+            Link an email
+          </button>
+        </div>
+        {emailForm("link")}
+        <div className="button-row">
+          <button
+            onClick={() =>
+              run(async () => {
+                await call("auth/logout", {});
+                window.location.assign("/");
+              })
+            }
+          >
+            Sign out
+          </button>
+          <button
+            className="danger"
+            onClick={() => setDeleteConfirm(!deleteConfirm)}
+          >
+            Delete account
+          </button>
+        </div>
+        {deleteConfirm && (
+          <div className="notice">
+            <p>
+              This removes your preferences, identities, saved items, personal
+              feeds and delivery subscriptions. Published newspaper editions
+              remain public.
+            </p>
+            <button
+              className="danger"
+              disabled={busy}
+              onClick={() =>
+                run(async () => {
+                  await call("account", {}, "DELETE");
+                  window.location.assign("/");
+                })
+              }
+            >
+              Permanently delete my account
+            </button>
+          </div>
+        )}
+      </section>
+    </>
+  );
 }

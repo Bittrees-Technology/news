@@ -1,2 +1,41 @@
-import {Webhook} from 'svix';import {pool} from './db';import {HttpError} from './model';
-export async function emailEvent(r:Request){if(!process.env.RESEND_WEBHOOK_SECRET)throw new HttpError(503,'Webhook not configured');const text=await r.text();if(text.length>100000)throw new HttpError(413,'Payload too large');let event:{type:string;data:{email_id?:string;to?:string[]}};try{event=new Webhook(process.env.RESEND_WEBHOOK_SECRET).verify(text,{'svix-id':r.headers.get('svix-id')||'','svix-timestamp':r.headers.get('svix-timestamp')||'','svix-signature':r.headers.get('svix-signature')||''}) as unknown as {type:string;data:{email_id?:string;to?:string[]}};}catch{throw new HttpError(401,'Invalid webhook signature');}if(['email.bounced','email.complained'].includes(event.type)){const q=(await pool().query('SELECT d.value FROM deliveries q JOIN destinations d ON d.id=q.destination_id WHERE q.provider_id=$1',[event.data.email_id])).rows;for(const {value} of q){await pool().query('INSERT INTO suppressions(value,reason) VALUES($1,$2) ON CONFLICT(value) DO NOTHING',[value,event.type]);await pool().query("UPDATE destinations SET enabled=false,revision=revision+1 WHERE kind='email' AND value=$1",[value]);}}return {ok:true};}
+import { Webhook } from "svix";
+import { pool } from "./db";
+import { HttpError } from "./model";
+export async function emailEvent(r: Request) {
+  if (!process.env.RESEND_WEBHOOK_SECRET)
+    throw new HttpError(503, "Webhook not configured");
+  const text = await r.text();
+  if (text.length > 100000) throw new HttpError(413, "Payload too large");
+  let event: { type: string; data: { email_id?: string; to?: string[] } };
+  try {
+    event = new Webhook(process.env.RESEND_WEBHOOK_SECRET).verify(text, {
+      "svix-id": r.headers.get("svix-id") || "",
+      "svix-timestamp": r.headers.get("svix-timestamp") || "",
+      "svix-signature": r.headers.get("svix-signature") || "",
+    }) as unknown as {
+      type: string;
+      data: { email_id?: string; to?: string[] };
+    };
+  } catch {
+    throw new HttpError(401, "Invalid webhook signature");
+  }
+  if (["email.bounced", "email.complained"].includes(event.type)) {
+    const q = (
+      await pool().query(
+        "SELECT d.value FROM deliveries q JOIN destinations d ON d.id=q.destination_id WHERE q.provider_id=$1",
+        [event.data.email_id],
+      )
+    ).rows;
+    for (const { value } of q) {
+      await pool().query(
+        "INSERT INTO suppressions(value,reason) VALUES($1,$2) ON CONFLICT(value) DO NOTHING",
+        [value, event.type],
+      );
+      await pool().query(
+        "UPDATE destinations SET enabled=false,revision=revision+1 WHERE kind='email' AND value=$1",
+        [value],
+      );
+    }
+  }
+  return { ok: true };
+}

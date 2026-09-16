@@ -1,7 +1,114 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {periodFor,nextDelivery,matches,defaults,selectItems,type Item} from '../lib/model';import {publicAddress} from '../lib/safe-fetch';import {slotFor} from '../lib/publish';
-const item:Item={id:'a',source_id:'bbc',topic:'World',title:'Grid batteries in Europe',url:'https://example.org',excerpt:'Research on energy',summary_kind:'excerpt',kind:'article',published_at:'2026-09-16T12:00:00Z'};
-test('daily and weekly windows cover the whole preceding period',()=>{const day=periodFor('daily',new Date('2026-09-21T12:01:00Z'))!;assert.equal(day.start.toISOString(),'2026-09-20T12:00:00.000Z');const week=periodFor('weekly',new Date('2026-09-21T12:01:00Z'))!;assert.equal(week.start.toISOString(),'2026-09-14T12:00:00.000Z');assert.equal(periodFor('weekly',new Date('2026-09-22T12:01:00Z')),null);});
-test('monthly rollover and UTC scheduling ignore Lisbon DST',()=>{const p=periodFor('monthly',new Date('2027-01-01T12:00:00Z'))!;assert.equal(p.start.toISOString(),'2026-12-01T12:00:00.000Z');assert.equal(nextDelivery('monthly',new Date('2026-12-31T23:00:00Z')),'2027-01-01T12:00:00.000Z');assert.equal(slotFor(new Date('2026-09-16T11:45:00Z')).at.toISOString(),'2026-09-16T11:57:00.000Z');});
-test('filters apply to excerpts and generated summaries',()=>{assert(matches(item,defaults));assert(!matches(item,{...defaults,topics:['AI']}));assert(!matches(item,{...defaults,sources:['other']}));assert(!matches(item,{...defaults,blocked:['batteries']}));assert(!matches({...item,summary:'New solar system'},{...defaults,blocked:['solar']}));});
-test('personal interests influence selection without changing records',()=>{const other={...item,id:'b',title:'Other story',excerpt:'Different topic'};assert.equal(selectItems([other,item],{...defaults,interests:'batteries'},1)[0].id,'a');assert.equal(other.title,'Other story');});
-test('SSRF rejects loopback, private, metadata, mapped and transition addresses',()=>{for(const ip of ['127.0.0.1','10.1.1.1','169.254.169.254','172.16.0.1','192.168.1.1','100.64.0.1','0.0.0.0','::1','::ffff:127.0.0.1','fd00::1','fe80::1','64:ff9b::7f00:1','2001:db8::1'])assert.equal(publicAddress(ip),false,ip);assert(publicAddress('8.8.8.8'));assert(publicAddress('2606:4700:4700::1111'));});
+import { isSourcePassage } from "../lib/grounding";
+import test from "node:test";
+import assert from "node:assert/strict";
+import {
+  periodFor,
+  nextDelivery,
+  matches,
+  defaults,
+  selectItems,
+  type Item,
+} from "../lib/model";
+import { publicAddress } from "../lib/safe-fetch";
+import { slotFor } from "../lib/publish";
+const item: Item = {
+  id: "a",
+  source_id: "bbc",
+  topic: "World",
+  title: "Grid batteries in Europe",
+  url: "https://example.org",
+  excerpt: "Research on energy",
+  summary_kind: "excerpt",
+  kind: "article",
+  published_at: "2026-09-16T12:00:00Z",
+};
+test("daily and weekly windows cover the whole preceding period", () => {
+  const day = periodFor("daily", new Date("2026-09-21T12:01:00Z"))!;
+  assert.equal(day.start.toISOString(), "2026-09-20T12:00:00.000Z");
+  const week = periodFor("weekly", new Date("2026-09-21T12:01:00Z"))!;
+  assert.equal(week.start.toISOString(), "2026-09-14T12:00:00.000Z");
+  assert.equal(periodFor("weekly", new Date("2026-09-22T12:01:00Z")), null);
+});
+test("monthly rollover and UTC scheduling ignore Lisbon DST", () => {
+  const p = periodFor("monthly", new Date("2027-01-01T12:00:00Z"))!;
+  assert.equal(p.start.toISOString(), "2026-12-01T12:00:00.000Z");
+  assert.equal(
+    nextDelivery("monthly", new Date("2026-12-31T23:00:00Z")),
+    "2027-01-01T12:00:00.000Z",
+  );
+  assert.equal(
+    slotFor(new Date("2026-09-16T11:45:00Z")).at.toISOString(),
+    "2026-09-16T11:57:00.000Z",
+  );
+});
+test("filters apply to excerpts and generated summaries", () => {
+  assert(matches(item, defaults));
+  assert(!matches(item, { ...defaults, topics: ["AI"] }));
+  assert(!matches(item, { ...defaults, sources: ["other"] }));
+  assert(!matches(item, { ...defaults, blocked: ["batteries"] }));
+  assert(
+    !matches(
+      { ...item, summary: "New solar system" },
+      { ...defaults, blocked: ["solar"] },
+    ),
+  );
+});
+test("personal interests influence selection without changing records", () => {
+  const other = {
+    ...item,
+    id: "b",
+    title: "Other story",
+    excerpt: "Different topic",
+  };
+  assert.equal(
+    selectItems([other, item], { ...defaults, interests: "batteries" }, 1)[0]
+      .id,
+    "a",
+  );
+  assert.equal(other.title, "Other story");
+});
+test("SSRF rejects loopback, private, metadata, mapped and transition addresses", () => {
+  for (const ip of [
+    "127.0.0.1",
+    "10.1.1.1",
+    "169.254.169.254",
+    "172.16.0.1",
+    "192.168.1.1",
+    "100.64.0.1",
+    "0.0.0.0",
+    "::1",
+    "::ffff:127.0.0.1",
+    "fd00::1",
+    "fe80::1",
+    "64:ff9b::7f00:1",
+    "2001:db8::1",
+  ])
+    assert.equal(publicAddress(ip), false, ip);
+  assert(publicAddress("8.8.8.8"));
+  assert(publicAddress("2606:4700:4700::1111"));
+});
+
+test("hosted editor rejects invented claims and permits whitespace-normalized source passages", () => {
+  assert.equal(
+    isSourcePassage(
+      "Marco Silva scored the equalizer.",
+      "Marco Silva coached Benfica to a win.",
+    ),
+    false,
+  );
+  assert.equal(
+    isSourcePassage(
+      "The bank reported 2% growth.",
+      "The bank reported 1% growth.",
+    ),
+    false,
+  );
+  assert.equal(
+    isSourcePassage(
+      "The bank reported 1% growth.",
+      "Today. The bank\nreported 1% growth. Next.",
+    ),
+    true,
+  );
+  assert.equal(isSourcePassage("", "anything"), false);
+});

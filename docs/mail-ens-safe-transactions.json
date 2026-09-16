@@ -1,0 +1,29 @@
+{
+  "version": "1.0",
+  "chainId": "1",
+  "createdAt": 1789593647053,
+  "meta": {
+    "name": "Bittrees News mail sender identity",
+    "description": "Create mail.bittrees.eth under the existing Safe and resolve it to the isolated News XMTP sender 0x3ec5251d9B262B317D454049aAF998255501F0BC. No asset transfers, no burned fuses, no treasury signing delegation.",
+    "txBuilderVersion": "1.18.0",
+    "createdFromSafeAddress": "0x1B6c450FaDB7c77191f152473FC2f79dC515FA77",
+    "createdFromOwnerAddress": "",
+    "checksum": ""
+  },
+  "transactions": [
+    {
+      "to": "0xD4416b13d2b3a9aBae7AcD5D6C2BbDBE25686401",
+      "value": "0",
+      "data": "0x24c1af44896f261c0cf8e1165b520667d6c4105ecb57cc30016e77d25b8408f7ed6b3fc100000000000000000000000000000000000000000000000000000000000000e00000000000000000000000001b6c450fadb7c77191f152473fc2f79dc515fa77000000000000000000000000231b0ee14048e9dccd1d247744d114a4eb5e8e63000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000076a0960c00000000000000000000000000000000000000000000000000000000000000046d61696c00000000000000000000000000000000000000000000000000000000",
+      "contractMethod": null,
+      "contractInputsValues": null
+    },
+    {
+      "to": "0x231b0Ee14048e9dCcD1d247744d114a4EB5E8E63",
+      "value": "0",
+      "data": "0xd5fa2b002a4da824b9c132a79c05dc24769a2417f4af6e68dbef7793e454c15051ffb6190000000000000000000000003ec5251d9b262b317d454049aaf998255501f0bc",
+      "contractMethod": null,
+      "contractInputsValues": null
+    }
+  ]
+}

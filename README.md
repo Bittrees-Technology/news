@@ -1,4 +1,4 @@
-# Bittrees News
+# The Bittrees News (TBN)
 
 A public newspaper covering world affairs, the economy, technology and science. Read without an account; sign in by verified email or Ethereum wallet to choose sources, add personal RSS feeds, save stories and configure digest deliveries.
 

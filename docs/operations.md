@@ -19,3 +19,9 @@ Use the database provider's encrypted backups/PITR. Before restoring into a live
 ## Monitoring
 
 `/api/health` reports last public snapshot and configured service readiness; configuration flags do not prove end-to-end delivery. `sources` tracks collection status. `jobs` and `editor_jobs` record generation outcomes. `deliveries` distinguishes pending/sending/sent/failed/uncertain/cancelled. Provider acceptance is not proof that a human read the message.
+
+## Wallet worker activation
+
+The persistent user service `bittrees-news-wallet.service` runs on Acer using Node 24. Its 0600 configuration is at `~/.config/bittrees-news/wallet.json`; the isolated signing key never enters Vercel or public source control. The service gates initialization and every send on `mail.bittrees.eth` resolving to the dedicated service address. Import `docs/mail-ens-safe-transactions.json` into the existing controlling Safe's transaction builder, review the two encoded ENS actions and sign with that Safe's existing owners. This retains ownership with the Safe and does not transfer assets or burn fuses. No signature has been executed during rollout.
+
+Once the ENS assignment resolves, the worker creates its own XMTP installation, reports reachability and a heartbeat, and only then can users enable wallet delivery. Public readiness requires a heartbeat less than five minutes old; an environment variable alone is insufficient. Validate a real explicitly authorized recipient in Chirpy before claiming end-to-end readiness. Production XMTP network/gateway availability is an additional runtime dependency.

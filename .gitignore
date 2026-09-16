@@ -7,3 +7,6 @@ node_modules/
 worker/data/
 test-results/
 .vercel
+
+__pycache__/
+*.pyc

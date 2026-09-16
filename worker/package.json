@@ -1,0 +1,1 @@
+{"name":"@bittrees/news-wallet-worker","private":true,"type":"module","scripts":{"start":"node sender.mjs"},"dependencies":{"@xmtp/node-sdk":"6.1.0","ethers":"^6.16.0"},"engines":{"node":">=22"}}

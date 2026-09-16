@@ -1,20 +1,352 @@
-'use client';
-import {useEffect,useMemo,useState,useRef} from 'react';import Link from 'next/link';import {call} from './client';import {sourceName} from '@/lib/catalog';import type {Edition,Item} from '@/lib/model';
-type State=Record<string,{is_read:boolean;saved:boolean}>;
-export function Newspaper({edition,initialItems,mode='public'}:{edition?:Edition|null;initialItems?:Item[];mode?:'public'|'saved'}){
- const [items,setItems]=useState<Item[]>(initialItems||edition?.data.items||[]),[tab,setTab]=useState('news'),[topic,setTopic]=useState('All'),[hideRead,setHideRead]=useState(false),[state,setState]=useState<State>({}),[signed,setSigned]=useState(false),[message,setMessage]=useState(''),[cursor,setCursor]=useState(-1),[personal,setPersonal]=useState(false),[help,setHelp]=useState(false);const refs=useRef(new Map<string,HTMLElement>());
- useEffect(()=>{try{setState(JSON.parse(localStorage.getItem('bittrees-news-reading')||'{}'));}catch{}call('account').then(async a=>{setSigned(!!a.account);if(a.account){const rows=await call('reading');setState(Object.fromEntries(rows.map((r:{item_id:string;is_read:boolean;saved:boolean})=>[r.item_id,r])));if(mode==='saved')setItems(await call('saved'));}else if(mode==='saved')setMessage('Sign in to keep a saved library across editions and devices.');}).catch(()=>{});},[mode]);
- const visible=useMemo(()=>items.filter(i=>(mode==='saved'||(tab==='podcasts'?i.kind==='podcast':i.kind!=='podcast'))&&(topic==='All'||i.topic===topic)&&(!hideRead||!state[i.id]?.is_read)),[items,tab,topic,hideRead,state,mode]);const topics=[...new Set(items.map(i=>i.topic))].sort();
- async function mutate(id:string,field:'saved'|'is_read',value?:boolean){const v=value??!state[id]?.[field];const next={...state,[id]:{...(state[id]||{is_read:false,saved:false}),[field]:v}};setState(next);try{localStorage.setItem('bittrees-news-reading',JSON.stringify(next));if(signed)await call('reading',{id,field,value:v});else if(field==='saved')setMessage('Saved on this device. Sign in to build your library across editions.');}catch(e){setState(state);setMessage((e as Error).message);}}
- async function chooseFeed(){try{if(!personal){setItems(await call('feed'));setPersonal(true);}else{setItems(edition?.data.items||[]);setPersonal(false);}setCursor(-1);}catch(e){setMessage((e as Error).message);}}
- useEffect(()=>{function key(e:KeyboardEvent){if(e.metaKey||e.ctrlKey||e.altKey||/INPUT|TEXTAREA|SELECT/.test((e.target as HTMLElement).tagName))return;const item=visible[cursor];if(['j','k','ArrowDown','ArrowUp'].includes(e.key)){e.preventDefault();const next=Math.max(0,Math.min(visible.length-1,cursor+(['j','ArrowDown'].includes(e.key)?1:-1)));setCursor(next);refs.current.get(visible[next]?.id)?.focus();}if((e.key==='o'||e.key==='Enter')&&item){window.open(item.url,'_blank','noopener');void mutate(item.id,'is_read',true);}if(e.key==='s'&&item)void mutate(item.id,'saved');if(e.key==='m'&&item)void mutate(item.id,'is_read');if(e.key==='?')setHelp(!help);if(e.key==='Escape'){setHelp(false);setCursor(-1);}}window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key);});
- const date=edition?new Date(edition.publish_at):new Date();return <>
- <div className="edition-head"><div><p className="edition-date">{mode==='saved'?'Your reading library':date.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'UTC'})}</p><h1>{mode==='saved'?'Saved for later':'The Bittrees News'}</h1><p className="edition-note">{mode==='saved'?'The stories you want to return to.':'World, economy, technology & science.'}</p></div>{mode!=='saved'&&<div className="edition-time">07:57 · 11:57 · 19:57<span>New editions, every day. UTC.</span></div>}</div>
- {edition&&mode!=='saved'&&<section className="brief"><div className="section-label">{personal?'Your edition':'The briefing'}</div><p>{personal?'Stories from your selected sources and interests. Your choices do not change the public newspaper.':edition.brief}</p><small>{edition.data.mode} · Published {new Date(edition.published_at).toLocaleString('en-GB',{timeZone:'UTC'})} UTC</small></section>}
- <div className="controls"><div className="tabs" aria-label="Content type">{mode!=='saved'&&<><button className={tab==='news'?'active':''} onClick={()=>{setTab('news');setCursor(-1);}}>News</button><button className={tab==='podcasts'?'active':''} onClick={()=>{setTab('podcasts');setCursor(-1);}}>Podcasts</button></>}</div><div className="actions">{signed&&mode==='public'&&<button onClick={chooseFeed}>{personal?'Public newspaper':'My edition'}</button>}<button onClick={()=>setHideRead(!hideRead)}>{hideRead?'Show read':'Hide read'}</button><button aria-label="Keyboard shortcuts" onClick={()=>setHelp(!help)}>?</button></div></div>
- <div className="topic-filters">{['All',...topics].map(t=><button aria-pressed={topic===t} className={topic===t?'selected':''} key={t} onClick={()=>{setTopic(t);setCursor(-1);}}>{t}</button>)}</div>
- {help&&<p className="notice">j / k to move · o to open · m to mark read · s to save · Escape to clear selection</p>}{message&&<p role="status" className="notice">{message} <Link href="/account">Your account</Link></p>}
- {!visible.length?<div className="empty"><h2>{mode==='saved'?'Your next good read belongs here.':edition?'Nothing in this view.':'The first edition is being prepared.'}</h2><p>{mode==='saved'?'Use Save beside any story.':edition?'Try another topic or show read stories.':'The newspaper will appear here when the first collection completes. Reading never requires an account.'}</p></div>:<section className="story-list" aria-label="Stories">{visible.map((i,n)=><article key={i.id} tabIndex={-1} ref={el=>{if(el)refs.current.set(i.id,el);else refs.current.delete(i.id);}} className={`story ${n<3&&tab==='news'?'lead':''} ${state[i.id]?.is_read?'read':''} ${cursor===n?'cursor':''}`}><div className="story-meta"><span className="topic">{i.topic}</span><span>{sourceName(i.source_id)}</span><span>{new Date(i.published_at).toLocaleDateString('en-GB',{month:'short',day:'numeric',timeZone:'UTC'})}</span></div><h2><a href={i.url} target="_blank" rel="noopener noreferrer" onClick={()=>void mutate(i.id,'is_read',true)}>{i.title}</a></h2><p>{i.summary||i.excerpt}</p><div className="story-bottom"><span>{i.kind==='podcast'?'Episode description':i.summary_kind==='generated'?'Generated summary':'Publisher excerpt / data'}</span><div><button onClick={()=>void mutate(i.id,'is_read')} aria-pressed={!!state[i.id]?.is_read}>{state[i.id]?.is_read?'Read ✓':'Mark read'}</button><button onClick={()=>void mutate(i.id,'saved')} aria-pressed={!!state[i.id]?.saved}>{state[i.id]?.saved?'★ Saved':'☆ Save'}</button></div></div></article>)}</section>}
- {edition&&<p className="source-stats">{edition.data.feedsOk} sources available · {edition.data.feedsFailed} unavailable at last collection · <Link href="/account">Choose your sources</Link></p>}
- </>;
+"use client";
+import { useEffect, useMemo, useState, useRef } from "react";
+import Link from "next/link";
+import { call } from "./client";
+import { sourceName } from "@/lib/catalog";
+import type { Edition, Item } from "@/lib/model";
+type State = Record<string, { is_read: boolean; saved: boolean }>;
+export function Newspaper({
+  edition,
+  initialItems,
+  mode = "public",
+}: {
+  edition?: Edition | null;
+  initialItems?: Item[];
+  mode?: "public" | "saved";
+}) {
+  const [items, setItems] = useState<Item[]>(
+      initialItems || edition?.data.items || [],
+    ),
+    [tab, setTab] = useState("news"),
+    [topic, setTopic] = useState("All"),
+    [hideRead, setHideRead] = useState(false),
+    [state, setState] = useState<State>({}),
+    [signed, setSigned] = useState(false),
+    [message, setMessage] = useState(""),
+    [cursor, setCursor] = useState(-1),
+    [personal, setPersonal] = useState(false),
+    [help, setHelp] = useState(false);
+  const refs = useRef(new Map<string, HTMLElement>());
+  useEffect(() => {
+    try {
+      setState(
+        JSON.parse(localStorage.getItem("bittrees-news-reading") || "{}"),
+      );
+    } catch {}
+    call("account")
+      .then(async (a) => {
+        setSigned(!!a.account);
+        if (a.account) {
+          const rows = await call("reading");
+          setState(
+            Object.fromEntries(
+              rows.map(
+                (r: { item_id: string; is_read: boolean; saved: boolean }) => [
+                  r.item_id,
+                  r,
+                ],
+              ),
+            ),
+          );
+          if (mode === "saved") setItems(await call("saved"));
+        } else if (mode === "saved")
+          setMessage(
+            "Sign in to keep a saved library across editions and devices.",
+          );
+      })
+      .catch(() => {});
+  }, [mode]);
+  const visible = useMemo(
+    () =>
+      items.filter(
+        (i) =>
+          (mode === "saved" ||
+            (tab === "podcasts"
+              ? i.kind === "podcast"
+              : i.kind !== "podcast")) &&
+          (topic === "All" || i.topic === topic) &&
+          (!hideRead || !state[i.id]?.is_read),
+      ),
+    [items, tab, topic, hideRead, state, mode],
+  );
+  const topics = [...new Set(items.map((i) => i.topic))].sort();
+  async function mutate(
+    id: string,
+    field: "saved" | "is_read",
+    value?: boolean,
+  ) {
+    const v = value ?? !state[id]?.[field];
+    const next = {
+      ...state,
+      [id]: { ...(state[id] || { is_read: false, saved: false }), [field]: v },
+    };
+    setState(next);
+    try {
+      localStorage.setItem("bittrees-news-reading", JSON.stringify(next));
+      if (signed) await call("reading", { id, field, value: v });
+      else if (field === "saved")
+        setMessage(
+          "Saved on this device. Sign in to build your library across editions.",
+        );
+    } catch (e) {
+      setState(state);
+      setMessage((e as Error).message);
+    }
+  }
+  async function chooseFeed() {
+    try {
+      if (!personal) {
+        setItems(await call("feed"));
+        setPersonal(true);
+      } else {
+        setItems(edition?.data.items || []);
+        setPersonal(false);
+      }
+      setCursor(-1);
+    } catch (e) {
+      setMessage((e as Error).message);
+    }
+  }
+  useEffect(() => {
+    function key(e: KeyboardEvent) {
+      if (
+        e.metaKey ||
+        e.ctrlKey ||
+        e.altKey ||
+        /INPUT|TEXTAREA|SELECT/.test((e.target as HTMLElement).tagName)
+      )
+        return;
+      const item = visible[cursor];
+      if (["j", "k", "ArrowDown", "ArrowUp"].includes(e.key)) {
+        e.preventDefault();
+        const next = Math.max(
+          0,
+          Math.min(
+            visible.length - 1,
+            cursor + (["j", "ArrowDown"].includes(e.key) ? 1 : -1),
+          ),
+        );
+        setCursor(next);
+        refs.current.get(visible[next]?.id)?.focus();
+      }
+      if ((e.key === "o" || e.key === "Enter") && item) {
+        window.open(item.url, "_blank", "noopener");
+        void mutate(item.id, "is_read", true);
+      }
+      if (e.key === "s" && item) void mutate(item.id, "saved");
+      if (e.key === "m" && item) void mutate(item.id, "is_read");
+      if (e.key === "?") setHelp(!help);
+      if (e.key === "Escape") {
+        setHelp(false);
+        setCursor(-1);
+      }
+    }
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  });
+  const date = edition ? new Date(edition.publish_at) : new Date();
+  return (
+    <>
+      <div className="edition-head">
+        <div>
+          <p className="edition-date">
+            {mode === "saved"
+              ? "Your reading library"
+              : date.toLocaleDateString("en-GB", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                  timeZone: "UTC",
+                })}
+          </p>
+          <h1>{mode === "saved" ? "Saved for later" : "The Bittrees News"}</h1>
+          <p className="edition-note">
+            {mode === "saved"
+              ? "The stories you want to return to."
+              : "TBN · World, economy, technology & science."}
+          </p>
+        </div>
+        {mode !== "saved" && (
+          <div className="edition-time">
+            07:57 · 11:57 · 19:57<span>New editions, every day. UTC.</span>
+          </div>
+        )}
+      </div>
+      {edition && mode !== "saved" && (
+        <section className="brief">
+          <div className="section-label">
+            {personal ? "Your edition" : "The briefing"}
+          </div>
+          <p>
+            {personal
+              ? "Stories from your selected sources and interests. Your choices do not change the public newspaper."
+              : edition.brief}
+          </p>
+          <small>
+            {edition.data.mode} · Published{" "}
+            {new Date(edition.published_at).toLocaleString("en-GB", {
+              timeZone: "UTC",
+            })}{" "}
+            UTC
+          </small>
+        </section>
+      )}
+      <div className="controls">
+        <div className="tabs" aria-label="Content type">
+          {mode !== "saved" && (
+            <>
+              <button
+                className={tab === "news" ? "active" : ""}
+                onClick={() => {
+                  setTab("news");
+                  setCursor(-1);
+                }}
+              >
+                News
+              </button>
+              <button
+                className={tab === "podcasts" ? "active" : ""}
+                onClick={() => {
+                  setTab("podcasts");
+                  setCursor(-1);
+                }}
+              >
+                Podcasts
+              </button>
+            </>
+          )}
+        </div>
+        <div className="actions">
+          {signed && mode === "public" && (
+            <button onClick={chooseFeed}>
+              {personal ? "Public newspaper" : "My edition"}
+            </button>
+          )}
+          <button onClick={() => setHideRead(!hideRead)}>
+            {hideRead ? "Show read" : "Hide read"}
+          </button>
+          <button
+            aria-label="Keyboard shortcuts"
+            onClick={() => setHelp(!help)}
+          >
+            ?
+          </button>
+        </div>
+      </div>
+      <div className="topic-filters">
+        {["All", ...topics].map((t) => (
+          <button
+            aria-pressed={topic === t}
+            className={topic === t ? "selected" : ""}
+            key={t}
+            onClick={() => {
+              setTopic(t);
+              setCursor(-1);
+            }}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+      {help && (
+        <p className="notice">
+          j / k to move · o to open · m to mark read · s to save · Escape to
+          clear selection
+        </p>
+      )}
+      {message && (
+        <p role="status" className="notice">
+          {message} <Link href="/account">Your account</Link>
+        </p>
+      )}
+      {!visible.length ? (
+        <div className="empty">
+          <h2>
+            {mode === "saved"
+              ? "Your next good read belongs here."
+              : edition
+                ? "Nothing in this view."
+                : "The first edition is being prepared."}
+          </h2>
+          <p>
+            {mode === "saved"
+              ? "Use Save beside any story."
+              : edition
+                ? "Try another topic or show read stories."
+                : "The newspaper will appear here when the first collection completes. Reading never requires an account."}
+          </p>
+        </div>
+      ) : (
+        <section className="story-list" aria-label="Stories">
+          {visible.map((i, n) => (
+            <article
+              key={i.id}
+              tabIndex={-1}
+              ref={(el) => {
+                if (el) refs.current.set(i.id, el);
+                else refs.current.delete(i.id);
+              }}
+              className={`story ${n < 3 && tab === "news" ? "lead" : ""} ${state[i.id]?.is_read ? "read" : ""} ${cursor === n ? "cursor" : ""}`}
+            >
+              <div className="story-meta">
+                <span className="topic">{i.topic}</span>
+                <span>{sourceName(i.source_id)}</span>
+                <span>
+                  {new Date(i.published_at).toLocaleDateString("en-GB", {
+                    month: "short",
+                    day: "numeric",
+                    timeZone: "UTC",
+                  })}
+                </span>
+              </div>
+              <h2>
+                <a
+                  href={i.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => void mutate(i.id, "is_read", true)}
+                >
+                  {i.title}
+                </a>
+              </h2>
+              <p>{i.summary || i.excerpt}</p>
+              <div className="story-bottom">
+                <span>
+                  {i.kind === "podcast"
+                    ? "Episode description"
+                    : i.summary_kind === "extractive"
+                      ? "AI-selected source excerpt"
+                      : i.summary_kind === "generated"
+                        ? "Generated summary"
+                        : "Publisher excerpt / data"}
+                </span>
+                <div>
+                  <button
+                    onClick={() => void mutate(i.id, "is_read")}
+                    aria-pressed={!!state[i.id]?.is_read}
+                  >
+                    {state[i.id]?.is_read ? "Read ✓" : "Mark read"}
+                  </button>
+                  <button
+                    onClick={() => void mutate(i.id, "saved")}
+                    aria-pressed={!!state[i.id]?.saved}
+                  >
+                    {state[i.id]?.saved ? "★ Saved" : "☆ Save"}
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </section>
+      )}
+      {edition && (
+        <p className="source-stats">
+          {edition.data.feedsOk} sources available · {edition.data.feedsFailed}{" "}
+          unavailable at last collection ·{" "}
+          <Link href="/account">Choose your sources</Link>
+        </p>
+      )}
+    </>
+  );
 }

@@ -1,7 +1,139 @@
-import {randomUUID,createHmac} from 'node:crypto';import {pool,tx} from './db';import {periodFor,preferencesSchema,selectItems,type Item} from './model';import {sendEmail} from './mail';import {hash} from './auth';
-export function unsubscribeToken(id:string){return createHmac('sha256',process.env.AUTH_SECRET!).update('unsubscribe:'+id).digest('hex');}
-export async function queueDigests(now=new Date()){const dests=(await pool().query("SELECT d.*,a.preferences FROM destinations d JOIN accounts a ON a.id=d.account_id WHERE d.enabled=true AND (d.kind='email' OR d.reachable=true) LIMIT 1000")).rows;let queued=0;for(const d of dests){const period=periodFor(d.cadence,now);if(!period)continue;const all=(await pool().query('SELECT * FROM items WHERE (owner_id IS NULL OR owner_id=$1) AND published_at>=$2 AND published_at<$3 ORDER BY published_at DESC LIMIT 2000',[d.account_id,period.start,period.end])).rows as Item[];const prefs=preferencesSchema.parse(d.preferences);const selected=selectItems(all,prefs);if(!selected.length)continue;const unsubscribe=`${process.env.APP_URL}/unsubscribe?id=${d.id}&token=${unsubscribeToken(d.id)}`;const date=period.end.toISOString().slice(0,10);const text=`Bittrees News — ${d.cadence} edition\n${period.start.toISOString().slice(0,10)} to ${date} (UTC)\n\n`+selected.map(i=>`${i.title}\n${i.summary||i.excerpt}\n${i.url}`).join('\n\n')+`\n\nManage your sources: ${process.env.APP_URL}/account\nPause these deliveries: ${unsubscribe}`;
- const r=await pool().query("INSERT INTO deliveries(id,account_id,destination_id,revision,period,payload) SELECT $1,$2,id,revision,$3,$4 FROM destinations WHERE id=$5 AND enabled=true AND revision=$6 ON CONFLICT(destination_id,period) DO NOTHING RETURNING id",[randomUUID(),d.account_id,period.key,JSON.stringify({subject:`Bittrees News · ${d.cadence} · ${date}`,text,unsubscribe,itemIds:selected.map(i=>i.id)}),d.id,d.revision]);queued+=r.rowCount||0;}return {queued};}
-export async function claimDelivery(kind:string){return tx(async db=>{const r=await db.query("SELECT q.*,d.value,d.kind,d.enabled,d.revision AS current_revision FROM deliveries q JOIN destinations d ON d.id=q.destination_id WHERE q.status='pending' AND d.kind=$1 ORDER BY q.created_at FOR UPDATE OF q,d SKIP LOCKED LIMIT 1",[kind]);const q=r.rows[0];if(!q)return null;const suppressed=q.kind==='email'&&(await db.query('SELECT 1 FROM suppressions WHERE value=$1',[q.value])).rowCount;if(!q.enabled||q.revision!==q.current_revision||suppressed){await db.query("UPDATE deliveries SET status='cancelled',error='Destination changed or delivery paused' WHERE id=$1",[q.id]);return null;}await db.query("UPDATE deliveries SET status='sending' WHERE id=$1",[q.id]);return q;});}
-export async function dispatchEmails(){let sent=0;for(let n=0;n<20;n++){const q=await claimDelivery('email');if(!q)break;try{const valid=(await pool().query('SELECT 1 FROM destinations WHERE id=$1 AND enabled=true AND revision=$2',[q.destination_id,q.revision])).rowCount;if(!valid){await pool().query("UPDATE deliveries SET status='cancelled' WHERE id=$1",[q.id]);continue;}const provider=await sendEmail(q.value,q.payload.subject,q.payload.text,q.id,q.payload.unsubscribe);await pool().query("UPDATE deliveries SET status='sent',sent_at=now(),provider_id=$2 WHERE id=$1",[q.id,provider]);sent++;}catch{await pool().query("UPDATE deliveries SET status='uncertain',error='Provider acceptance could not be confirmed. Automatic resend paused.' WHERE id=$1",[q.id]);}}return {sent};}
-export async function unsubscribe(id:string,proof:string){if(!proof||hash(proof)!==hash(unsubscribeToken(id)))return false;await tx(async d=>{await d.query('UPDATE destinations SET enabled=false,revision=revision+1 WHERE id=$1',[id]);await d.query("UPDATE deliveries SET status='cancelled' WHERE destination_id=$1 AND status='pending'",[id]);});return true;}
+import { randomUUID, createHmac } from "node:crypto";
+import { pool, tx } from "./db";
+import { periodFor, preferencesSchema, selectItems, type Item } from "./model";
+import { sendEmail } from "./mail";
+import { hash } from "./auth";
+export function unsubscribeToken(id: string) {
+  return createHmac("sha256", process.env.AUTH_SECRET!)
+    .update("unsubscribe:" + id)
+    .digest("hex");
+}
+export async function queueDigests(now = new Date()) {
+  const dests = (
+    await pool().query(
+      "SELECT d.*,a.preferences FROM destinations d JOIN accounts a ON a.id=d.account_id WHERE d.enabled=true AND (d.kind='email' OR d.reachable=true) LIMIT 1000",
+    )
+  ).rows;
+  let queued = 0;
+  for (const d of dests) {
+    const period = periodFor(d.cadence, now);
+    if (!period) continue;
+    const all = (
+      await pool().query(
+        "SELECT * FROM items WHERE (owner_id IS NULL OR owner_id=$1) AND published_at>=$2 AND published_at<$3 ORDER BY published_at DESC LIMIT 2000",
+        [d.account_id, period.start, period.end],
+      )
+    ).rows as Item[];
+    const prefs = preferencesSchema.parse(d.preferences);
+    const selected = selectItems(all, prefs);
+    if (!selected.length) continue;
+    const unsubscribe = `${process.env.APP_URL}/unsubscribe?id=${d.id}&token=${unsubscribeToken(d.id)}`;
+    const date = period.end.toISOString().slice(0, 10);
+    const text =
+      `TBN · The Bittrees News — ${d.cadence} edition\n${period.start.toISOString().slice(0, 10)} to ${date} (UTC)\n\n` +
+      selected
+        .map(
+          (i) =>
+            `${i.title}\n${i.summary ? "Summary: " + i.summary : "Publisher excerpt / data: " + i.excerpt}\n${i.url}`,
+        )
+        .join("\n\n") +
+      `\n\nManage your sources: ${process.env.APP_URL}/account\nPause these deliveries: ${unsubscribe}`;
+    const r = await pool().query(
+      "INSERT INTO deliveries(id,account_id,destination_id,revision,period,payload) SELECT $1,$2,id,revision,$3,$4 FROM destinations WHERE id=$5 AND enabled=true AND revision=$6 ON CONFLICT(destination_id,period) DO NOTHING RETURNING id",
+      [
+        randomUUID(),
+        d.account_id,
+        period.key,
+        JSON.stringify({
+          subject: `TBN · ${d.cadence} · ${date}`,
+          text,
+          unsubscribe,
+          itemIds: selected.map((i) => i.id),
+        }),
+        d.id,
+        d.revision,
+      ],
+    );
+    queued += r.rowCount || 0;
+  }
+  return { queued };
+}
+export async function claimDelivery(kind: string) {
+  return tx(async (db) => {
+    const r = await db.query(
+      "SELECT q.*,d.value,d.kind,d.enabled,d.revision AS current_revision FROM deliveries q JOIN destinations d ON d.id=q.destination_id WHERE q.status='pending' AND d.kind=$1 ORDER BY q.created_at FOR UPDATE OF q,d SKIP LOCKED LIMIT 1",
+      [kind],
+    );
+    const q = r.rows[0];
+    if (!q) return null;
+    const suppressed =
+      q.kind === "email" &&
+      (await db.query("SELECT 1 FROM suppressions WHERE value=$1", [q.value]))
+        .rowCount;
+    if (!q.enabled || q.revision !== q.current_revision || suppressed) {
+      await db.query(
+        "UPDATE deliveries SET status='cancelled',error='Destination changed or delivery paused' WHERE id=$1",
+        [q.id],
+      );
+      return null;
+    }
+    await db.query("UPDATE deliveries SET status='sending' WHERE id=$1", [
+      q.id,
+    ]);
+    return q;
+  });
+}
+export async function dispatchEmails() {
+  let sent = 0;
+  for (let n = 0; n < 20; n++) {
+    const q = await claimDelivery("email");
+    if (!q) break;
+    try {
+      const valid = (
+        await pool().query(
+          "SELECT 1 FROM destinations WHERE id=$1 AND enabled=true AND revision=$2",
+          [q.destination_id, q.revision],
+        )
+      ).rowCount;
+      if (!valid) {
+        await pool().query(
+          "UPDATE deliveries SET status='cancelled' WHERE id=$1",
+          [q.id],
+        );
+        continue;
+      }
+      const provider = await sendEmail(
+        q.value,
+        q.payload.subject,
+        q.payload.text,
+        q.id,
+        q.payload.unsubscribe,
+      );
+      await pool().query(
+        "UPDATE deliveries SET status='sent',sent_at=now(),provider_id=$2 WHERE id=$1",
+        [q.id, provider],
+      );
+      sent++;
+    } catch {
+      await pool().query(
+        "UPDATE deliveries SET status='uncertain',error='Provider acceptance could not be confirmed. Automatic resend paused.' WHERE id=$1",
+        [q.id],
+      );
+    }
+  }
+  return { sent };
+}
+export async function unsubscribe(id: string, proof: string) {
+  if (!proof || hash(proof) !== hash(unsubscribeToken(id))) return false;
+  await tx(async (d) => {
+    await d.query(
+      "UPDATE destinations SET enabled=false,revision=revision+1 WHERE id=$1",
+      [id],
+    );
+    await d.query(
+      "UPDATE deliveries SET status='cancelled' WHERE destination_id=$1 AND status='pending'",
+      [id],
+    );
+  });
+  return true;
+}

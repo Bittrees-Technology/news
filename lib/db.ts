@@ -1,8 +1,29 @@
-import { Pool, type PoolClient } from 'pg';
-const globalDb=globalThis as unknown as {newsPool?:Pool};
-export function pool(){if(!process.env.DATABASE_URL)throw Error('News storage is not configured');return globalDb.newsPool??=new Pool({connectionString:process.env.DATABASE_URL,max:5,idleTimeoutMillis:10000,connectionTimeoutMillis:10000});}
-export async function tx<T>(fn:(db:PoolClient)=>Promise<T>){const d=await pool().connect();try{await d.query('BEGIN');const v=await fn(d);await d.query('COMMIT');return v;}catch(e){await d.query('ROLLBACK');throw e;}finally{d.release();}}
-export const schema=`
+import { Pool, type PoolClient } from "pg";
+const globalDb = globalThis as unknown as { newsPool?: Pool };
+export function pool() {
+  if (!process.env.DATABASE_URL) throw Error("News storage is not configured");
+  return (globalDb.newsPool ??= new Pool({
+    connectionString: process.env.DATABASE_URL,
+    max: 5,
+    idleTimeoutMillis: 10000,
+    connectionTimeoutMillis: 10000,
+  }));
+}
+export async function tx<T>(fn: (db: PoolClient) => Promise<T>) {
+  const d = await pool().connect();
+  try {
+    await d.query("BEGIN");
+    const v = await fn(d);
+    await d.query("COMMIT");
+    return v;
+  } catch (e) {
+    await d.query("ROLLBACK");
+    throw e;
+  } finally {
+    d.release();
+  }
+}
+export const schema = `
 CREATE TABLE IF NOT EXISTS editor_jobs(id text PRIMARY KEY,publish_at timestamptz NOT NULL,status text NOT NULL DEFAULT 'pending',payload jsonb NOT NULL,claimed_at timestamptz,result jsonb,error text);
 CREATE TABLE IF NOT EXISTS accounts(id uuid PRIMARY KEY,created_at timestamptz NOT NULL DEFAULT now(),preferences jsonb NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS identities(kind text NOT NULL CHECK(kind IN ('email','wallet')),value text NOT NULL,account_id uuid NOT NULL REFERENCES accounts ON DELETE CASCADE,verified_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(kind,value));

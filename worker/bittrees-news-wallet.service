@@ -1,0 +1,17 @@
+[Unit]
+Description=TBN verified XMTP delivery worker
+After=network-online.target
+[Service]
+WorkingDirectory=%h/.local/lib/bittrees-news/wallet
+ExecStart=/opt/nftfactory-node24/bin/node sender.mjs
+Restart=on-failure
+RestartSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.local/state/bittrees-news
+UMask=0077
+MemoryMax=512M
+[Install]
+WantedBy=default.target
