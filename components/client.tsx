@@ -1,35 +1,41 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
-export async function call(
-  path: string,
-  body?: unknown,
-  method = body ? "POST" : "GET",
-) {
-  const r = await fetch("/api/" + path, {
-    method,
-    headers: body ? { "Content-Type": "application/json" } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const d = await r.json();
-  if (!r.ok) throw Error(d.error || "Request failed");
-  return d;
-}
+import { call, cachedData, connectAuthEvents } from "@/lib/browser-api";
+export { call } from "@/lib/browser-api";
 export function Header() {
-  const [signed, setSigned] = useState(false);
-  const pathname = usePathname();
+  const [signed, setSigned] = useState(!!cachedData("session")?.account);
   useEffect(() => {
-    call("account")
-      .then((d) => setSigned(!!d.account))
-      .catch(() => {});
+    connectAuthEvents();
+    let active = true;
     const refresh = () =>
-      call("account")
-        .then((d) => setSigned(!!d.account))
-        .catch(() => setSigned(false));
-    window.addEventListener("news-auth", refresh);
-    return () => window.removeEventListener("news-auth", refresh);
-  }, [pathname]);
+      call("session")
+        .then((d) => {
+          if (active) setSigned(!!d.account);
+        })
+        .catch(() => {
+          if (active) setSigned(false);
+        });
+    const changed = () => {
+      setSigned(false);
+      void refresh();
+    };
+    const focus = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    void refresh();
+    window.addEventListener("news-auth", changed);
+    window.addEventListener("focus", focus);
+    document.addEventListener("visibilitychange", focus);
+    const timer = window.setInterval(focus, 30000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+      window.removeEventListener("news-auth", changed);
+      window.removeEventListener("focus", focus);
+      document.removeEventListener("visibilitychange", focus);
+    };
+  }, []);
   return (
     <header className="topbar">
       <Link className="brand" href="/">

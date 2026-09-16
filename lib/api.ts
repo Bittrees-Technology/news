@@ -244,25 +244,38 @@ export async function api(r: Request) {
         "Set-Cookie": setCookie(sessionName, "", 0),
       });
     }
+    if (path === "session" && method === "GET") {
+      const a = await currentAccount(r, false);
+      return json({
+        account: a ? { id: a.id } : null,
+        emailReady: emailReady(),
+      });
+    }
     if (path === "account" && method === "GET") {
       const a = await currentAccount(r, false);
       if (!a) return json({ account: null, emailReady: emailReady() });
-      const [identities, destinations, connections, deliveries] =
-        await Promise.all([
-          pool().query(
-            "SELECT kind,value,verified_at FROM identities WHERE account_id=$1",
-            [a.id],
-          ),
-          pool().query(
-            "SELECT id,kind,value,enabled,cadence,reachable FROM destinations WHERE account_id=$1",
-            [a.id],
-          ),
-          pool().query("SELECT * FROM connections WHERE account_id=$1", [a.id]),
-          pool().query(
-            "SELECT q.id,q.period,q.status,q.created_at,q.sent_at,q.error,d.kind,d.value FROM deliveries q JOIN destinations d ON d.id=q.destination_id WHERE q.account_id=$1 ORDER BY q.created_at DESC LIMIT 30",
-            [a.id],
-          ),
-        ]);
+      const [
+        identities,
+        destinations,
+        connections,
+        deliveries,
+        walletAvailable,
+      ] = await Promise.all([
+        pool().query(
+          "SELECT kind,value,verified_at FROM identities WHERE account_id=$1",
+          [a.id],
+        ),
+        pool().query(
+          "SELECT id,kind,value,enabled,cadence,reachable FROM destinations WHERE account_id=$1",
+          [a.id],
+        ),
+        pool().query("SELECT * FROM connections WHERE account_id=$1", [a.id]),
+        pool().query(
+          "SELECT q.id,q.period,q.status,q.created_at,q.sent_at,q.error,d.kind,d.value FROM deliveries q JOIN destinations d ON d.id=q.destination_id WHERE q.account_id=$1 ORDER BY q.created_at DESC LIMIT 30",
+          [a.id],
+        ),
+        walletReady(),
+      ]);
       return json({
         account: { id: a.id },
         preferences: preferencesSchema.parse(a.preferences),
@@ -274,7 +287,7 @@ export async function api(r: Request) {
         connections: connections.rows,
         deliveries: deliveries.rows,
         emailReady: emailReady(),
-        walletReady: await walletReady(),
+        walletReady: walletAvailable,
       });
     }
     const a = await currentAccount(r);

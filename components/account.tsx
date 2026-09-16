@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { NewspaperSettings } from "./newspaper-settings";
 import { call } from "./client";
+import { cachedData, prefetchAccountSection } from "@/lib/browser-api";
 import { sources, topics } from "@/lib/catalog";
 import { defaults, type Preferences } from "@/lib/model";
 type Identity = { kind: string; value: string };
@@ -101,8 +102,12 @@ export function Account({
 }: {
   section?: AccountSection;
 }) {
-  const [data, setData] = useState<AccountData | null>(null),
-    [prefs, setPrefs] = useState<Preferences>(defaults),
+  const [data, setData] = useState<AccountData | null>(
+      () => cachedData("account") || null,
+    ),
+    [prefs, setPrefs] = useState<Preferences>(
+      () => cachedData("account")?.preferences || defaults,
+    ),
     [status, setStatus] = useState(""),
     [busy, setBusy] = useState(false),
     [email, setEmail] = useState(""),
@@ -120,11 +125,13 @@ export function Account({
   async function load() {
     const d = await call("account");
     setData(d);
-    window.dispatchEvent(new Event("news-auth"));
     if (d.preferences) setPrefs(d.preferences);
   }
   useEffect(() => {
     load().catch((e) => setStatus(e.message));
+  }, []);
+  useEffect(() => {
+    if (section !== "sources" || !data?.account) return;
     call("sources")
       .then((d) =>
         setSourceStatuses(
@@ -146,7 +153,7 @@ export function Account({
         ),
       )
       .catch(() => {});
-  }, []);
+  }, [section, data?.account?.id]);
   async function run(fn: () => Promise<void>) {
     setBusy(true);
     setStatus("");
@@ -309,6 +316,9 @@ export function Account({
           <Link
             key={key}
             href={href}
+            prefetch={true}
+            onMouseEnter={() => prefetchAccountSection(key)}
+            onFocus={() => prefetchAccountSection(key)}
             aria-current={section === key ? "page" : undefined}
           >
             {label}

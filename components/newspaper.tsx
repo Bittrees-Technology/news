@@ -38,7 +38,7 @@ export function Newspaper({
         JSON.parse(localStorage.getItem("bittrees-news-reading") || "{}"),
       );
     } catch {}
-    call("account")
+    call("session")
       .then(async (a) => {
         setSigned(!!a.account);
         if (a.account) {

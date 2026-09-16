@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { call } from "./client";
+import { call, cachedData } from "@/lib/browser-api";
 import { topics, sources } from "@/lib/catalog";
 import { defaults, type Preferences } from "@/lib/model";
 type Paper = {
@@ -47,17 +47,24 @@ export function NewspaperSettings({
       name: c.name + " (your source)",
     })),
   ];
-  const [paper, setPaper] = useState<Paper>({
-    name: "",
-    slug: "",
-    description: "",
-    published: false,
-    auto_publish: false,
-    auto_cadence: "daily",
-  });
-  const [exists, setExists] = useState(false),
-    [loaded, setLoaded] = useState(false),
-    [feeds, setFeeds] = useState<Feed[]>([]),
+  const [paper, setPaper] = useState<Paper>(
+    () =>
+      cachedData("newspaper")?.newspaper ?? {
+        name: "",
+        slug: "",
+        description: "",
+        published: false,
+        auto_publish: false,
+        auto_cadence: "daily",
+      },
+  );
+  const [exists, setExists] = useState(
+      () => !!cachedData("newspaper")?.newspaper,
+    ),
+    [loaded, setLoaded] = useState(() => !!cachedData("newspaper")),
+    [feeds, setFeeds] = useState<Feed[]>(
+      () => cachedData("newspaper")?.feeds ?? [],
+    ),
     [feed, setFeed] = useState<Feed>(freshFeed),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { call } from "./client";
+import { call, cachedData } from "@/lib/browser-api";
 type Key = {
   id: string;
   name: string;
@@ -9,7 +9,9 @@ type Key = {
   last_used_at: string | null;
 };
 export function AiConnection() {
-  const [keys, setKeys] = useState<Key[]>([]),
+  const [keys, setKeys] = useState<Key[]>(
+      () => cachedData("mcp/tokens")?.tokens ?? [],
+    ),
     [name, setName] = useState("My AI curator"),
     [curate, setCurate] = useState(true),
     [publish, setPublish] = useState(false),
@@ -20,7 +22,7 @@ export function AiConnection() {
     [busy, setBusy] = useState(false),
     [audit, setAudit] = useState<
       { action: string; status: string; created_at: string }[]
-    >([]);
+    >(() => cachedData("mcp/tokens")?.audit ?? []);
   async function load() {
     const d = await call("mcp/tokens");
     setKeys(d.tokens);

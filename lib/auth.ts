@@ -45,7 +45,7 @@ export async function currentAccount(r: Request, required = true) {
   const a = raw
     ? (
         await pool().query(
-          "SELECT a.* FROM sessions s JOIN accounts a ON a.id=s.account_id WHERE s.hash=$1 AND s.expires_at>now()",
+          "SELECT a.id,a.preferences FROM sessions s JOIN accounts a ON a.id=s.account_id WHERE s.hash=$1 AND s.expires_at>now()",
           [hash(raw)],
         )
       ).rows[0]

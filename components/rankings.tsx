@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { call } from "./client";
+import { call, cachedData } from "@/lib/browser-api";
 import {
   defaultRanking,
   factorNames,
@@ -19,8 +19,12 @@ type Point = {
   config: unknown;
 };
 export function Rankings() {
-  const [profile, setProfile] = useState<RankingProfile>(defaultRanking),
-    [history, setHistory] = useState<Point[]>([]),
+  const [profile, setProfile] = useState<RankingProfile>(
+      () => cachedData("ranking")?.profile ?? defaultRanking,
+    ),
+    [history, setHistory] = useState<Point[]>(
+      () => cachedData("ranking")?.history ?? [],
+    ),
     [entity, setEntity] = useState(""),
     [kind, setKind] = useState("source"),
     [status, setStatus] = useState(""),
