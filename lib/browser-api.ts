@@ -49,11 +49,11 @@ export class BrowserApi {
   reset = () => {
     this.generation++;
     this.identity = undefined;
-    this.invalidate(Object.keys(lifetimes).filter((p) => p !== "sources"));
+    this.invalidate(Object.keys(lifetimes));
     this.notify();
   };
   private observe(value: any) {
-    const identity = value.account?.id || null;
+    const identity = value.account ? `${value.account.id}:${value.account.role || "member"}` : null;
     if (this.identity !== undefined && this.identity !== identity) this.reset();
     this.identity = identity;
     this.entries.set("session", {

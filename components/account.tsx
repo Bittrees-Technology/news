@@ -1,4 +1,5 @@
 "use client";
+import { StaffPanel } from "./staff-panel";
 import { Rankings } from "./rankings";
 import { AiConnection } from "./ai-connection";
 import { useEffect, useState } from "react";
@@ -34,7 +35,7 @@ type Delivery = {
   error?: string;
 };
 type AccountData = {
-  account: { id: string } | null;
+  account: { id: string; role?: string } | null;
   preferences?: Preferences;
   identities?: Identity[];
   destinations?: Destination[];
@@ -312,24 +313,38 @@ export function Account({
         </div>
       </div>
       <nav className="account-tabs" aria-label="Your newspaper settings">
-        {accountTabs.map(([key, label, href]) => (
-          <Link
-            key={key}
-            href={href}
-            prefetch={true}
-            onMouseEnter={() => prefetchAccountSection(key)}
-            onFocus={() => prefetchAccountSection(key)}
-            aria-current={section === key ? "page" : undefined}
-          >
-            {label}
-          </Link>
-        ))}
+        {accountTabs
+          .filter(
+            ([key]) =>
+              key !== "rankings" ||
+              ["admin", "super_admin"].includes(data.account?.role || ""),
+          )
+          .map(([key, label, href]) => (
+            <Link
+              key={key}
+              href={href}
+              prefetch={true}
+              onMouseEnter={() => prefetchAccountSection(key)}
+              onFocus={() => prefetchAccountSection(key)}
+              aria-current={section === key ? "page" : undefined}
+            >
+              {label}
+            </Link>
+          ))}
       </nav>
       {statusBox}
+      {section === "settings" && (
+        <StaffPanel role={data.account?.role || "member"} />
+      )}
       {section === "newspaper" && (
         <NewspaperSettings connections={data.connections} />
       )}
-      {section === "rankings" && <Rankings />}
+      {section === "rankings" &&
+        (["admin", "super_admin"].includes(data.account?.role || "") ? (
+          <Rankings />
+        ) : (
+          <p>Administrator access is required to view article scores.</p>
+        ))}
       {section === "ai" && <AiConnection />}
       {(section === "topics" || section === "sources") && (
         <form

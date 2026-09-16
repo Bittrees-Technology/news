@@ -1,3 +1,5 @@
+import { viewer } from "@/lib/viewer";
+import { scoreVisibility } from "@/lib/roles";
 import { withTranslations } from "@/lib/translation";
 import Link from "next/link";
 import { pool } from "@/lib/db";
@@ -9,12 +11,15 @@ export default async function Page({
 }: {
   searchParams: Promise<{ id?: string }>;
 }) {
+  const account = await viewer();
   const { id } = await searchParams;
   if (id) {
     const e = await latestEdition(id);
     if (e) e.data.items = await withTranslations(e.data.items);
     return e ? (
-      <Newspaper edition={JSON.parse(JSON.stringify(e))} />
+      <Newspaper
+        edition={JSON.parse(JSON.stringify(scoreVisibility(e, account?.role)))}
+      />
     ) : (
       <p>That edition is not available.</p>
     );

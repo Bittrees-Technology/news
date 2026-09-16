@@ -1,3 +1,4 @@
+import { roleForAccount, type NewsRole } from "./roles";
 import {
   createHash,
   createHmac,
@@ -52,7 +53,13 @@ export async function currentAccount(r: Request, required = true) {
     : undefined;
   if (!a && required)
     throw new HttpError(401, "Sign in to manage your newspaper.");
-  return a as { id: string; preferences: unknown } | undefined;
+  return a
+    ? ({ ...a, role: await roleForAccount(a.id) } as {
+        id: string;
+        preferences: unknown;
+        role: NewsRole;
+      })
+    : undefined;
 }
 export async function rateLimit(key: string, max = 10) {
   const r = await pool().query(

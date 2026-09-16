@@ -1,4 +1,11 @@
 import {
+  roles,
+  canReview,
+  canScores,
+  requireScores,
+  scoreVisibility,
+} from "./roles";
+import {
   withTranslations,
   claimTranslation,
   saveTranslation,
@@ -104,18 +111,30 @@ export async function api(r: Request) {
     }
     if (path === "sources" && method === "GET") {
       const statuses = (await pool().query("SELECT * FROM sources")).rows;
-      const scored = await sourceScores();
+      const viewer = await currentAccount(r, false);
+      const scored = canScores(viewer?.role)
+        ? await sourceScores()
+        : { scores: {} as Record<string, number> };
       return json({
         sources: sources.map((s) => ({
           ...s,
           ...statuses.find((d) => d.id === s.id),
-          source_score: scored.scores[s.id] ?? null,
+          ...(canScores(viewer?.role)
+            ? { source_score: scored.scores[s.id] ?? null }
+            : {}),
         })),
         topics,
       });
     }
-    if (path === "edition" && method === "GET")
-      return json(await latestEdition(url.searchParams.get("id") || undefined));
+    if (path === "edition" && method === "GET") {
+      const viewer = await currentAccount(r, false);
+      return json(
+        scoreVisibility(
+          await latestEdition(url.searchParams.get("id") || undefined),
+          viewer?.role,
+        ),
+      );
+    }
     if (path === "editions" && method === "GET")
       return json(
         (
@@ -271,7 +290,7 @@ export async function api(r: Request) {
     if (path === "session" && method === "GET") {
       const a = await currentAccount(r, false);
       return json({
-        account: a ? { id: a.id } : null,
+        account: a ? { id: a.id, role: a.role } : null,
         emailReady: emailReady(),
       });
     }
@@ -301,7 +320,7 @@ export async function api(r: Request) {
         walletReady(),
       ]);
       return json({
-        account: { id: a.id },
+        account: { id: a.id, role: a.role },
         preferences: preferencesSchema.parse(a.preferences),
         identities: identities.rows,
         destinations: destinations.rows.map((d) => ({
@@ -316,6 +335,104 @@ export async function api(r: Request) {
     }
     const a = await currentAccount(r);
     if (method !== "GET") checkOrigin(r);
+    if (path === "staff/roles") {
+      if (a!.role !== "super_admin")
+        throw new HttpError(403, "Super-admin access required.");
+      if (method === "GET")
+        return json(
+          (
+            await pool().query(
+              "SELECT kind,value,role,protected FROM news_role_grants ORDER BY protected DESC,value",
+            )
+          ).rows,
+        );
+      if (method === "POST") {
+        const b = z
+          .object({
+            kind: z.enum(["email", "wallet"]),
+            value: z.string().min(3).max(254),
+            role: z.enum(roles),
+          })
+          .parse(await body(r));
+        b.value = b.value.trim().toLowerCase();
+        await tx(async (db) => {
+          if (
+            !(
+              await db.query(
+                "SELECT 1 FROM identities WHERE kind=$1 AND value=$2",
+                [b.kind, b.value],
+              )
+            ).rowCount
+          )
+            throw new HttpError(
+              400,
+              "This identity must sign in and verify first.",
+            );
+          const saved = await db.query(
+            "INSERT INTO news_role_grants(kind,value,role) VALUES($1,$2,$3) ON CONFLICT(kind,value) DO UPDATE SET role=$3,updated_at=now() WHERE NOT news_role_grants.protected RETURNING value",
+            [b.kind, b.value, b.role],
+          );
+          if (!saved.rowCount)
+            throw new HttpError(
+              403,
+              "Protected super-admin identities cannot be changed here.",
+            );
+          await db.query(
+            "INSERT INTO news_staff_audit(id,actor,action,detail) VALUES($1,$2,'set_role',$3)",
+            [randomUUID(), a!.id, JSON.stringify(b)],
+          );
+        });
+        return json({ ok: true });
+      }
+    }
+    if (path === "staff/reviews") {
+      if (!canReview(a!.role))
+        throw new HttpError(403, "Editorial staff access required.");
+      if (method === "GET")
+        return json(
+          (
+            await pool().query(
+              "SELECT r.item_id,r.status,r.note,r.updated_at,i.title FROM news_reviews r JOIN items i ON i.id=r.item_id ORDER BY r.updated_at DESC LIMIT 100",
+            )
+          ).rows,
+        );
+      if (method === "POST") {
+        const b = z
+          .object({
+            item_id: z.string().min(1).max(300),
+            status: z.enum(["flagged", "reviewed", "approved"]),
+            note: z.string().min(3).max(2000),
+          })
+          .parse(await body(r));
+        if (b.status === "approved" && a!.role === "moderator")
+          throw new HttpError(
+            403,
+            "Editor or administrator approval required.",
+          );
+        await tx(async (db) => {
+          if (
+            !(
+              await db.query(
+                "SELECT 1 FROM items WHERE id=$1 AND owner_id IS NULL",
+                [b.item_id],
+              )
+            ).rowCount
+          )
+            throw new HttpError(404, "Public article not found.");
+          await db.query(
+            "INSERT INTO news_reviews(item_id,status,note,actor) VALUES($1,$2,$3,$4) ON CONFLICT(item_id) DO UPDATE SET status=$2,note=$3,actor=$4,updated_at=now()",
+            [b.item_id, b.status, b.note, a!.id],
+          );
+          await db.query(
+            "INSERT INTO news_staff_audit(id,actor,action,detail) VALUES($1,$2,'review_article',$3)",
+            [randomUUID(), a!.id, JSON.stringify(b)],
+          );
+        });
+        return json({ ok: true });
+      }
+    }
+    if (path === "ranking" || path === "ranking/refresh")
+      requireScores(a!.role);
     if (path === "ranking" && method === "GET")
       return json({
         profile: rankingSchema.parse(
@@ -401,7 +518,10 @@ export async function api(r: Request) {
       const c = await accountCandidates(a!.id);
       return json(
         await withTranslations(
-          await rankedItems(c.items, c.preferences, c.profile, a!.id),
+          scoreVisibility(
+            await rankedItems(c.items, c.preferences, c.profile, a!.id),
+            a!.role,
+          ),
         ),
       );
     }

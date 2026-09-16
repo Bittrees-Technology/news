@@ -1,3 +1,4 @@
+import { scoreVisibility } from "@/lib/roles";
 import { withTranslations } from "@/lib/translation";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -48,7 +49,9 @@ export async function NamedNewspaper({
       <Newspaper
         key={paper.slug + "/" + (feed || "")}
         initialItems={JSON.parse(
-          JSON.stringify(await withTranslations(paper.items)),
+          JSON.stringify(
+            scoreVisibility(await withTranslations(paper.items), account?.role),
+          ),
         )}
         title={
           paper.feedName ? `${paper.name} / ${paper.feedName}` : paper.name

@@ -3,6 +3,19 @@ import assert from "node:assert/strict";
 import { BrowserApi, SupersededRequest } from "../lib/browser-api";
 const response = (value: unknown, status = 200) =>
   Response.json(value, { status });
+test("source scores are discarded on logout and role changes", async () => {
+  let role = "admin";
+  const api = new BrowserApi(async (url) => response(String(url).endsWith("sources") ? {source_score:90} : {account:{id:"same",role}}));
+  await api.request("account");
+  await api.request("sources");
+  role="member";
+  api.invalidate(["account"]);
+  await api.request("account");
+  assert.equal(api.peek("sources"),undefined);
+  await api.request("sources");
+  api.reset();
+  assert.equal(api.peek("sources"),undefined);
+});
 test("deduplicates simultaneous reads and reuses account data until expiry", async () => {
   let calls = 0,
     now = 0;

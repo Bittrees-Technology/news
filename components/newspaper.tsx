@@ -38,6 +38,7 @@ export function Newspaper({
     [hideRead, setHideRead] = useState(false),
     [state, setState] = useState<State>({}),
     [signed, setSigned] = useState(false),
+    [staffRole, setStaffRole] = useState("member"),
     [message, setMessage] = useState(""),
     [cursor, setCursor] = useState(-1),
     [personal, setPersonal] = useState(false),
@@ -52,6 +53,7 @@ export function Newspaper({
     call("session")
       .then(async (a) => {
         setSigned(!!a.account);
+        setStaffRole(a.account?.role || "member");
         if (a.account) {
           const rows = await call("reading");
           setState(
@@ -441,7 +443,18 @@ export function Newspaper({
                 </small>
               )}
 
-              {i.ranking && (
+              {["moderator", "editor", "admin", "super_admin"].includes(
+                staffRole,
+              ) && (
+                <details>
+                  <summary>Editorial review</summary>
+                  <p>
+                    Article ID: <code>{i.id}</code>
+                  </p>
+                  <Link href="/account/settings">Open review workspace</Link>
+                </details>
+              )}
+              {["admin", "super_admin"].includes(staffRole) && i.ranking && (
                 <details className="score-detail">
                   <summary>
                     Article score {i.ranking.value.toFixed(1)} / 100 · Source

@@ -1,3 +1,5 @@
+import { viewer } from "@/lib/viewer";
+import { scoreVisibility } from "@/lib/roles";
 import { withTranslations } from "@/lib/translation";
 import { sourceHealth } from "@/lib/source-health";
 import { publicRanked } from "@/lib/ranking";
@@ -5,6 +7,7 @@ import { latestEdition } from "@/lib/publish";
 import { Newspaper } from "@/components/newspaper";
 export const dynamic = "force-dynamic";
 export default async function Page() {
+  const account = await viewer();
   let edition = null;
   const health = await sourceHealth().catch(() => null);
   try {
@@ -17,7 +20,11 @@ export default async function Page() {
   return (
     <Newspaper
       health={health}
-      edition={edition ? JSON.parse(JSON.stringify(edition)) : null}
+      edition={
+        edition
+          ? JSON.parse(JSON.stringify(scoreVisibility(edition, account?.role)))
+          : null
+      }
     />
   );
 }

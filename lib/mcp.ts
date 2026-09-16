@@ -1,3 +1,4 @@
+import { roleForAccount, requireScores, scoreVisibility } from "./roles";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import { pool } from "./db";
@@ -141,6 +142,9 @@ const definitions = [
   },
 ] as const;
 async function execute(accountId: string, name: string, args: unknown) {
+  const role = await roleForAccount(accountId);
+  if (["ranking_history", "set_ranking", "refresh_rankings"].includes(name))
+    requireScores(role);
   const tool = definitions.find((t) => t.name === name)!;
   const b = tool.schema.parse(args) as any;
   switch (name) {
@@ -337,10 +341,13 @@ export async function mcp(r: Request) {
         });
       let status = "success";
       try {
-        const data = await execute(
-          credential.account_id,
-          t.name,
-          b.params.arguments || {},
+        const data = scoreVisibility(
+          await execute(
+            credential.account_id,
+            t.name,
+            b.params.arguments || {},
+          ),
+          await roleForAccount(credential.account_id),
         );
         result = { content: [{ type: "text", text: JSON.stringify(data) }] };
       } catch (e) {
