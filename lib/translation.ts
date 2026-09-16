@@ -23,10 +23,19 @@ export const translationResultSchema = z.object({
   model: z.string().min(1).max(100),
   error: z.boolean().optional(),
 });
-export function translatedResult(b: z.infer<typeof translationResultSchema>) {
+export function translatedResult(
+  b: z.infer<typeof translationResultSchema>,
+  original?: { title: string; summary: string },
+) {
   if (b.language === "en") return { language: "en", model: b.model };
   if (!b.title || b.summary === undefined)
     throw new HttpError(400, "Translated title and summary are required");
+  if (
+    original &&
+    b.title.trim() === original.title.trim() &&
+    b.summary.trim() === original.summary.trim()
+  )
+    throw new HttpError(400, "Source text was not translated");
   return {
     language: b.language,
     title: b.title,
@@ -114,7 +123,15 @@ export async function claimTranslation() {
 export async function saveTranslation(
   b: z.infer<typeof translationResultSchema>,
 ) {
-  const result = b.error ? null : translatedResult(b);
+  const active = (
+    await pool().query(
+      "SELECT payload FROM translations WHERE key=$1 AND lease=$2 AND status='working'",
+      [b.key, b.lease],
+    )
+  ).rows[0];
+  if (!active)
+    throw new HttpError(409, "Translation lease is no longer active");
+  const result = b.error ? null : translatedResult(b, active.payload);
   const r = await pool().query(
     `UPDATE translations SET status=CASE WHEN $3::boolean THEN CASE WHEN attempts>=3 THEN 'failed' ELSE 'pending' END ELSE 'done' END,result=$4,completed_at=now() WHERE key=$1 AND lease=$2 AND status='working' RETURNING key`,
     [b.key, b.lease, !!b.error, result ? JSON.stringify(result) : null],

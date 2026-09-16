@@ -28,7 +28,7 @@ Once the ENS assignment resolves, the worker creates its own XMTP installation, 
 
 ## English display translations
 
-`bittrees-news-translation.service` runs `worker/translate.py` on the existing Bittrees model node, using the editor's existing private configuration and loopback model endpoint. It polls authenticated `/api/editor/translation/claim` and `/result` routes with the existing editor credential. No paid translation API is used.
+`bittrees-news-translation.service` runs `worker/translate.py` on the existing Bittrees model node, using the editor's existing private configuration. Portuguese uses the local Argos 1.9 Portuguese-English neural model with CTranslate2; other languages use the loopback model endpoint. It polls authenticated `/api/editor/translation/claim` and `/result` routes with the existing editor credential. No paid translation API is used.
 
 Public-source titles and displayed summaries are translated into English separately from editorial selection. Source text, ranking evidence, source links and publication snapshots are preserved. The UI labels automatic translations and offers the original wording. Geography filters use the English display text. Private sources and personal annotations are excluded from this public worker's queue.
 
@@ -37,3 +37,7 @@ The translation cache key includes source item ID, original headline, displayed 
 The dedicated Python environment at `~/.local/lib/bittrees-news/translation-env` installs `langdetect==1.0.9` (see `worker/translation-requirements.txt`). Deterministic, high-confidence English detection for both fields skips model work; uncertain or mixed-language text still reaches the model.
 
 To activate after deploying the web routes and migration, copy `worker/translate.py` to `~/.local/lib/bittrees-news/translate.py` and its service to `~/.config/systemd/user/`, then enable/start `bittrees-news-translation.service`. This service shares the local model with the editor but has its own lock and retries. Inspect failures via the service journal and the `translations` table, without logging service credentials or source payloads.
+
+Portuguese model setup: download `https://argos-net.com/v1/translate-pt_en-1_9.argosmodel` from the official Argos index, then run `worker/install-translation-model.py <archive>` on the node. The installer checks SHA256 `ae76df6f650895c16f2b582065014fab496755ca846ecb19fae81d51f332a38e` and extracts to `~/.local/state/bittrees-news/models/translate-pt_en-1_9`. The package README/metadata and model files remain together. The worker uses two CPU threads and a 768 MB memory limit. Install all pinned runtime requirements from `worker/translation-requirements.txt`.
+
+Translation output must be detected as English before submission; unchanged non-English title/summary pairs are rejected server-side. English detection does not invoke the model when both fields are confidently English. Public source links and original text are never replaced in storage.

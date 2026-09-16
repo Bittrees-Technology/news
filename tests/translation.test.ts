@@ -59,3 +59,14 @@ test("non-English results require both fields and bounded validated payloads", (
     translationResultSchema.parse({ ...result, lease: "not-a-lease" }),
   );
 });
+
+test("unchanged non-English text cannot be labelled as translated", () => {
+  assert.throws(
+    () =>
+      translatedResult(result, {
+        title: result.title,
+        summary: result.summary,
+      }),
+    /not translated/,
+  );
+});

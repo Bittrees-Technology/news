@@ -11,6 +11,6 @@ ProtectSystem=strict
 ProtectHome=read-only
 ReadWritePaths=%h/.local/state/bittrees-news
 UMask=0077
-MemoryMax=256M
+MemoryMax=768M
 [Install]
 WantedBy=default.target
