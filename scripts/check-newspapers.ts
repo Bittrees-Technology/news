@@ -152,8 +152,12 @@ try {
   );
 } finally {
   if (accounts.length)
-    await pool().query("DELETE FROM accounts WHERE id=ANY($1::uuid[])", [
-      accounts,
-    ]);
+    await pool().query(
+      "DELETE FROM ranking_history h WHERE h.owner_key=ANY($1::text[]) OR (h.owner_key='public' AND EXISTS(SELECT 1 FROM newspapers n WHERE n.account_id=ANY($1::uuid[]) AND (h.entity_id=n.slug OR left(h.entity_id,length(n.slug)+1)=n.slug||'/')))",
+      [accounts],
+    );
+  await pool().query("DELETE FROM accounts WHERE id=ANY($1::uuid[])", [
+    accounts,
+  ]);
   await pool().end();
 }
