@@ -1,3 +1,10 @@
+import {
+  withTranslations,
+  claimTranslation,
+  saveTranslation,
+  translationResultSchema,
+  translationStatus,
+} from "./translation";
 import { validatePreferences } from "./newspapers";
 import { mcp, createMcpToken } from "./mcp";
 import { rankingSchema } from "./scoring";
@@ -125,6 +132,23 @@ export async function api(r: Request) {
       if (path === "jobs/deliver")
         return json({ ...(await queueDigests()), ...(await dispatchEmails()) });
       if (path === "jobs/dispatch") return json(await dispatchEmails());
+    }
+    if (path === "translations/status" && method === "POST") {
+      checkOrigin(r);
+      const b = z
+        .object({ keys: z.array(z.string().regex(/^[a-f0-9]{64}$/)).max(100) })
+        .parse(await body(r));
+      return json(await translationStatus(b.keys));
+    }
+    if (path === "editor/translation/claim" && method === "POST") {
+      authorizeBearer(r, "EDITOR_SECRET");
+      return json(await claimTranslation());
+    }
+    if (path === "editor/translation/result" && method === "POST") {
+      authorizeBearer(r, "EDITOR_SECRET");
+      return json(
+        await saveTranslation(translationResultSchema.parse(await body(r))),
+      );
     }
     if (path === "editor/claim" && method === "POST") {
       authorizeBearer(r, "EDITOR_SECRET");
@@ -375,7 +399,11 @@ export async function api(r: Request) {
     }
     if (path === "feed" && method === "GET") {
       const c = await accountCandidates(a!.id);
-      return json(await rankedItems(c.items, c.preferences, c.profile, a!.id));
+      return json(
+        await withTranslations(
+          await rankedItems(c.items, c.preferences, c.profile, a!.id),
+        ),
+      );
     }
     if (path === "reading" && method === "GET")
       return json(
@@ -388,12 +416,14 @@ export async function api(r: Request) {
       );
     if (path === "saved" && method === "GET")
       return json(
-        (
-          await pool().query(
-            "SELECT i.* FROM reading r JOIN items i ON i.id=r.item_id WHERE r.account_id=$1 AND r.saved=true AND (i.owner_id IS NULL OR i.owner_id=$1) ORDER BY i.published_at DESC LIMIT 500",
-            [a!.id],
-          )
-        ).rows,
+        await withTranslations(
+          (
+            await pool().query(
+              "SELECT i.* FROM reading r JOIN items i ON i.id=r.item_id WHERE r.account_id=$1 AND r.saved=true AND (i.owner_id IS NULL OR i.owner_id=$1) ORDER BY i.published_at DESC LIMIT 500",
+              [a!.id],
+            )
+          ).rows,
+        ),
       );
     if (path === "reading" && method === "POST") {
       const b = z

@@ -1,3 +1,4 @@
+import { withTranslations } from "@/lib/translation";
 import Link from "next/link";
 import { pool } from "@/lib/db";
 import { latestEdition } from "@/lib/publish";
@@ -11,6 +12,7 @@ export default async function Page({
   const { id } = await searchParams;
   if (id) {
     const e = await latestEdition(id);
+    if (e) e.data.items = await withTranslations(e.data.items);
     return e ? (
       <Newspaper edition={JSON.parse(JSON.stringify(e))} />
     ) : (

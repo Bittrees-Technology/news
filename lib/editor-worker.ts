@@ -1,3 +1,4 @@
+import { withTranslations } from "./translation";
 import { isSourcePassage } from "./grounding";
 import { z } from "zod";
 import { pool, tx } from "./db";
@@ -55,6 +56,7 @@ export async function saveEditorResult(b: z.infer<typeof editorResultSchema>) {
         summary_kind: "extractive",
       });
     }
+    await withTranslations([...selected, ...j.payload.podcasts]);
     for (const i of selected)
       await d.query(
         "UPDATE items SET summary=$2,summary_kind=$3 WHERE id=$1 AND owner_id IS NULL",

@@ -19,6 +19,14 @@ export type Item = {
   summary_kind: string;
   published_at: string;
   owner_id?: string | null;
+  translation_key?: string;
+  translation_status?: string;
+  translation?: {
+    language: string;
+    title?: string;
+    summary?: string;
+    model: string;
+  };
   ranking?: import("./scoring").Score;
 };
 export type Edition = {

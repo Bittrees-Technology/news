@@ -1,3 +1,4 @@
+import { withTranslations } from "@/lib/translation";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { viewer } from "@/lib/viewer";
@@ -46,7 +47,9 @@ export async function NamedNewspaper({
       )}
       <Newspaper
         key={paper.slug + "/" + (feed || "")}
-        initialItems={JSON.parse(JSON.stringify(paper.items))}
+        initialItems={JSON.parse(
+          JSON.stringify(await withTranslations(paper.items)),
+        )}
         title={
           paper.feedName ? `${paper.name} / ${paper.feedName}` : paper.name
         }

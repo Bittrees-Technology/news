@@ -1,3 +1,4 @@
+import { withTranslations } from "./translation";
 import { publicRanked } from "./ranking";
 import { pool, tx } from "./db";
 import { collect } from "./collect";
@@ -63,6 +64,7 @@ export async function prepare(now = new Date()) {
       return { id: slot.id, ...stats, queuedForEditor: true };
     }
     const result = await edit(articles);
+    await withTranslations([...result.items, ...pods]);
     if (!result.items.length) throw Error("No fresh stories available");
     for (const i of result.items)
       if (i.summary)

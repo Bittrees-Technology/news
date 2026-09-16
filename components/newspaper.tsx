@@ -72,8 +72,60 @@ export function Newspaper({
       })
       .catch(() => {});
   }, [mode]);
+  const translationKeys = items
+    .filter(
+      (i) =>
+        i.translation_key &&
+        ["pending", "working"].includes(i.translation_status || ""),
+    )
+    .map((i) => i.translation_key!)
+    .join(",");
+  useEffect(() => {
+    if (!translationKeys) return;
+    let stopped = false,
+      timer: ReturnType<typeof setTimeout>,
+      polls = 0;
+    async function refresh() {
+      try {
+        const rows = await call("translations/status", {
+          keys: translationKeys.split(",").slice(0, 100),
+        });
+        if (!stopped)
+          setItems((current) =>
+            current.map((i) => {
+              const row = rows.find(
+                (r: { key: string }) => r.key === i.translation_key,
+              );
+              return row
+                ? {
+                    ...i,
+                    translation_status: row.status,
+                    translation: row.status === "done" ? row.result : undefined,
+                  }
+                : i;
+            }),
+          );
+      } catch {}
+      if (!stopped && ++polls < 60) timer = setTimeout(refresh, 15000);
+    }
+    timer = setTimeout(refresh, 3000);
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+    };
+  }, [translationKeys]);
   const geography = useMemo(
-    () => new Map(items.map((i) => [i.id, geographyFor(i)])),
+    () =>
+      new Map(
+        items.map((i) => [
+          i.id,
+          geographyFor({
+            ...i,
+            title: i.translation?.title || i.title,
+            summary: i.translation?.summary || i.summary,
+          }),
+        ]),
+      ),
     [items],
   );
   const visible = useMemo(
@@ -368,10 +420,27 @@ export function Newspaper({
                   rel="noopener noreferrer"
                   onClick={() => void mutate(i.id, "is_read", true)}
                 >
-                  {i.title}
+                  {i.translation?.title || i.title}
                 </a>
               </h2>
-              <p>{i.summary || i.excerpt}</p>
+              <p>{i.translation?.summary ?? i.summary ?? i.excerpt}</p>
+              {i.translation?.language && i.translation.language !== "en" && (
+                <details className="translation-original">
+                  <summary>Translated to English · View original</summary>
+                  <h3>{i.title}</h3>
+                  <p>{i.summary || i.excerpt}</p>
+                  <small>
+                    Automatic translation by Bittrees-hosted AI. The source link
+                    opens the original publication.
+                  </small>
+                </details>
+              )}
+              {i.translation_status === "failed" && (
+                <small className="muted">
+                  Original text · English translation unavailable
+                </small>
+              )}
+
               {i.ranking && (
                 <details className="score-detail">
                   <summary>
@@ -395,13 +464,15 @@ export function Newspaper({
               )}
               <div className="story-bottom">
                 <span>
-                  {i.kind === "podcast"
-                    ? "Episode description"
-                    : i.summary_kind === "extractive"
-                      ? "AI-selected source excerpt"
-                      : i.summary_kind === "generated"
-                        ? "Generated summary"
-                        : "Publisher excerpt / data"}
+                  {i.translation?.language && i.translation.language !== "en"
+                    ? "English translation · see original above"
+                    : i.kind === "podcast"
+                      ? "Episode description"
+                      : i.summary_kind === "extractive"
+                        ? "AI-selected source excerpt"
+                        : i.summary_kind === "generated"
+                          ? "Generated summary"
+                          : "Publisher excerpt / data"}
                 </span>
                 <div>
                   <button
@@ -427,8 +498,9 @@ export function Newspaper({
           <p>
             {health.healthy} sources reachable · {health.unavailable}{" "}
             unavailable
-            {health.unchecked > 0 ? ` · ${health.unchecked} not checked` : ""} ·{" "}
-            <Link href="/account/sources">Choose your sources</Link>
+            {health.unchecked > 0
+              ? ` · ${health.unchecked} not checked`
+              : ""} · <Link href="/account/sources">Choose your sources</Link>
           </p>
           {health.checkedAt && (
             <p>

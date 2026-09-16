@@ -1,3 +1,4 @@
+import { withTranslations } from "@/lib/translation";
 import { sourceHealth } from "@/lib/source-health";
 import { publicRanked } from "@/lib/ranking";
 import { latestEdition } from "@/lib/publish";
@@ -8,7 +9,10 @@ export default async function Page() {
   const health = await sourceHealth().catch(() => null);
   try {
     edition = await latestEdition();
-    if (edition) edition.data.items = await publicRanked(edition.data.items);
+    if (edition)
+      edition.data.items = await withTranslations(
+        await publicRanked(edition.data.items),
+      );
   } catch {}
   return (
     <Newspaper
