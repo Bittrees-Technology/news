@@ -1,3 +1,4 @@
+import { newspaperSettings, saveNewspaper, saveFeed } from "./newspapers";
 import { walletReady } from "./wallet";
 import { emailEvent } from "./webhook";
 import {
@@ -258,6 +259,21 @@ export async function api(r: Request) {
     }
     const a = await currentAccount(r);
     if (method !== "GET") checkOrigin(r);
+    if (path === "newspaper" && method === "GET")
+      return json(await newspaperSettings(a!.id));
+    if (path === "newspaper" && method === "POST")
+      return json(await saveNewspaper(a!.id, await body(r)));
+    if (path === "newspaper/feeds" && method === "POST")
+      return json(await saveFeed(a!.id, await body(r)));
+    if (path === "newspaper/feeds" && method === "DELETE") {
+      const b = z.object({ id: z.uuid() }).parse(await body(r));
+      const result = await pool().query(
+        "DELETE FROM newspaper_feeds WHERE id=$1 AND account_id=$2 RETURNING id",
+        [b.id, a!.id],
+      );
+      if (!result.rowCount) throw new HttpError(404, "Feed not found");
+      return json({ ok: true });
+    }
     if (path === "preferences" && method === "POST") {
       const p = preferencesSchema.parse(await body(r));
       if (

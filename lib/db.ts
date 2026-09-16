@@ -42,5 +42,7 @@ CREATE TABLE IF NOT EXISTS deliveries(id uuid PRIMARY KEY,account_id uuid NOT NU
 CREATE TABLE IF NOT EXISTS jobs(id text PRIMARY KEY,status text NOT NULL,started_at timestamptz NOT NULL DEFAULT now(),finished_at timestamptz,detail jsonb);
 CREATE TABLE IF NOT EXISTS worker_state(id text PRIMARY KEY,updated_at timestamptz NOT NULL DEFAULT now(),data jsonb NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS suppressions(value text PRIMARY KEY,reason text NOT NULL,created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS newspapers(account_id uuid PRIMARY KEY REFERENCES accounts ON DELETE CASCADE,name text NOT NULL,slug text NOT NULL UNIQUE,description text NOT NULL DEFAULT '',published boolean NOT NULL DEFAULT false,updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS newspaper_feeds(id uuid PRIMARY KEY,account_id uuid NOT NULL REFERENCES newspapers(account_id) ON DELETE CASCADE,name text NOT NULL,slug text NOT NULL,preferences jsonb NOT NULL DEFAULT '{}',created_at timestamptz NOT NULL DEFAULT now(),UNIQUE(account_id,slug));
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
 `;

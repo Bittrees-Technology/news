@@ -24,3 +24,9 @@ One explicitly authorized email test was accepted by Resend on 16 September, pro
 - Wallet worker installed on Acer with an isolated, unfunded sender and encrypted persistent XMTP storage. It waits for mail.bittrees.eth to resolve to the dedicated address. The controlling Safe must sign the exact transactions in mail-ens-safe-transactions.json. No user signature was fabricated, no treasury authority delegated, and no wallet test has been sent. Chirpy acceptance still needs a recipient test after activation.
 - Actual browser interaction/visual checks were unavailable because browser access was blocked by policy. HTTP/build validation does not replace that check.
 - Email-code inbox completion, real bounce/complaint delivery, scheduled overnight execution and disaster-recovery restore remain unverified. Public signup is implemented; this is not a claim that every acceptance case has passed.
+
+## Named newspapers and account pages
+
+Added owner-managed newspapers at `/<newspaper>` and named feeds at `/<newspaper>/<feed>`. They are private by default; owners can publish and unpublish them. Public pages exclude all account-private source records. Newspaper names and introductions are public only when published. Addresses are unique and permanent; display names remain editable. Account deletion cascades to newspaper/feed records.
+
+Account settings now have separate Your newspaper, Topics & interests, Sources & feeds, Delivery, and Account pages. Archive and Saved navigation appears only after sign-in. Authenticated two-account HTTP checks verified private-page access, reserved/colliding addresses, feed ownership, publication reversal and exclusion of private stories. No blockchain transaction is required for these URL paths.

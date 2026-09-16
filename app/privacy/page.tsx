@@ -34,6 +34,14 @@ export default function Page() {
         summarization service. Private account details are not included in the
         public editorial prompt. No paid AI provider is enabled by default.
       </p>
+      <h2>Named newspapers</h2>
+      <p>
+        Named newspapers and their feed pages are private until you publish
+        them. Publishing makes your newspaper name, introduction, feed names and
+        selected public-source stories visible at their custom addresses. Your
+        account details and personal RSS connections remain private. You can
+        unpublish your newspaper in Your newspaper settings.
+      </p>
       <h2>Controls and retention</h2>
       <p>
         Delivery is opt-in per verified destination. You may pause it, remove a

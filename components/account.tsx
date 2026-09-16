@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { NewspaperSettings } from "./newspaper-settings";
 import { call } from "./client";
 import { sources, topics } from "@/lib/catalog";
 import { defaults, type Preferences } from "@/lib/model";
@@ -74,7 +76,20 @@ async function walletProof(purpose: string) {
   });
   await call("auth/verify", { id: c.id, proof });
 }
-export function Account() {
+export type AccountSection =
+  "newspaper" | "topics" | "sources" | "delivery" | "settings";
+const accountTabs: [AccountSection, string, string][] = [
+  ["newspaper", "Your newspaper", "/account"],
+  ["topics", "Topics & interests", "/account/topics"],
+  ["sources", "Sources & feeds", "/account/sources"],
+  ["delivery", "Delivery", "/account/delivery"],
+  ["settings", "Account", "/account/settings"],
+];
+export function Account({
+  section = "newspaper",
+}: {
+  section?: AccountSection;
+}) {
   const [data, setData] = useState<AccountData | null>(null),
     [prefs, setPrefs] = useState<Preferences>(defaults),
     [status, setStatus] = useState(""),
@@ -94,6 +109,7 @@ export function Account() {
   async function load() {
     const d = await call("account");
     setData(d);
+    window.dispatchEvent(new Event("news-auth"));
     if (d.preferences) setPrefs(d.preferences);
   }
   useEffect(() => {
@@ -261,389 +277,422 @@ export function Account() {
     <>
       <div className="edition-head">
         <div>
-          <h1>Your newspaper</h1>
+          <h1>{accountTabs.find((t) => t[0] === section)?.[1]}</h1>
           <p className="muted">
             Your selections shape your edition and deliveries. The public
             newspaper stays open to everyone.
           </p>
         </div>
       </div>
+      <nav className="account-tabs" aria-label="Your newspaper settings">
+        {accountTabs.map(([key, label, href]) => (
+          <Link
+            key={key}
+            href={href}
+            aria-current={section === key ? "page" : undefined}
+          >
+            {label}
+          </Link>
+        ))}
+      </nav>
       {statusBox}
-      <section className="panel">
-        <h2>Topics & interests</h2>
-        <p>Leave every topic unselected to include all topics.</p>
-        <div className="checks">
-          {topics.map((t) => (
-            <label key={t}>
-              <input
-                type="checkbox"
-                checked={prefs.topics.includes(t)}
-                onChange={() => toggle("topics", t)}
-              />
-              {t}
-            </label>
-          ))}
-        </div>
-        <label className="field">
-          What would you like more of?
-          <textarea
-            value={prefs.interests}
-            onChange={(e) => setPrefs({ ...prefs, interests: e.target.value })}
-            maxLength={1000}
-            placeholder="e.g. European energy, open-source models, public infrastructure"
-          />
-        </label>
-        <div className="form-grid">
-          <label className="field">
-            Exclude words or phrases, one per line
-            <textarea
-              value={prefs.blocked.join("\n")}
-              onChange={(e) =>
-                setPrefs({
-                  ...prefs,
-                  blocked: e.target.value.split("\n").filter(Boolean),
-                })
-              }
-            />
-          </label>
-          <label className="field">
-            Stories per delivery
-            <input
-              type="number"
-              min={5}
-              max={50}
-              value={prefs.length}
-              onChange={(e) =>
-                setPrefs({ ...prefs, length: Number(e.target.value) })
-              }
-            />
-            <span className="muted">
-              Between 5 and 50, subject to available stories.
-            </span>
-          </label>
-        </div>
-      </section>
-      <section className="panel">
-        <h2>Sources & public data connections</h2>
-        <p>
-          {sources.length} curated endpoints. Leave sources unselected to
-          include all. These public connections do not require sharing an
-          account or API key.
-        </p>
-        <label className="field">
-          Find a source
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Publisher, topic, podcast or data…"
-          />
-        </label>
-        <div className="button-row">
-          <button onClick={() => setPrefs({ ...prefs, sources: [] })}>
-            Include all sources
-          </button>
-          <span className="muted">
-            {prefs.sources.length
-              ? `${prefs.sources.length} selected`
-              : "All sources included"}
-          </span>
-        </div>
-        <div className="source-picker">
-          {filtered.map((s) => (
-            <label className="source-option" key={s.id}>
-              <input
-                type="checkbox"
-                checked={prefs.sources.includes(s.id)}
-                onChange={() => toggle("sources", s.id)}
-              />
-              <div>
-                <span>{s.name}</span>
-                <small>
-                  {s.topic} ·{" "}
-                  {s.type === "data"
-                    ? "Data connection"
-                    : s.type === "podcast"
-                      ? "Podcast"
-                      : "News / research"}{" "}
-                  · {sourceStatuses[s.id] || "Not checked yet"}
-                </small>
-              </div>
-            </label>
-          ))}
-        </div>
-      </section>
-      <div className="sticky-save">
-        <button
-          className="primary"
-          disabled={busy}
-          onClick={() =>
-            run(async () => {
+      {section === "newspaper" && <NewspaperSettings />}
+      {(section === "topics" || section === "sources") && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void run(async () => {
               await call("preferences", prefs);
               setStatus(
-                "Preferences saved. Your edition and upcoming deliveries will use them.",
+                "Preferences saved. Your front cover and deliveries will use them.",
               );
-            })
-          }
+            });
+          }}
         >
-          {busy ? "Working…" : "Save preferences"}
-        </button>
-        <a href="/">Read the newspaper</a>
-      </div>
-      <section className="panel">
-        <h2>Your own feeds</h2>
-        <p>
-          Add up to ten public RSS or Atom feeds. They are visible only in your
-          account and personal deliveries.
-        </p>
-        {data.connections?.map((c) => (
-          <div className="connection" key={c.id}>
-            <strong>{c.name}</strong>
-            <p>
-              {c.status}
-              {c.error ? ": " + c.error : ""}
-            </p>
-            <button
-              onClick={() =>
-                run(async () => {
-                  await call("connections", { id: c.id }, "DELETE");
-                  await load();
-                })
-              }
-            >
-              Remove feed
+          {section === "topics" && (
+            <section className="panel">
+              <h2>Topics & interests</h2>
+              <p>Leave every topic unselected to include all topics.</p>
+              <div className="checks">
+                {topics.map((t) => (
+                  <label key={t}>
+                    <input
+                      type="checkbox"
+                      checked={prefs.topics.includes(t)}
+                      onChange={() => toggle("topics", t)}
+                    />
+                    {t}
+                  </label>
+                ))}
+              </div>
+              <label className="field">
+                What would you like more of?
+                <textarea
+                  value={prefs.interests}
+                  onChange={(e) =>
+                    setPrefs({ ...prefs, interests: e.target.value })
+                  }
+                  maxLength={1000}
+                  placeholder="e.g. European energy, open-source models, public infrastructure"
+                />
+              </label>
+              <div className="form-grid">
+                <label className="field">
+                  Exclude words or phrases, one per line
+                  <textarea
+                    value={prefs.blocked.join("\n")}
+                    onChange={(e) =>
+                      setPrefs({
+                        ...prefs,
+                        blocked: e.target.value.split("\n").filter(Boolean),
+                      })
+                    }
+                  />
+                </label>
+                <label className="field">
+                  Stories per delivery
+                  <input
+                    type="number"
+                    min={5}
+                    max={50}
+                    value={prefs.length}
+                    onChange={(e) =>
+                      setPrefs({ ...prefs, length: Number(e.target.value) })
+                    }
+                  />
+                  <span className="muted">
+                    Between 5 and 50, subject to available stories.
+                  </span>
+                </label>
+              </div>
+            </section>
+          )}
+          {section === "sources" && (
+            <section className="panel">
+              <h2>Sources & public data connections</h2>
+              <p>
+                {sources.length} curated endpoints. Leave sources unselected to
+                include all. These public connections do not require sharing an
+                account or API key.
+              </p>
+              <label className="field">
+                Find a source
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Publisher, topic, podcast or data…"
+                />
+              </label>
+              <div className="button-row">
+                <button
+                  type="button"
+                  onClick={() => setPrefs({ ...prefs, sources: [] })}
+                >
+                  Include all sources
+                </button>
+                <span className="muted">
+                  {prefs.sources.length
+                    ? `${prefs.sources.length} selected`
+                    : "All sources included"}
+                </span>
+              </div>
+              <div className="source-picker">
+                {filtered.map((s) => (
+                  <label className="source-option" key={s.id}>
+                    <input
+                      type="checkbox"
+                      checked={prefs.sources.includes(s.id)}
+                      onChange={() => toggle("sources", s.id)}
+                    />
+                    <div>
+                      <span>{s.name}</span>
+                      <small>
+                        {s.topic} ·{" "}
+                        {s.type === "data"
+                          ? "Data connection"
+                          : s.type === "podcast"
+                            ? "Podcast"
+                            : "News / research"}{" "}
+                        · {sourceStatuses[s.id] || "Not checked yet"}
+                      </small>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </section>
+          )}
+          <div className="sticky-save">
+            <button className="primary" disabled={busy}>
+              {busy ? "Working…" : "Save preferences"}
             </button>
+            <a href="/">Read the newspaper</a>
           </div>
-        ))}
-        <div className="form-grid">
+        </form>
+      )}
+      {section === "sources" && (
+        <section className="panel">
+          <h2>Your own feeds</h2>
+          <p>
+            Add up to ten public RSS or Atom feeds. They are visible only in
+            your account and personal deliveries.
+          </p>
+          {data.connections?.map((c) => (
+            <div className="connection" key={c.id}>
+              <strong>{c.name}</strong>
+              <p>
+                {c.status}
+                {c.error ? ": " + c.error : ""}
+              </p>
+              <button
+                onClick={() =>
+                  run(async () => {
+                    await call("connections", { id: c.id }, "DELETE");
+                    await load();
+                  })
+                }
+              >
+                Remove feed
+              </button>
+            </div>
+          ))}
+          <div className="form-grid">
+            <label className="field">
+              Feed name
+              <input
+                value={feedName}
+                onChange={(e) => setFeedName(e.target.value)}
+              />
+            </label>
+            <label className="field">
+              Topic
+              <select
+                value={feedTopic}
+                onChange={(e) => setFeedTopic(e.target.value)}
+              >
+                {topics.map((t) => (
+                  <option key={t}>{t}</option>
+                ))}
+              </select>
+            </label>
+          </div>
           <label className="field">
-            Feed name
+            HTTPS feed URL
             <input
-              value={feedName}
-              onChange={(e) => setFeedName(e.target.value)}
+              type="url"
+              value={feedUrl}
+              onChange={(e) => setFeedUrl(e.target.value)}
+              placeholder="https://example.org/feed.xml"
             />
           </label>
-          <label className="field">
-            Topic
-            <select
-              value={feedTopic}
-              onChange={(e) => setFeedTopic(e.target.value)}
-            >
-              {topics.map((t) => (
-                <option key={t}>{t}</option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <label className="field">
-          HTTPS feed URL
-          <input
-            type="url"
-            value={feedUrl}
-            onChange={(e) => setFeedUrl(e.target.value)}
-            placeholder="https://example.org/feed.xml"
-          />
-        </label>
-        <button
-          disabled={busy || !feedName || !feedUrl}
-          onClick={() =>
-            run(async () => {
-              await call("connections", {
-                name: feedName,
-                url: feedUrl,
-                topic: feedTopic,
-              });
-              setFeedName("");
-              setFeedUrl("");
-              await load();
-              setStatus("Feed checked and connected.");
-            })
-          }
-        >
-          Check & add feed
-        </button>
-      </section>
-      <section className="panel">
-        <h2>Digest delivery</h2>
-        <p>
-          Email comes from main@bittrees.org. Wallet delivery uses Chirpy / XMTP
-          when the Bittrees sender is active. Each destination is verified
-          separately and starts paused.
-        </p>
-        <p>
-          Daily at 12:00 UTC. Weekly on Monday. Monthly on the first. Delivery
-          follows the main 11:57 edition.
-        </p>
-        {!data.walletReady && (
-          <p className="notice">
-            Chirpy delivery is awaiting sender authorization. You can verify
-            your destination now; sending stays paused.
-          </p>
-        )}
-        {data.destinations?.map((d) => (
-          <div className="destination" key={d.id}>
-            <strong>{d.value}</strong>
-            <p>
-              {d.kind === "email"
-                ? "Verified email"
-                : d.reachable
-                  ? "Verified wallet · XMTP available"
-                  : "Verified wallet · awaiting XMTP availability"}
-            </p>
-            <div className="button-row">
-              <select
-                aria-label={"Delivery frequency for " + d.value}
-                value={d.cadence}
-                onChange={(e) =>
-                  run(async () => {
-                    await call("destinations", {
-                      id: d.id,
-                      enabled: false,
-                      cadence: e.target.value,
-                    });
-                    await load();
-                  })
-                }
-              >
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-              </select>
-              <button
-                className={d.enabled ? "" : "primary"}
-                disabled={
-                  busy ||
-                  (d.kind === "wallet" && (!data.walletReady || !d.reachable))
-                }
-                onClick={() =>
-                  run(async () => {
-                    await call("destinations", {
-                      id: d.id,
-                      enabled: !d.enabled,
-                      cadence: d.cadence,
-                    });
-                    await load();
-                  })
-                }
-              >
-                {d.enabled ? "Pause delivery" : "Enable delivery"}
-              </button>
-              <button
-                onClick={() =>
-                  run(async () => {
-                    await call("destinations", { id: d.id }, "DELETE");
-                    await load();
-                  })
-                }
-              >
-                Remove
-              </button>
-            </div>
-            <p>
-              {d.enabled
-                ? "Next delivery: " +
-                  new Date(d.nextDelivery!).toLocaleString("en-GB", {
-                    timeZone: "UTC",
-                  }) +
-                  " UTC"
-                : "Paused. No scheduled messages will be sent."}
-            </p>
-          </div>
-        ))}
-        <h3>Add a forwarding destination</h3>
-        {emailForm("destination")}
-        <div className="button-row">
-          <button disabled={busy} onClick={() => wallet("destination")}>
-            Verify a wallet destination
-          </button>
-        </div>
-      </section>
-      <section className="panel">
-        <h2>Delivery history</h2>
-        {!data.deliveries?.length ? (
-          <p>
-            No deliveries yet. Verified destinations begin paused until you
-            enable them.
-          </p>
-        ) : (
-          data.deliveries.map((d) => (
-            <div className="connection" key={d.id}>
-              <strong>{d.period}</strong>
-              <p>
-                {d.value} · {d.status}
-              </p>
-              {d.error && <p>{d.error}</p>}
-            </div>
-          ))
-        )}
-      </section>
-      <section className="panel">
-        <h2>Sign-in methods</h2>
-        {data.identities?.map((i) => (
-          <p key={i.kind + i.value}>
-            {i.kind === "wallet" ? "Wallet" : "Email"}: {i.value}
-          </p>
-        ))}
-        <p>
-          Link another sign-in method only if you control it. Forwarding
-          destinations are separate from sign-in methods.
-        </p>
-        <div className="button-row">
-          <button disabled={busy} onClick={() => wallet("link")}>
-            Link a wallet
-          </button>
           <button
-            onClick={() => {
-              setChallenge(null);
-              setStatus(
-                "Enter the email below, then verify it to link a sign-in method.",
-              );
-            }}
-          >
-            Link an email
-          </button>
-        </div>
-        {emailForm("link")}
-        <div className="button-row">
-          <button
+            disabled={busy || !feedName || !feedUrl}
             onClick={() =>
               run(async () => {
-                await call("auth/logout", {});
-                window.location.assign("/");
+                await call("connections", {
+                  name: feedName,
+                  url: feedUrl,
+                  topic: feedTopic,
+                });
+                setFeedName("");
+                setFeedUrl("");
+                await load();
+                setStatus("Feed checked and connected.");
               })
             }
           >
-            Sign out
+            Check & add feed
           </button>
-          <button
-            className="danger"
-            onClick={() => setDeleteConfirm(!deleteConfirm)}
-          >
-            Delete account
-          </button>
-        </div>
-        {deleteConfirm && (
-          <div className="notice">
+        </section>
+      )}
+      {section === "delivery" && (
+        <>
+          <section className="panel">
+            <h2>Digest delivery</h2>
             <p>
-              This removes your preferences, identities, saved items, personal
-              feeds and delivery subscriptions. Published newspaper editions
-              remain public.
+              Email comes from main@bittrees.org. Wallet delivery uses Chirpy /
+              XMTP when the Bittrees sender is active. Each destination is
+              verified separately and starts paused.
             </p>
+            <p>
+              Daily at 12:00 UTC. Weekly on Monday. Monthly on the first.
+              Delivery follows the main 11:57 edition.
+            </p>
+            {!data.walletReady && (
+              <p className="notice">
+                Chirpy delivery is awaiting sender authorization. You can verify
+                your destination now; sending stays paused.
+              </p>
+            )}
+            {data.destinations?.map((d) => (
+              <div className="destination" key={d.id}>
+                <strong>{d.value}</strong>
+                <p>
+                  {d.kind === "email"
+                    ? "Verified email"
+                    : d.reachable
+                      ? "Verified wallet · XMTP available"
+                      : "Verified wallet · awaiting XMTP availability"}
+                </p>
+                <div className="button-row">
+                  <select
+                    aria-label={"Delivery frequency for " + d.value}
+                    value={d.cadence}
+                    onChange={(e) =>
+                      run(async () => {
+                        await call("destinations", {
+                          id: d.id,
+                          enabled: false,
+                          cadence: e.target.value,
+                        });
+                        await load();
+                      })
+                    }
+                  >
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
+                  <button
+                    className={d.enabled ? "" : "primary"}
+                    disabled={
+                      busy ||
+                      (d.kind === "wallet" &&
+                        (!data.walletReady || !d.reachable))
+                    }
+                    onClick={() =>
+                      run(async () => {
+                        await call("destinations", {
+                          id: d.id,
+                          enabled: !d.enabled,
+                          cadence: d.cadence,
+                        });
+                        await load();
+                      })
+                    }
+                  >
+                    {d.enabled ? "Pause delivery" : "Enable delivery"}
+                  </button>
+                  <button
+                    onClick={() =>
+                      run(async () => {
+                        await call("destinations", { id: d.id }, "DELETE");
+                        await load();
+                      })
+                    }
+                  >
+                    Remove
+                  </button>
+                </div>
+                <p>
+                  {d.enabled
+                    ? "Next delivery: " +
+                      new Date(d.nextDelivery!).toLocaleString("en-GB", {
+                        timeZone: "UTC",
+                      }) +
+                      " UTC"
+                    : "Paused. No scheduled messages will be sent."}
+                </p>
+              </div>
+            ))}
+            <h3>Add a forwarding destination</h3>
+            {emailForm("destination")}
+            <div className="button-row">
+              <button disabled={busy} onClick={() => wallet("destination")}>
+                Verify a wallet destination
+              </button>
+            </div>
+          </section>
+          <section className="panel">
+            <h2>Delivery history</h2>
+            {!data.deliveries?.length ? (
+              <p>
+                No deliveries yet. Verified destinations begin paused until you
+                enable them.
+              </p>
+            ) : (
+              data.deliveries.map((d) => (
+                <div className="connection" key={d.id}>
+                  <strong>{d.period}</strong>
+                  <p>
+                    {d.value} · {d.status}
+                  </p>
+                  {d.error && <p>{d.error}</p>}
+                </div>
+              ))
+            )}
+          </section>
+        </>
+      )}
+      {section === "settings" && (
+        <section className="panel">
+          <h2>Sign-in methods</h2>
+          {data.identities?.map((i) => (
+            <p key={i.kind + i.value}>
+              {i.kind === "wallet" ? "Wallet" : "Email"}: {i.value}
+            </p>
+          ))}
+          <p>
+            Link another sign-in method only if you control it. Forwarding
+            destinations are separate from sign-in methods.
+          </p>
+          <div className="button-row">
+            <button disabled={busy} onClick={() => wallet("link")}>
+              Link a wallet
+            </button>
             <button
-              className="danger"
-              disabled={busy}
+              onClick={() => {
+                setChallenge(null);
+                setStatus(
+                  "Enter the email below, then verify it to link a sign-in method.",
+                );
+              }}
+            >
+              Link an email
+            </button>
+          </div>
+          {emailForm("link")}
+          <div className="button-row">
+            <button
               onClick={() =>
                 run(async () => {
-                  await call("account", {}, "DELETE");
+                  await call("auth/logout", {});
                   window.location.assign("/");
                 })
               }
             >
-              Permanently delete my account
+              Sign out
+            </button>
+            <button
+              className="danger"
+              onClick={() => setDeleteConfirm(!deleteConfirm)}
+            >
+              Delete account
             </button>
           </div>
-        )}
-      </section>
+          {deleteConfirm && (
+            <div className="notice">
+              <p>
+                This removes your preferences, identities, saved items, personal
+                feeds and delivery subscriptions. Published newspaper editions
+                remain public.
+              </p>
+              <button
+                className="danger"
+                disabled={busy}
+                onClick={() =>
+                  run(async () => {
+                    await call("account", {}, "DELETE");
+                    window.location.assign("/");
+                  })
+                }
+              >
+                Permanently delete my account
+              </button>
+            </div>
+          )}
+        </section>
+      )}
     </>
   );
 }

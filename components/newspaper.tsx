@@ -9,10 +9,14 @@ export function Newspaper({
   edition,
   initialItems,
   mode = "public",
+  title,
+  description,
 }: {
   edition?: Edition | null;
   initialItems?: Item[];
-  mode?: "public" | "saved";
+  mode?: "public" | "saved" | "named";
+  title?: string;
+  description?: string;
 }) {
   const [items, setItems] = useState<Item[]>(
       initialItems || edition?.data.items || [],
@@ -160,14 +164,18 @@ export function Newspaper({
                   timeZone: "UTC",
                 })}
           </p>
-          <h1>{mode === "saved" ? "Saved for later" : "The Bittrees News"}</h1>
+          <h1>
+            {mode === "saved"
+              ? "Saved for later"
+              : title || "The Bittrees News"}
+          </h1>
           <p className="edition-note">
             {mode === "saved"
               ? "The stories you want to return to."
-              : "TBN · World, economy, technology & science."}
+              : description || "TBN · World, economy, technology & science."}
           </p>
         </div>
-        {mode !== "saved" && (
+        {mode === "public" && (
           <div className="edition-time">
             07:57 · 11:57 · 19:57<span>New editions, every day. UTC.</span>
           </div>

@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 export async function call(
   path: string,
   body?: unknown,
@@ -17,19 +18,30 @@ export async function call(
 }
 export function Header() {
   const [signed, setSigned] = useState(false);
+  const pathname = usePathname();
   useEffect(() => {
     call("account")
       .then((d) => setSigned(!!d.account))
       .catch(() => {});
-  }, []);
+    const refresh = () =>
+      call("account")
+        .then((d) => setSigned(!!d.account))
+        .catch(() => setSigned(false));
+    window.addEventListener("news-auth", refresh);
+    return () => window.removeEventListener("news-auth", refresh);
+  }, [pathname]);
   return (
     <header className="topbar">
       <Link className="brand" href="/">
         TBN<span> / the bittrees news</span>
       </Link>
       <nav>
-        <Link href="/archive">Archive</Link>
-        <Link href="/saved">Saved</Link>
+        {signed && (
+          <>
+            <Link href="/archive">Archive</Link>
+            <Link href="/saved">Saved</Link>
+          </>
+        )}
         <Link className="account-link" href="/account">
           {signed ? "Your account" : "Sign in / Sign up"}
         </Link>

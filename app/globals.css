@@ -556,3 +556,33 @@ input[type="checkbox"] {
     margin-top: 35px;
   }
 }
+
+.account-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  border-bottom: 1px solid var(--rule);
+  margin: 0 0 28px;
+  padding: 0 0 8px;
+}
+.account-tabs a {
+  padding: 8px 0;
+  color: var(--muted);
+}
+.account-tabs a[aria-current="page"] {
+  color: var(--ink);
+  box-shadow: 0 2px var(--accent);
+}
+fieldset {
+  border: 1px solid var(--rule);
+  padding: 16px;
+  margin: 20px 0;
+  min-width: 0;
+}
+input[readonly] {
+  color: var(--muted);
+  background: var(--soft);
+}
+.panel form > .button-row {
+  margin-top: 20px;
+}
