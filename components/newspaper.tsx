@@ -182,25 +182,6 @@ export function Newspaper({
           </div>
         )}
       </div>
-      {edition && mode !== "saved" && (
-        <section className="brief">
-          <div className="section-label">
-            {personal ? "Your edition" : "The briefing"}
-          </div>
-          <p>
-            {personal
-              ? "Stories from your selected sources and interests. Your choices do not change the public newspaper."
-              : edition.brief}
-          </p>
-          <small>
-            {edition.data.mode} · Published{" "}
-            {new Date(edition.published_at).toLocaleString("en-GB", {
-              timeZone: "UTC",
-            })}{" "}
-            UTC
-          </small>
-        </section>
-      )}
       <div className="controls">
         <div className="tabs" aria-label="Content type">
           {mode !== "saved" && (
