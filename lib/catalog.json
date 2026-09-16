@@ -1,0 +1,1145 @@
+[
+  {
+    "id": "import-ai-jack-clark",
+    "name": "Import AI (Jack Clark)",
+    "url": "https://jack-clark.net/feed/",
+    "homepage": "https://jack-clark.net/",
+    "topic": "AI",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "interconnects-nathan-lambert",
+    "name": "Interconnects (Nathan Lambert)",
+    "url": "https://www.interconnects.ai/feed",
+    "homepage": "https://www.interconnects.ai/",
+    "topic": "AI",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "simon-willison",
+    "name": "Simon Willison",
+    "url": "https://simonwillison.net/atom/everything/",
+    "homepage": "https://simonwillison.net/",
+    "topic": "AI",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "semianalysis-dylan-patel",
+    "name": "SemiAnalysis (Dylan Patel)",
+    "url": "https://www.semianalysis.com/feed",
+    "homepage": "https://www.semianalysis.com/",
+    "topic": "AI",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "ahead-of-ai-sebastian-raschka",
+    "name": "Ahead of AI (Sebastian Raschka)",
+    "url": "https://magazine.sebastianraschka.com/feed",
+    "homepage": "https://magazine.sebastianraschka.com/",
+    "topic": "AI",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "google-deepmind-blog",
+    "name": "Google DeepMind Blog",
+    "url": "https://deepmind.google/blog/rss.xml",
+    "homepage": "https://deepmind.google/",
+    "topic": "AI",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "hugging-face-daily-papers",
+    "name": "Hugging Face Daily Papers",
+    "url": "https://huggingface.co/api/daily_papers?limit=30",
+    "homepage": "https://huggingface.co/papers",
+    "topic": "AI",
+    "kind": "hfpapers",
+    "type": "article"
+  },
+  {
+    "id": "reddit-frontier-subs",
+    "name": "Reddit (frontier subs)",
+    "url": "https://www.reddit.com/r/LocalLLaMA+MachineLearning+singularity+nuclear+space+Biotechnology+QuantumComputing/top/.rss?t=day&limit=60",
+    "homepage": "https://www.reddit.com/",
+    "topic": "AI",
+    "kind": "reddit",
+    "type": "article"
+  },
+  {
+    "id": "hacker-news-best",
+    "name": "Hacker News (best)",
+    "url": "https://hnrss.org/best",
+    "homepage": "https://news.ycombinator.com/best",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "ars-technica",
+    "name": "Ars Technica",
+    "url": "https://feeds.arstechnica.com/arstechnica/index",
+    "homepage": "https://arstechnica.com/",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "the-verge",
+    "name": "The Verge",
+    "url": "https://www.theverge.com/rss/index.xml",
+    "homepage": "https://www.theverge.com/",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "ieee-spectrum",
+    "name": "IEEE Spectrum",
+    "url": "https://spectrum.ieee.org/feeds/feed.rss",
+    "homepage": "https://spectrum.ieee.org/",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "mit-technology-review",
+    "name": "MIT Technology Review",
+    "url": "https://www.technologyreview.com/feed/",
+    "homepage": "https://www.technologyreview.com/",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "new-atlas",
+    "name": "New Atlas",
+    "url": "https://newatlas.com/index.rss",
+    "homepage": "https://newatlas.com/",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "construction-physics-brian-potter",
+    "name": "Construction Physics (Brian Potter)",
+    "url": "https://www.construction-physics.com/feed",
+    "homepage": "https://www.construction-physics.com/",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "works-in-progress",
+    "name": "Works in Progress",
+    "url": "https://www.worksinprogress.news/feed",
+    "homepage": "https://worksinprogress.co/",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "asterisk-magazine",
+    "name": "Asterisk Magazine",
+    "url": "https://asteriskmag.com/feed",
+    "homepage": "https://asteriskmag.com/",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "quanta-magazine",
+    "name": "Quanta Magazine",
+    "url": "https://api.quantamagazine.org/feed/",
+    "homepage": "https://www.quantamagazine.org/",
+    "topic": "Science",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "nature-current",
+    "name": "Nature (current)",
+    "url": "https://www.nature.com/nature.rss",
+    "homepage": "https://www.nature.com/",
+    "topic": "Science",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "science-news",
+    "name": "Science (news)",
+    "url": "https://www.science.org/rss/news_current.xml",
+    "homepage": "https://www.science.org/",
+    "topic": "Science",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "phys-org",
+    "name": "Phys.org",
+    "url": "https://phys.org/rss-feed/",
+    "homepage": "https://phys.org/",
+    "topic": "Science",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "nautilus",
+    "name": "Nautilus",
+    "url": "https://nautil.us/feed/",
+    "homepage": "https://nautil.us/",
+    "topic": "Science",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "asimov-press",
+    "name": "Asimov Press",
+    "url": "https://www.asimov.press/feed",
+    "homepage": "https://www.asimov.press/",
+    "topic": "Biotech",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "ground-truths-eric-topol",
+    "name": "Ground Truths (Eric Topol)",
+    "url": "https://erictopol.substack.com/feed",
+    "homepage": "https://erictopol.substack.com/",
+    "topic": "Biotech",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "in-the-pipeline-derek-lowe",
+    "name": "In the Pipeline (Derek Lowe)",
+    "url": "https://www.science.org/blogs/pipeline/feed",
+    "homepage": "https://www.science.org/blogs/pipeline",
+    "topic": "Biotech",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "endpoints-news",
+    "name": "Endpoints News",
+    "url": "https://endpoints.news/feed/",
+    "homepage": "https://endpoints.news/",
+    "topic": "Biotech",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "world-nuclear-news",
+    "name": "World Nuclear News",
+    "url": "https://www.world-nuclear-news.org/rss",
+    "homepage": "https://www.world-nuclear-news.org/",
+    "topic": "Nuclear",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "nuclear-engineering-international",
+    "name": "Nuclear Engineering International",
+    "url": "https://www.neimagazine.com/feed/",
+    "homepage": "https://www.neimagazine.com/",
+    "topic": "Nuclear",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "neutron-bytes-dan-yurman",
+    "name": "Neutron Bytes (Dan Yurman)",
+    "url": "https://neutronbytes.com/feed/",
+    "homepage": "https://neutronbytes.com/",
+    "topic": "Nuclear",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "nuclear-barbarians-emmet-penney",
+    "name": "Nuclear Barbarians (Emmet Penney)",
+    "url": "https://www.nuclearbarbarians.com/feed",
+    "homepage": "https://www.nuclearbarbarians.com/",
+    "topic": "Nuclear",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "power-magazine",
+    "name": "POWER Magazine",
+    "url": "https://www.powermag.com/feed/",
+    "homepage": "https://www.powermag.com/",
+    "topic": "Nuclear",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "the-defiant",
+    "name": "The Defiant",
+    "url": "https://thedefiant.io/feed",
+    "homepage": "https://thedefiant.io/",
+    "topic": "Blockchain",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "coindesk",
+    "name": "CoinDesk",
+    "url": "https://www.coindesk.com/arc/outboundfeeds/rss/",
+    "homepage": "https://www.coindesk.com/",
+    "topic": "Blockchain",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "bankless",
+    "name": "Bankless",
+    "url": "https://www.bankless.com/rss/feed",
+    "homepage": "https://www.bankless.com/",
+    "topic": "Blockchain",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "six-colors-jason-snell",
+    "name": "Six Colors (Jason Snell)",
+    "url": "https://sixcolors.com/feed/",
+    "homepage": "https://sixcolors.com/",
+    "topic": "Apple",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "daring-fireball-john-gruber",
+    "name": "Daring Fireball (John Gruber)",
+    "url": "https://daringfireball.net/feeds/main",
+    "homepage": "https://daringfireball.net/",
+    "topic": "Apple",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "9to5mac",
+    "name": "9to5Mac",
+    "url": "https://9to5mac.com/feed/",
+    "homepage": "https://9to5mac.com/",
+    "topic": "Apple",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "nintendo-life",
+    "name": "Nintendo Life",
+    "url": "https://www.nintendolife.com/feeds/latest",
+    "homepage": "https://www.nintendolife.com/",
+    "topic": "Nintendo",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "nintendo-everything",
+    "name": "Nintendo Everything",
+    "url": "https://nintendoeverything.com/feed/",
+    "homepage": "https://nintendoeverything.com/",
+    "topic": "Nintendo",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "ars-technica-space",
+    "name": "Ars Technica Space",
+    "url": "https://arstechnica.com/space/feed/",
+    "homepage": "https://arstechnica.com/space/",
+    "topic": "Space",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "payload",
+    "name": "Payload",
+    "url": "https://payloadspace.com/feed/",
+    "homepage": "https://payloadspace.com/",
+    "topic": "Space",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "spacenews",
+    "name": "SpaceNews",
+    "url": "https://spacenews.com/feed/",
+    "homepage": "https://spacenews.com/",
+    "topic": "Space",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "the-quantum-insider",
+    "name": "The Quantum Insider",
+    "url": "https://thequantuminsider.com/feed/",
+    "homepage": "https://thequantuminsider.com/",
+    "topic": "Quantum",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "shtetl-optimized-scott-aaronson",
+    "name": "Shtetl-Optimized (Scott Aaronson)",
+    "url": "https://scottaaronson.blog/?feed=rss2",
+    "homepage": "https://scottaaronson.blog/",
+    "topic": "Quantum",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "physics-world-quantum",
+    "name": "Physics World — Quantum",
+    "url": "https://physicsworld.com/c/quantum/feed/",
+    "homepage": "https://physicsworld.com/quantum/",
+    "topic": "Quantum",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "fusion-industry-association",
+    "name": "Fusion Industry Association",
+    "url": "https://www.fusionindustryassociation.org/feed/",
+    "homepage": "https://www.fusionindustryassociation.org/",
+    "topic": "Fusion",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "power-magazine-fusion",
+    "name": "POWER Magazine — Fusion",
+    "url": "https://www.powermag.com/tag/fusion/feed/",
+    "homepage": "https://www.powermag.com/tag/fusion/",
+    "topic": "Fusion",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "canary-media",
+    "name": "Canary Media",
+    "url": "https://www.canarymedia.com/feed",
+    "homepage": "https://www.canarymedia.com/",
+    "topic": "Energy",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "volts-david-roberts",
+    "name": "Volts (David Roberts)",
+    "url": "https://www.volts.wtf/feed",
+    "homepage": "https://www.volts.wtf/",
+    "topic": "Energy",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "latitude-media",
+    "name": "Latitude Media",
+    "url": "https://www.latitudemedia.com/rss",
+    "homepage": "https://www.latitudemedia.com/",
+    "topic": "Energy",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "dwarkesh-podcast",
+    "name": "Dwarkesh Podcast",
+    "url": "https://api.substack.com/feed/podcast/69345.rss",
+    "homepage": "https://www.dwarkesh.com/",
+    "topic": "AI",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "cheeky-pint-stripe-john-collison",
+    "name": "Cheeky Pint (Stripe / John Collison)",
+    "url": "https://feeds.transistor.fm/cheeky-pint-with-john-collison",
+    "homepage": "https://cheekypint.substack.com/",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "latent-space",
+    "name": "Latent Space",
+    "url": "https://api.substack.com/feed/podcast/1084089.rss",
+    "homepage": "https://www.latent.space/",
+    "topic": "AI",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "no-priors",
+    "name": "No Priors",
+    "url": "https://feeds.megaphone.fm/nopriors",
+    "homepage": "https://www.no-priors.com/",
+    "topic": "AI",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "the-cognitive-revolution",
+    "name": "The Cognitive Revolution",
+    "url": "https://feeds.megaphone.fm/RINTP3108857801",
+    "homepage": "https://www.cognitiverevolution.ai/",
+    "topic": "AI",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "machine-learning-street-talk",
+    "name": "Machine Learning Street Talk",
+    "url": "https://anchor.fm/s/1e4a0eac/podcast/rss",
+    "homepage": "https://www.youtube.com/@MachineLearningStreetTalk",
+    "topic": "AI",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "lex-fridman-podcast",
+    "name": "Lex Fridman Podcast",
+    "url": "https://lexfridman.com/feed/podcast/",
+    "homepage": "https://lexfridman.com/podcast/",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "bg2-pod",
+    "name": "BG2 Pod",
+    "url": "https://anchor.fm/s/f06c2370/podcast/rss",
+    "homepage": "https://www.bg2pod.com/",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "acquired",
+    "name": "Acquired",
+    "url": "https://feeds.transistor.fm/acquired",
+    "homepage": "https://www.acquired.fm/",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "complex-systems-patrick-mckenzie",
+    "name": "Complex Systems (Patrick McKenzie)",
+    "url": "https://feeds.transistor.fm/complex-systems-with-patrick-mckenzie-patio11",
+    "homepage": "https://www.complexsystemspodcast.com/",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "stratechery-sharp-tech",
+    "name": "Stratechery / Sharp Tech",
+    "url": "https://sharptech.fm/feed/podcast",
+    "homepage": "https://sharptech.fm/",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "chinatalk",
+    "name": "ChinaTalk",
+    "url": "https://feeds.megaphone.fm/CHTAL4990341033",
+    "homepage": "https://www.chinatalk.media/",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "moonshots-peter-diamandis",
+    "name": "Moonshots (Peter Diamandis)",
+    "url": "https://feeds.megaphone.fm/DVVTS2890392624",
+    "homepage": "https://www.diamandis.com/podcast",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "titans-of-nuclear",
+    "name": "Titans of Nuclear",
+    "url": "https://rss.libsyn.com/shows/107828/destinations/585143.xml",
+    "homepage": "https://www.titansofnuclear.com/",
+    "topic": "Nuclear",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "decouple",
+    "name": "Decouple",
+    "url": "https://anchor.fm/s/23775178/podcast/rss",
+    "homepage": "https://www.decouple.media/",
+    "topic": "Nuclear",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "founders-david-senra",
+    "name": "Founders (David Senra)",
+    "url": "https://feeds.megaphone.fm/DSLLC6297708582",
+    "homepage": "https://www.founderspodcast.com/",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "tbpn",
+    "name": "TBPN",
+    "url": "https://feeds.transistor.fm/technology-brother",
+    "homepage": "https://www.tbpn.com/",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "all-in",
+    "name": "All-In",
+    "url": "https://rss.libsyn.com/shows/254861/destinations/1928300.xml",
+    "homepage": "https://www.allinpodcast.co/",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "invest-like-the-best",
+    "name": "Invest Like the Best",
+    "url": "https://feeds.megaphone.fm/CLS2859450455",
+    "homepage": "https://www.joincolossus.com/",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "odd-lots",
+    "name": "Odd Lots",
+    "url": "https://www.omnycontent.com/d/playlist/e73c998e-6e60-432f-8610-ae210140c5b1/8a94442e-5a74-4fa2-8b8d-ae27003a8d6b/982f5071-765c-403d-969d-ae27003a8d83/podcast.rss",
+    "homepage": "https://www.bloomberg.com/oddlots",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "hard-fork",
+    "name": "Hard Fork",
+    "url": "https://feeds.simplecast.com/6HKOhNgS",
+    "homepage": "https://www.nytimes.com/column/hard-fork",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "my-first-million",
+    "name": "My First Million",
+    "url": "https://feeds.megaphone.fm/HS2300184645",
+    "homepage": "https://www.mfmpod.com/",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "the-twenty-minute-vc-20vc",
+    "name": "The Twenty Minute VC (20VC)",
+    "url": "https://rss.libsyn.com/shows/61840/destinations/240976.xml",
+    "homepage": "https://www.thetwentyminutevc.com/",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "this-week-in-startups",
+    "name": "This Week in Startups",
+    "url": "https://rss.libsyn.com/shows/624860/destinations/5500155.xml",
+    "homepage": "https://thisweekinstartups.com/",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "conversations-with-tyler",
+    "name": "Conversations with Tyler",
+    "url": "https://rss.libsyn.com/shows/137081/destinations/850607.xml",
+    "homepage": "https://conversationswithtyler.com/",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "the-logan-bartlett-show",
+    "name": "The Logan Bartlett Show",
+    "url": "https://rss2.flightcast.com/jlx9l0yn04wt3r710o051jtm.xml",
+    "homepage": "https://www.theloganbartlettshow.com/",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "in-good-company-nicolai-tangen",
+    "name": "In Good Company (Nicolai Tangen)",
+    "url": "https://feeds.acast.com/public/shows/622618c7057f3400120d15db",
+    "homepage": "https://www.nbim.no/en/in-good-company/",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "training-data-sequoia",
+    "name": "Training Data (Sequoia)",
+    "url": "https://feeds.megaphone.fm/trainingdata",
+    "homepage": "https://www.sequoiacap.com/podcast/",
+    "topic": "AI",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "unsupervised-learning-jacob-effron",
+    "name": "Unsupervised Learning (Jacob Effron)",
+    "url": "https://feeds.simplecast.com/dOSE_bdP",
+    "homepage": "https://www.redpoint.com/",
+    "topic": "AI",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "the-gradient-podcast",
+    "name": "The Gradient Podcast",
+    "url": "https://rss.beehiiv.com/podcasts/01a03a01-bfe5-71a6-90b6-3bce8d91403e.xml",
+    "homepage": "https://thegradientpub.substack.com/",
+    "topic": "AI",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "80-000-hours-podcast",
+    "name": "80,000 Hours Podcast",
+    "url": "https://feeds.transistor.fm/80000-hours-podcast",
+    "homepage": "https://80000hours.org/podcast/",
+    "topic": "AI",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "sean-carroll-s-mindscape",
+    "name": "Sean Carroll's Mindscape",
+    "url": "https://rss.libsyn.com/shows/604590/destinations/5264190.xml",
+    "homepage": "https://www.preposterousuniverse.com/podcast/",
+    "topic": "Science",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "main-engine-cut-off",
+    "name": "Main Engine Cut Off",
+    "url": "https://feeds.simplecast.com/Zg9AF5cA",
+    "homepage": "https://mainenginecutoff.com/",
+    "topic": "Space",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "raising-health-a16z-bio-health",
+    "name": "Raising Health (a16z Bio + Health)",
+    "url": "https://feeds.simplecast.com/BXDamaKF",
+    "homepage": "https://a16z.com/podcasts/",
+    "topic": "Biotech",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "1000x",
+    "name": "1000x",
+    "url": "https://anchor.fm/s/112316ec0/podcast/rss",
+    "homepage": "https://1000xpod.com/",
+    "topic": "Blockchain",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "the-quanta-podcast",
+    "name": "The Quanta Podcast",
+    "url": "https://quantapodcast.quantamagazine.org/",
+    "homepage": "https://www.quantamagazine.org/tag/podcast/",
+    "topic": "Science",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "the-joy-of-why-quanta",
+    "name": "The Joy of Why (Quanta)",
+    "url": "https://joy.quantamagazine.org/",
+    "homepage": "https://www.quantamagazine.org/tag/the-joy-of-why/",
+    "topic": "Science",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "nature-podcast",
+    "name": "Nature Podcast",
+    "url": "https://feeds.acast.com/public/shows/0185cea5-9e3b-4b82-a887-26f91f92765f",
+    "homepage": "https://www.nature.com/nature/articles?type=nature-podcast",
+    "topic": "Science",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "science-magazine-podcast",
+    "name": "Science Magazine Podcast",
+    "url": "https://feeds.megaphone.fm/AAAS8717073854",
+    "homepage": "https://www.science.org/podcasts",
+    "topic": "Science",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "complexity-santa-fe-institute",
+    "name": "Complexity (Santa Fe Institute)",
+    "url": "https://feeds.simplecast.com/OzDH_At2",
+    "homepage": "https://www.santafe.edu/culture/podcasts",
+    "topic": "Science",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "the-origins-podcast-lawrence-krauss",
+    "name": "The Origins Podcast (Lawrence Krauss)",
+    "url": "https://api.substack.com/feed/podcast/745084.rss",
+    "homepage": "https://lawrencekrauss.substack.com/",
+    "topic": "Science",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "daniel-and-jorge-explain-the-universe",
+    "name": "Daniel and Jorge Explain the Universe",
+    "url": "https://www.omnycontent.com/d/playlist/e73c998e-6e60-432f-8610-ae210140c5b1/56cec8f5-8977-4ae9-99c6-b1ed00fe8598/f9937580-972b-4006-b6ca-b1ed00feb864/podcast.rss",
+    "homepage": "https://www.danielandjorge.com/",
+    "topic": "Science",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "physics-world-weekly",
+    "name": "Physics World Weekly",
+    "url": "https://physicsworld.com/feed/podcast-weekly/",
+    "homepage": "https://physicsworld.com/audio-and-video/",
+    "topic": "Science",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "the-infinite-monkey-cage",
+    "name": "The Infinite Monkey Cage",
+    "url": "https://podcasts.files.bbci.co.uk/b00snr0w.rss",
+    "homepage": "https://www.bbc.co.uk/programmes/b00snr0w",
+    "topic": "Science",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "big-biology",
+    "name": "Big Biology",
+    "url": "https://api.substack.com/feed/podcast/120946.rss",
+    "homepage": "https://www.bigbiology.org/",
+    "topic": "Science",
+    "kind": "rss",
+    "type": "podcast"
+  },
+  {
+    "id": "bbc-world",
+    "name": "BBC World",
+    "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
+    "homepage": "https://feeds.bbci.co.uk",
+    "topic": "World",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "bbc-business",
+    "name": "BBC Business",
+    "url": "https://feeds.bbci.co.uk/news/business/rss.xml",
+    "homepage": "https://feeds.bbci.co.uk",
+    "topic": "Economy",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "bbc-europe",
+    "name": "BBC Europe",
+    "url": "https://feeds.bbci.co.uk/news/world/europe/rss.xml",
+    "homepage": "https://feeds.bbci.co.uk",
+    "topic": "Europe",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "un-news",
+    "name": "UN News",
+    "url": "https://news.un.org/feed/subscribe/en/news/all/rss.xml",
+    "homepage": "https://news.un.org",
+    "topic": "World",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "the-guardian-world",
+    "name": "The Guardian World",
+    "url": "https://www.theguardian.com/world/rss",
+    "homepage": "https://www.theguardian.com",
+    "topic": "World",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "the-guardian-economics",
+    "name": "The Guardian Economics",
+    "url": "https://www.theguardian.com/business/economics/rss",
+    "homepage": "https://www.theguardian.com",
+    "topic": "Economy",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "al-jazeera",
+    "name": "Al Jazeera",
+    "url": "https://www.aljazeera.com/xml/rss/all.xml",
+    "homepage": "https://www.aljazeera.com",
+    "topic": "World",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "ecb-press-releases",
+    "name": "ECB press releases",
+    "url": "https://www.ecb.europa.eu/rss/press.html",
+    "homepage": "https://www.ecb.europa.eu",
+    "topic": "Economy",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "imf-news",
+    "name": "IMF news",
+    "url": "https://www.imf.org/en/News/RSS",
+    "homepage": "https://www.imf.org",
+    "topic": "Economy",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "european-commission",
+    "name": "European Commission",
+    "url": "https://ec.europa.eu/commission/presscorner/api/rss?language=en",
+    "homepage": "https://ec.europa.eu",
+    "topic": "Europe",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "nasa",
+    "name": "NASA",
+    "url": "https://www.nasa.gov/feed/",
+    "homepage": "https://www.nasa.gov",
+    "topic": "Space",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "esa",
+    "name": "ESA",
+    "url": "https://www.esa.int/rssfeed/Our_Activities/Space_Science",
+    "homepage": "https://www.esa.int",
+    "topic": "Space",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "carbon-brief",
+    "name": "Carbon Brief",
+    "url": "https://www.carbonbrief.org/feed/",
+    "homepage": "https://www.carbonbrief.org",
+    "topic": "Climate",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "inside-climate-news",
+    "name": "Inside Climate News",
+    "url": "https://insideclimatenews.org/feed/",
+    "homepage": "https://insideclimatenews.org",
+    "topic": "Climate",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "yale-environment-360",
+    "name": "Yale Environment 360",
+    "url": "https://e360.yale.edu/feed.xml",
+    "homepage": "https://e360.yale.edu",
+    "topic": "Climate",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "grist",
+    "name": "Grist",
+    "url": "https://grist.org/feed/",
+    "homepage": "https://grist.org",
+    "topic": "Climate",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "ethereum-foundation",
+    "name": "Ethereum Foundation",
+    "url": "https://blog.ethereum.org/feed.xml",
+    "homepage": "https://blog.ethereum.org",
+    "topic": "Blockchain",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "ethereum-research",
+    "name": "Ethereum Research",
+    "url": "https://ethresear.ch/latest.rss",
+    "homepage": "https://ethresear.ch",
+    "topic": "Governance",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "openzeppelin",
+    "name": "OpenZeppelin",
+    "url": "https://blog.openzeppelin.com/rss.xml",
+    "homepage": "https://blog.openzeppelin.com",
+    "topic": "Security",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "krebs-on-security",
+    "name": "Krebs on Security",
+    "url": "https://krebsonsecurity.com/feed/",
+    "homepage": "https://krebsonsecurity.com",
+    "topic": "Security",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "schneier-on-security",
+    "name": "Schneier on Security",
+    "url": "https://www.schneier.com/feed/atom/",
+    "homepage": "https://www.schneier.com",
+    "topic": "Security",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "p-blico",
+    "name": "Público",
+    "url": "https://feeds.feedburner.com/PublicoRSS",
+    "homepage": "https://feeds.feedburner.com",
+    "topic": "Portugal",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "observador",
+    "name": "Observador",
+    "url": "https://observador.pt/feed/",
+    "homepage": "https://observador.pt",
+    "topic": "Portugal",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "eco",
+    "name": "ECO",
+    "url": "https://eco.sapo.pt/feed/",
+    "homepage": "https://eco.sapo.pt",
+    "topic": "Portugal",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "arxiv-ai",
+    "name": "arXiv AI",
+    "url": "https://rss.arxiv.org/rss/cs.AI",
+    "homepage": "https://rss.arxiv.org",
+    "topic": "AI",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "arxiv-quantum-physics",
+    "name": "arXiv Quantum Physics",
+    "url": "https://rss.arxiv.org/rss/quant-ph",
+    "homepage": "https://rss.arxiv.org",
+    "topic": "Quantum",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "stat",
+    "name": "STAT",
+    "url": "https://www.statnews.com/feed/",
+    "homepage": "https://www.statnews.com",
+    "topic": "Health",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "who-news",
+    "name": "WHO news",
+    "url": "https://www.who.int/rss-feeds/news-english.xml",
+    "homepage": "https://www.who.int",
+    "topic": "Health",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "404-media",
+    "name": "404 Media",
+    "url": "https://www.404media.co/rss/",
+    "homepage": "https://www.404media.co",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "world-bank-gdp",
+    "name": "World Bank GDP growth",
+    "url": "https://api.worldbank.org/v2/country/PRT;USA;EMU/indicator/NY.GDP.MKTP.KD.ZG?format=json&per_page=15&mrnev=2",
+    "homepage": "https://data.worldbank.org/indicator/NY.GDP.MKTP.KD.ZG",
+    "topic": "Economy",
+    "kind": "worldbank",
+    "type": "data"
+  },
+  {
+    "id": "github-ethereum-releases",
+    "name": "Ethereum client releases",
+    "url": "https://api.github.com/repos/ethereum/go-ethereum/releases?per_page=5",
+    "homepage": "https://github.com/ethereum/go-ethereum/releases",
+    "topic": "Blockchain",
+    "kind": "github",
+    "type": "data"
+  },
+  {
+    "id": "defillama-protocols",
+    "name": "DeFiLlama protocol data",
+    "url": "https://api.llama.fi/protocols",
+    "homepage": "https://defillama.com/",
+    "topic": "Blockchain",
+    "kind": "defillama",
+    "type": "data"
+  }
+]
