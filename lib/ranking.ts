@@ -1,0 +1,116 @@
+import { pool } from "./db";
+import {
+  defaultRanking,
+  rankingSchema,
+  rankArticles,
+  scoreVersion,
+  type RankingProfile,
+} from "./scoring";
+import { defaults, preferencesSchema, selectItems, type Item } from "./model";
+import { sources } from "./catalog";
+export async function sourceScores(accountId?: string) {
+  const rows = (
+    await pool().query(
+      "SELECT id,status,checked_at FROM sources UNION ALL SELECT 'private:'||id::text,status,checked_at FROM connections WHERE account_id=$1",
+      [accountId || null],
+    )
+  ).rows;
+  await pool().query(
+    "INSERT INTO source_observations(source_id,observed_at,status) SELECT id,checked_at,status FROM sources WHERE checked_at IS NOT NULL UNION ALL SELECT 'private:'||id::text,checked_at,status FROM connections WHERE account_id=$1 AND checked_at IS NOT NULL ON CONFLICT DO NOTHING",
+    [accountId || null],
+  );
+  const history = (
+    await pool().query(
+      "SELECT source_id,count(*)::int samples,round(100.0*count(*) FILTER(WHERE status='healthy')/count(*),1)::float score FROM source_observations WHERE observed_at>now()-interval '30 days' AND source_id=ANY($1::text[]) GROUP BY source_id",
+      [rows.map((r) => r.id)],
+    )
+  ).rows;
+  return {
+    scores: Object.fromEntries(history.map((r) => [r.source_id, r.score])),
+    observations: history,
+  };
+}
+export async function rankedItems(
+  items: Item[],
+  prefs = defaults,
+  profile: RankingProfile = defaultRanking,
+  accountId?: string,
+  limit = 100,
+) {
+  const { scores } = await sourceScores(accountId);
+  return rankArticles(
+    selectItems(items, prefs, items.length),
+    prefs,
+    profile,
+    scores,
+    limit,
+  );
+}
+export async function publicRanked(items: Item[]) {
+  return rankedItems(items, defaults, defaultRanking, undefined, items.length);
+}
+export async function accountCandidates(accountId: string, publicOnly = false) {
+  const account = (
+    await pool().query("SELECT preferences,ranking FROM accounts WHERE id=$1", [
+      accountId,
+    ])
+  ).rows[0];
+  const items = (
+    await pool().query(
+      "SELECT i.*,c.summary AS curated_summary,c.excluded FROM items i LEFT JOIN article_curation c ON c.item_id=i.id AND c.account_id=$1 WHERE (i.owner_id IS NULL OR (i.owner_id=$1 AND ($2=false OR EXISTS(SELECT 1 FROM connections x WHERE 'private:'||x.id::text=i.source_id AND x.account_id=$1 AND x.share_public=true)))) AND i.published_at>now()-interval '90 days' ORDER BY i.published_at DESC LIMIT 3000",
+      [accountId, publicOnly],
+    )
+  ).rows
+    .filter((i) => !i.excluded)
+    .map(({ curated_summary, excluded, ...i }) =>
+      curated_summary
+        ? { ...i, summary: curated_summary, summary_kind: "extractive" }
+        : i,
+    ) as Item[];
+  return {
+    items,
+    preferences: preferencesSchema.parse(account.preferences),
+    profile: rankingSchema.parse(account.ranking),
+    ...(await sourceScores(accountId)),
+  };
+}
+export async function recordHistory(
+  owner: string,
+  kind: string,
+  entries: { id: string; name: string; score: number; samples: number }[],
+  config: unknown,
+) {
+  if (!entries.length) return;
+  await pool().query(
+    `INSERT INTO ranking_history(owner_key,kind,entity_id,name,bucket,score,position,samples,config) SELECT $1,$2,x.id,x.name,date_trunc('hour',now()),x.score,rank() OVER(ORDER BY x.score DESC),x.samples,$4 FROM jsonb_to_recordset($3::jsonb) AS x(id text,name text,score numeric,samples int) ON CONFLICT(owner_key,kind,entity_id,bucket) DO UPDATE SET score=EXCLUDED.score,position=EXCLUDED.position,samples=EXCLUDED.samples,name=EXCLUDED.name,config=EXCLUDED.config`,
+    [owner, kind, JSON.stringify(entries), JSON.stringify(config)],
+  );
+}
+export async function recordPublicSources() {
+  const { scores, observations } = await sourceScores();
+  await recordHistory(
+    "public",
+    "source",
+    sources
+      .filter((s) => scores[s.id] !== undefined)
+      .map((s) => ({
+        id: s.id,
+        name: s.name,
+        score: scores[s.id],
+        samples: observations.find((r) => r.source_id === s.id)?.samples || 0,
+      })),
+    {
+      version: scoreVersion,
+      meaning:
+        "Successful collection percentage, last 30 days; not factual accuracy",
+    },
+  );
+}
+export async function historyFor(accountId: string) {
+  return (
+    await pool().query(
+      "SELECT * FROM (SELECT DISTINCT ON(owner_key,kind,entity_id,date_trunc('day',bucket)) owner_key,kind,entity_id,name,bucket,score::float,position,samples,config FROM ranking_history WHERE (owner_key=$1 OR owner_key='public') AND bucket>now()-interval '30 days' ORDER BY owner_key,kind,entity_id,date_trunc('day',bucket),bucket DESC) daily ORDER BY bucket DESC LIMIT 20000",
+      [accountId],
+    )
+  ).rows;
+}

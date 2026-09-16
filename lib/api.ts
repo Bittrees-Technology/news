@@ -1,3 +1,19 @@
+import { validatePreferences } from "./newspapers";
+import { mcp, createMcpToken } from "./mcp";
+import { rankingSchema } from "./scoring";
+import {
+  historyFor,
+  accountCandidates,
+  rankedItems,
+  sourceScores,
+} from "./ranking";
+import {
+  addPersonalSource,
+  changeSourceSharing,
+  publishPersonal,
+  recordPersonalRankings,
+  personalScheduler,
+} from "./curation";
 import { newspaperSettings, saveNewspaper, saveFeed } from "./newspapers";
 import { walletReady } from "./wallet";
 import { emailEvent } from "./webhook";
@@ -64,6 +80,7 @@ export async function api(r: Request) {
     const url = new URL(r.url),
       path = url.pathname.replace(/^\/api\//, ""),
       method = r.method;
+    if (path === "mcp") return mcp(r);
     if (path === "email/events" && method === "POST")
       return json(await emailEvent(r));
     if (path === "health") {
@@ -80,10 +97,12 @@ export async function api(r: Request) {
     }
     if (path === "sources" && method === "GET") {
       const statuses = (await pool().query("SELECT * FROM sources")).rows;
+      const scored = await sourceScores();
       return json({
         sources: sources.map((s) => ({
           ...s,
           ...statuses.find((d) => d.id === s.id),
+          source_score: scored.scores[s.id] ?? null,
         })),
         topics,
       });
@@ -100,6 +119,7 @@ export async function api(r: Request) {
       );
     if (path.startsWith("jobs/")) {
       authorizeBearer(r, "CRON_SECRET");
+      if (path === "jobs/personal") return json(await personalScheduler());
       if (path === "jobs/prepare") return json(await prepare());
       if (path === "jobs/publish") return json(await publish());
       if (path === "jobs/deliver")
@@ -259,6 +279,63 @@ export async function api(r: Request) {
     }
     const a = await currentAccount(r);
     if (method !== "GET") checkOrigin(r);
+    if (path === "ranking" && method === "GET")
+      return json({
+        profile: rankingSchema.parse(
+          (
+            await pool().query("SELECT ranking FROM accounts WHERE id=$1", [
+              a!.id,
+            ])
+          ).rows[0].ranking,
+        ),
+        history: await historyFor(a!.id),
+      });
+    if (path === "ranking" && method === "POST") {
+      const b = rankingSchema.parse(await body(r));
+      await pool().query("UPDATE accounts SET ranking=$2 WHERE id=$1", [
+        a!.id,
+        JSON.stringify(b),
+      ]);
+      return json({ ok: true });
+    }
+    if (path === "ranking/refresh" && method === "POST") {
+      await rateLimit("personal-refresh:" + a!.id, 5);
+      await recordPersonalRankings(a!.id);
+      return json({ ok: true });
+    }
+    if (path === "newspaper/publish" && method === "POST")
+      return json(await publishPersonal(a!.id));
+    if (path === "connections/share" && method === "POST") {
+      const b = z
+        .object({ id: z.uuid(), share: z.boolean() })
+        .parse(await body(r));
+      return json(await changeSourceSharing(a!.id, b.id, b.share));
+    }
+    if (path === "mcp/tokens" && method === "GET")
+      return json({
+        tokens: (
+          await pool().query(
+            "SELECT id,name,scopes,expires_at,last_used_at FROM mcp_tokens WHERE account_id=$1 ORDER BY created_at DESC",
+            [a!.id],
+          )
+        ).rows,
+        audit: (
+          await pool().query(
+            "SELECT action,status,created_at FROM curation_audit WHERE account_id=$1 ORDER BY created_at DESC LIMIT 30",
+            [a!.id],
+          )
+        ).rows,
+      });
+    if (path === "mcp/tokens" && method === "POST")
+      return json(await createMcpToken(a!.id, await body(r)));
+    if (path === "mcp/tokens" && method === "DELETE") {
+      const b = z.object({ id: z.uuid() }).parse(await body(r));
+      await pool().query(
+        "DELETE FROM mcp_tokens WHERE id=$1 AND account_id=$2",
+        [b.id, a!.id],
+      );
+      return json({ ok: true });
+    }
     if (path === "newspaper" && method === "GET")
       return json(await newspaperSettings(a!.id));
     if (path === "newspaper" && method === "POST")
@@ -276,11 +353,7 @@ export async function api(r: Request) {
     }
     if (path === "preferences" && method === "POST") {
       const p = preferencesSchema.parse(await body(r));
-      if (
-        p.topics.some((t) => !topics.includes(t)) ||
-        p.sources.some((id) => !sources.some((s) => s.id === id))
-      )
-        throw new HttpError(400, "Unknown source or topic");
+      await validatePreferences(p, a!.id);
       await pool().query("UPDATE accounts SET preferences=$2 WHERE id=$1", [
         a!.id,
         JSON.stringify(p),
@@ -288,15 +361,8 @@ export async function api(r: Request) {
       return json({ ok: true });
     }
     if (path === "feed" && method === "GET") {
-      const rows = (
-        await pool().query(
-          "SELECT * FROM items WHERE (owner_id IS NULL OR owner_id=$1) AND published_at>now()-interval '14 days' ORDER BY published_at DESC LIMIT 1000",
-          [a!.id],
-        )
-      ).rows;
-      return json(
-        selectItems(rows, preferencesSchema.parse(a!.preferences), 100),
-      );
+      const c = await accountCandidates(a!.id);
+      return json(await rankedItems(c.items, c.preferences, c.profile, a!.id));
     }
     if (path === "reading" && method === "GET")
       return json(
@@ -384,61 +450,17 @@ export async function api(r: Request) {
       return json({ ok: true });
     }
     if (path === "connections" && method === "POST") {
-      const b = z
-        .object({
-          name: z.string().min(1).max(100),
-          url: z.url().max(2000),
-          topic: z.string().max(60),
-        })
-        .parse(await body(r));
-      if (!topics.includes(b.topic)) throw new HttpError(400, "Unknown topic");
       await rateLimit("feed:" + a!.id, 5);
-      if (
-        Number(
-          (
-            await pool().query(
-              "SELECT count(*) FROM connections WHERE account_id=$1",
-              [a!.id],
-            )
-          ).rows[0].count,
-        ) >= 10
-      )
-        throw new HttpError(400, "You can add up to ten personal feeds.");
-      const id = randomUUID();
-      const items = await fetchSource(
-        {
-          id: "private:" + id,
-          name: b.name,
-          url: b.url,
-          homepage: b.url,
-          topic: b.topic,
-          kind: "rss",
-          type: "article",
-        },
-        a!.id,
-      );
-      await pool().query(
-        "INSERT INTO connections(id,account_id,name,url,topic,status,checked_at) VALUES($1,$2,$3,$4,$5,'healthy',now())",
-        [id, a!.id, b.name, b.url, b.topic],
-      );
-      await storeItems(items);
-      return json({ ok: true });
+      return json(await addPersonalSource(a!.id, await body(r)));
     }
     if (path === "connections" && method === "DELETE") {
       const b = z.object({ id: z.uuid() }).parse(await body(r));
-      await tx(async (d) => {
-        await d.query("DELETE FROM connections WHERE id=$1 AND account_id=$2", [
-          b.id,
-          a!.id,
-        ]);
-        await d.query("DELETE FROM items WHERE source_id=$1 AND owner_id=$2", [
-          "private:" + b.id,
-          a!.id,
-        ]);
-      });
-      return json({ ok: true });
+      return json(await changeSourceSharing(a!.id, b.id, false, true));
     }
     if (path === "account" && method === "DELETE") {
+      await pool().query("DELETE FROM ranking_history WHERE owner_key=$1", [
+        a!.id,
+      ]);
       await pool().query("DELETE FROM accounts WHERE id=$1", [a!.id]);
       return json({ ok: true }, 200, {
         "Set-Cookie": setCookie(sessionName, "", 0),

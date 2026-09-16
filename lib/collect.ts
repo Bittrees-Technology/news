@@ -153,26 +153,10 @@ export async function collect() {
   let ok = 0,
     failed = 0,
     index = 0;
-  const connections = (
-    await pool().query(
-      "SELECT * FROM connections ORDER BY created_at LIMIT 200",
-    )
-  ).rows;
-  const jobs = [
-    ...sources.map((s) => ({ s, owner: undefined as string | undefined })),
-    ...connections.map((c) => ({
-      s: {
-        id: "private:" + c.id,
-        name: c.name,
-        url: c.url,
-        homepage: c.url,
-        topic: c.topic,
-        kind: "rss",
-        type: "article",
-      },
-      owner: c.account_id as string,
-    })),
-  ];
+  const jobs = sources.map((s) => ({
+    s,
+    owner: undefined as string | undefined,
+  }));
   await Promise.all(
     Array.from({ length: 8 }, async () => {
       while (index < jobs.length) {

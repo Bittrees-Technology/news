@@ -1,3 +1,4 @@
+import { publicRanked } from "./ranking";
 import { pool, tx } from "./db";
 import { collect } from "./collect";
 import { edit, diverse } from "./editor";
@@ -30,7 +31,9 @@ export async function prepare(now = new Date()) {
         "SELECT * FROM items WHERE owner_id IS NULL AND (published_at>now()-interval '72 hours' OR kind='podcast' AND published_at>now()-interval '7 days') ORDER BY published_at DESC LIMIT 500",
       )
     ).rows as Item[];
-    const articles = rows.filter((i) => i.kind !== "podcast"),
+    const articles = await publicRanked(
+        rows.filter((i) => i.kind !== "podcast"),
+      ),
       pods = rows
         .filter((i) => i.kind === "podcast")
         .filter(

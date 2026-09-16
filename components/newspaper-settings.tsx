@@ -9,6 +9,11 @@ type Paper = {
   slug: string;
   description: string;
   published: boolean;
+  auto_publish: boolean;
+  auto_cadence: string;
+  next_publish_at?: string;
+  last_published_at?: string;
+  publish_error?: string;
 };
 type Feed = {
   id?: string;
@@ -30,12 +35,25 @@ const freshFeed = (): Feed => ({
   slug: "",
   preferences: { ...defaults, topics: [], sources: [], blocked: [] },
 });
-export function NewspaperSettings() {
+export function NewspaperSettings({
+  connections = [],
+}: {
+  connections?: { id: string; name: string }[];
+}) {
+  const availableSources = [
+    ...sources,
+    ...connections.map((c) => ({
+      id: "private:" + c.id,
+      name: c.name + " (your source)",
+    })),
+  ];
   const [paper, setPaper] = useState<Paper>({
     name: "",
     slug: "",
     description: "",
     published: false,
+    auto_publish: false,
+    auto_cadence: "daily",
   });
   const [exists, setExists] = useState(false),
     [loaded, setLoaded] = useState(false),
@@ -74,7 +92,9 @@ export function NewspaperSettings() {
       setMessage(
         paper.published
           ? "Your newspaper is published."
-          : "Your newspaper is saved privately.",
+          : paper.auto_publish
+            ? "Automatic public publication enabled."
+            : "Your newspaper is saved privately.",
       );
     });
   }
@@ -138,7 +158,13 @@ export function NewspaperSettings() {
           <select
             value={paper.published ? "public" : "private"}
             onChange={(e) =>
-              setPaper({ ...paper, published: e.target.value === "public" })
+              setPaper({
+                ...paper,
+                published: e.target.value === "public",
+                ...(e.target.value === "private"
+                  ? { auto_publish: false }
+                  : {}),
+              })
             }
           >
             <option value="private">Private — only you</option>
@@ -148,15 +174,59 @@ export function NewspaperSettings() {
         <p className="muted">
           Publishing shares your newspaper name, introduction and curated public
           stories. Your sign-in details, interests, forwarding addresses and
-          personal RSS connections stay private.
+          personal RSS connections stay private unless you explicitly allow
+          their stories to be shared in Sources & feeds.
         </p>
+        <label className="check-line">
+          <input
+            type="checkbox"
+            checked={paper.auto_publish}
+            onChange={(e) =>
+              setPaper({ ...paper, auto_publish: e.target.checked })
+            }
+          />
+          Automatically publish new editions publicly
+        </label>
+        <p className="muted">
+          Enabling this gives permission to publish this newspaper at its next
+          scheduled refresh, even if it is private now. Switch it off to stop
+          scheduled publishing. Automatic jobs run every 15 minutes and retain
+          the last edition if preparation fails.
+        </p>
+        {paper.auto_publish && (
+          <label className="field">
+            Publication schedule (UTC)
+            <select
+              value={paper.auto_cadence}
+              onChange={(e) =>
+                setPaper({ ...paper, auto_cadence: e.target.value })
+              }
+            >
+              <option value="daily">Daily, after 11:57</option>
+              <option value="three_daily">After 07:57, 11:57 and 19:57</option>
+              <option value="hourly">Hourly</option>
+            </select>
+          </label>
+        )}
+        {paper.next_publish_at && (
+          <p>
+            Next scheduled refresh:{" "}
+            {new Date(paper.next_publish_at).toLocaleString("en-GB", {
+              timeZone: "UTC",
+            })}{" "}
+            UTC
+          </p>
+        )}
+        {paper.publish_error && <p className="notice">{paper.publish_error}</p>}
         <div className="button-row">
           <button className="primary" disabled={busy}>
             {busy
               ? "Saving…"
               : paper.published
                 ? "Save & publish newspaper"
-                : "Save private newspaper"}
+                : paper.auto_publish
+                  ? "Save & enable automatic publication"
+                  : "Save private newspaper"}
           </button>
           {exists && <Link href={"/" + paper.slug}>Open front cover</Link>}
         </div>
@@ -293,7 +363,7 @@ export function NewspaperSettings() {
               <summary>Choose sources for this feed</summary>
               <p className="muted">Leave empty to include all sources.</p>
               <div className="source-picker">
-                {sources.map((s) => (
+                {availableSources.map((s) => (
                   <label className="source-option" key={s.id}>
                     <input
                       type="checkbox"

@@ -1,3 +1,8 @@
+import {
+  buildPersonalEdition,
+  nextPublication,
+  publishPersonal,
+} from "./curation";
 import { z } from "zod";
 import { pool, tx } from "./db";
 import { HttpError, preferencesSchema, selectItems, type Item } from "./model";
@@ -46,6 +51,8 @@ export const newspaperSchema = z.object({
   slug: slugSchema,
   description: z.string().trim().max(300).default(""),
   published: z.boolean().default(false),
+  auto_publish: z.boolean().default(false),
+  auto_cadence: z.enum(["daily", "three_daily", "hourly"]).default("daily"),
 });
 export const feedSchema = z.object({
   id: z.uuid().optional(),
@@ -53,21 +60,33 @@ export const feedSchema = z.object({
   slug: addressSchema,
   preferences: preferencesSchema,
 });
-export function validatePreferences(p: z.infer<typeof preferencesSchema>) {
-  if (
-    p.topics.some((t) => !topics.includes(t)) ||
-    p.sources.some((id) => !sources.some((s) => s.id === id))
-  )
+export async function validatePreferences(
+  p: z.infer<typeof preferencesSchema>,
+  accountId?: string,
+) {
+  if (p.topics.some((t) => !topics.includes(t)))
     throw new HttpError(
       400,
-      "Choose a listed source or topic. Your feed name can be anything.",
+      "Choose a listed topic; your feed display name can be custom.",
     );
+  const extra = p.sources.filter((id) => !sources.some((s) => s.id === id));
+  if (!extra.length) return;
+  if (!accountId || extra.some((id) => !/^private:[0-9a-f-]{36}$/i.test(id)))
+    throw new HttpError(400, "Unknown source");
+  const owned = (
+    await pool().query(
+      "SELECT 'private:'||id::text AS source_id FROM connections WHERE account_id=$1 AND 'private:'||id::text=ANY($2::text[])",
+      [accountId, extra],
+    )
+  ).rows;
+  if (extra.some((id) => !owned.some((r) => r.source_id === id)))
+    throw new HttpError(400, "Source is not connected to your account");
 }
 export async function newspaperSettings(accountId: string) {
   const p =
     (
       await pool().query(
-        "SELECT name,slug,description,published FROM newspapers WHERE account_id=$1",
+        "SELECT name,slug,description,published,auto_publish,auto_cadence,next_publish_at,last_published_at,publish_error FROM newspapers WHERE account_id=$1",
         [accountId],
       )
     ).rows[0] || null;
@@ -81,7 +100,7 @@ export async function newspaperSettings(accountId: string) {
 }
 export async function saveNewspaper(accountId: string, input: unknown) {
   const b = newspaperSchema.parse(input);
-  return tx(async (d) => {
+  const result = await tx(async (d) => {
     await d.query("SELECT id FROM accounts WHERE id=$1 FOR UPDATE", [
       accountId,
     ]);
@@ -96,8 +115,17 @@ export async function saveNewspaper(accountId: string, input: unknown) {
         "Your newspaper address stays fixed so existing links keep working. You can change its display name.",
       );
     const result = await d.query(
-      "INSERT INTO newspapers(account_id,name,slug,description,published) VALUES($1,$2,$3,$4,$5) ON CONFLICT(account_id) DO UPDATE SET name=$2,description=$4,published=$5,updated_at=now() RETURNING slug",
-      [accountId, b.name, b.slug, b.description, b.published],
+      "INSERT INTO newspapers(account_id,name,slug,description,published,auto_publish,auto_cadence,next_publish_at) VALUES($1,$2,$3,$4,false,$6,$7,$8) ON CONFLICT(account_id) DO UPDATE SET name=$2,description=$4,published=CASE WHEN $5 THEN newspapers.published ELSE false END,auto_publish=$6,auto_cadence=$7,next_publish_at=$8,publication_version=newspapers.publication_version+1,updated_at=now() RETURNING slug",
+      [
+        accountId,
+        b.name,
+        b.slug,
+        b.description,
+        b.published,
+        b.auto_publish,
+        b.auto_cadence,
+        b.auto_publish ? nextPublication(b.auto_cadence) : null,
+      ],
     );
     return result.rows[0];
   }).catch((e) => {
@@ -108,10 +136,12 @@ export async function saveNewspaper(accountId: string, input: unknown) {
       );
     throw e;
   });
+  if (b.published) await publishPersonal(accountId);
+  return result;
 }
 export async function saveFeed(accountId: string, input: unknown) {
   const b = feedSchema.parse(input);
-  validatePreferences(b.preferences);
+  await validatePreferences(b.preferences, accountId);
   return tx(async (d) => {
     const paper = (
       await d.query(
@@ -168,14 +198,14 @@ export async function newspaperPage(
   ).rows;
   const feed = feedSlug ? feeds.find((f) => f.slug === feedSlug) : null;
   if (feedSlug && !feed) return null;
-  // Public editions never expose account-private connections, even to their owner.
-  const rows = (
-    await pool().query(
-      "SELECT * FROM items WHERE (owner_id IS NULL OR ($2=false AND owner_id=$1)) AND published_at>now()-interval '14 days' ORDER BY published_at DESC LIMIT 1500",
-      [paper.account_id, paper.published],
-    )
-  ).rows as Item[];
-  const prefs = preferencesSchema.parse(feed?.preferences || paper.preferences);
+  const edition =
+    paper.published && paper.snapshot
+      ? paper.snapshot
+      : await buildPersonalEdition(paper.account_id, paper.published);
+  const selected = feedSlug
+    ? edition.feeds.find((f: { slug: string }) => f.slug === feedSlug)?.items ||
+      []
+    : edition.front;
   return {
     name: paper.name,
     slug: paper.slug,
@@ -183,6 +213,7 @@ export async function newspaperPage(
     published: paper.published,
     feedName: feed?.name,
     feeds: feeds.map((f) => ({ name: f.name, slug: f.slug })),
-    items: selectItems(rows, prefs, 100).map(({ owner_id, ...i }) => i),
+    items: selected,
+    publishedAt: paper.last_published_at,
   };
 }

@@ -1,4 +1,6 @@
 "use client";
+import { Rankings } from "./rankings";
+import { AiConnection } from "./ai-connection";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { NewspaperSettings } from "./newspaper-settings";
@@ -21,6 +23,7 @@ type Connection = {
   url: string;
   status: string;
   error?: string;
+  share_public?: boolean;
 };
 type Delivery = {
   id: string;
@@ -77,12 +80,20 @@ async function walletProof(purpose: string) {
   await call("auth/verify", { id: c.id, proof });
 }
 export type AccountSection =
-  "newspaper" | "topics" | "sources" | "delivery" | "settings";
+  | "newspaper"
+  | "topics"
+  | "sources"
+  | "delivery"
+  | "settings"
+  | "rankings"
+  | "ai";
 const accountTabs: [AccountSection, string, string][] = [
   ["newspaper", "Your newspaper", "/account"],
   ["topics", "Topics & interests", "/account/topics"],
   ["sources", "Sources & feeds", "/account/sources"],
   ["delivery", "Delivery", "/account/delivery"],
+  ["rankings", "Rankings", "/account/rankings"],
+  ["ai", "AI connection", "/account/ai"],
   ["settings", "Account", "/account/settings"],
 ];
 export function Account({
@@ -118,10 +129,19 @@ export function Account({
       .then((d) =>
         setSourceStatuses(
           Object.fromEntries(
-            d.sources.map((s: { id: string; status: string }) => [
-              s.id,
-              s.status || "unchecked",
-            ]),
+            d.sources.map(
+              (s: {
+                id: string;
+                status: string;
+                source_score?: number | null;
+              }) => [
+                s.id,
+                (s.status || "unchecked") +
+                  (s.source_score != null
+                    ? ` · Consistency ${s.source_score}/100`
+                    : ""),
+              ],
+            ),
           ),
         ),
       )
@@ -296,7 +316,11 @@ export function Account({
         ))}
       </nav>
       {statusBox}
-      {section === "newspaper" && <NewspaperSettings />}
+      {section === "newspaper" && (
+        <NewspaperSettings connections={data.connections} />
+      )}
+      {section === "rankings" && <Rankings />}
+      {section === "ai" && <AiConnection />}
       {(section === "topics" || section === "sources") && (
         <form
           onSubmit={(e) => {
@@ -435,11 +459,27 @@ export function Account({
           <h2>Your own feeds</h2>
           <p>
             Add up to ten public RSS or Atom feeds. They are visible only in
-            your account and personal deliveries.
+            your account and personal deliveries unless you explicitly enable
+            public sharing below.
           </p>
           {data.connections?.map((c) => (
             <div className="connection" key={c.id}>
               <strong>{c.name}</strong>
+              <label className="check-line">
+                <input
+                  type="checkbox"
+                  checked={!!c.share_public}
+                  disabled={busy}
+                  onChange={(e) => {
+                    const share = e.target.checked;
+                    void run(async () => {
+                      await call("connections/share", { id: c.id, share });
+                      await load();
+                    });
+                  }}
+                />
+                Allow stories from this source in my published newspaper
+              </label>
               <p>
                 {c.status}
                 {c.error ? ": " + c.error : ""}

@@ -35,6 +35,15 @@ export async function NamedNewspaper({
           <Link href="/account">Manage visibility</Link>
         </p>
       )}
+      {paper.publishedAt && (
+        <p className="muted">
+          Edition published{" "}
+          {new Date(paper.publishedAt).toLocaleString("en-GB", {
+            timeZone: "UTC",
+          })}{" "}
+          UTC
+        </p>
+      )}
       <Newspaper
         key={paper.slug + "/" + (feed || "")}
         initialItems={JSON.parse(JSON.stringify(paper.items))}

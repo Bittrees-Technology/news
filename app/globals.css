@@ -586,3 +586,38 @@ input[readonly] {
 .panel form > .button-row {
   margin-top: 20px;
 }
+.check-line {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  margin: 14px 0;
+}
+.check-line input {
+  width: auto;
+  flex: none;
+}
+.score-detail {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 12px 0;
+}
+.ranking-chart {
+  width: 100%;
+  height: auto;
+  margin: 24px 0 4px;
+}
+.history-table {
+  overflow: auto;
+}
+.history-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.history-table td,
+.history-table th {
+  text-align: left;
+  border-bottom: 1px solid var(--rule);
+  padding: 8px;
+  white-space: nowrap;
+}

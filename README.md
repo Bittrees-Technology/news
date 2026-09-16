@@ -26,3 +26,7 @@ See [operations](docs/operations.md), [authority](docs/authority.md), and [deliv
 ## Provenance
 
 Product behavior and compact presentation were inspired by [Snax Daily](https://github.com/snackman/snax-daily). Application code is an original Bittrees implementation. The initial public-source directory uses factual publisher names and feed URLs observed in that reference and adds world/economy, climate, health, Portugal, security and data coverage. Publisher material remains owned by its respective rights holders.
+
+## Personal curation
+
+Account tabs include Rankings and AI connection. Ranking weights, filters, actual history, automatic publication and scoped user MCP access are documented in [ranking-and-mcp.md](docs/ranking-and-mcp.md). Named newspapers stay private unless the owner publishes or explicitly enables automatic publication. The personal scheduler is separate from the Bittrees news desk.

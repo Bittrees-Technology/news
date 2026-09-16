@@ -1,9 +1,25 @@
 {
   "framework": "nextjs",
   "crons": [
-    { "path": "/api/jobs/prepare", "schedule": "45 7,11,19 * * *" },
-    { "path": "/api/jobs/publish", "schedule": "57 7,11,19 * * *" },
-    { "path": "/api/jobs/deliver", "schedule": "0 12 * * *" },
-    { "path": "/api/jobs/dispatch", "schedule": "*/10 * * * *" }
+    {
+      "path": "/api/jobs/prepare",
+      "schedule": "45 7,11,19 * * *"
+    },
+    {
+      "path": "/api/jobs/publish",
+      "schedule": "57 7,11,19 * * *"
+    },
+    {
+      "path": "/api/jobs/deliver",
+      "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/jobs/dispatch",
+      "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/jobs/personal",
+      "schedule": "*/15 * * * *"
+    }
   ]
 }

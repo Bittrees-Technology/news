@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
 import { call } from "./client";
+import { factorNames, type Factor } from "@/lib/scoring";
 import { sourceName } from "@/lib/catalog";
 import type { Edition, Item } from "@/lib/model";
 type State = Record<string, { is_read: boolean; saved: boolean }>;
@@ -319,6 +320,27 @@ export function Newspaper({
                 </a>
               </h2>
               <p>{i.summary || i.excerpt}</p>
+              {i.ranking && (
+                <details className="score-detail">
+                  <summary>
+                    Article score {i.ranking.value.toFixed(1)} / 100 · Source
+                    consistency {i.ranking.sourceScore.toFixed(0)}
+                  </summary>
+                  <ul>
+                    {Object.entries(i.ranking.factors).map(([key, value]) => (
+                      <li key={key}>
+                        {factorNames[key as Factor]}: {value} / 100
+                      </li>
+                    ))}
+                  </ul>
+                  <p>
+                    These are curation signals, not a fact-check.{" "}
+                    <Link href="/account/rankings">
+                      Adjust weights and view history
+                    </Link>
+                  </p>
+                </details>
+              )}
               <div className="story-bottom">
                 <span>
                   {i.kind === "podcast"

@@ -30,3 +30,11 @@ One explicitly authorized email test was accepted by Resend on 16 September, pro
 Added owner-managed newspapers at `/<newspaper>` and named feeds at `/<newspaper>/<feed>`. They are private by default; owners can publish and unpublish them. Public pages exclude all account-private source records. Newspaper names and introductions are public only when published. Addresses are unique and permanent; display names remain editable. Account deletion cascades to newspaper/feed records.
 
 Account settings now have separate Your newspaper, Topics & interests, Sources & feeds, Delivery, and Account pages. Archive and Saved navigation appears only after sign-in. Authenticated two-account HTTP checks verified private-page access, reserved/colliding addresses, feed ownership, publication reversal and exclusion of private stories. No blockchain transaction is required for these URL paths.
+
+## Rankings, automation and personal MCP
+
+Balanced, adjustable article ranking and source-consistency scores are implemented. The account Rankings page shows recorded source/newspaper/feed score and position history; the initial 127 source observations are based on actual collection records. The ranking model is transparent and does not claim factual accuracy. See ranking-and-mcp.md for weights, sample interpretation and retention.
+
+Owners can enable daily, three-daily or hourly public snapshots; the separate personal scheduler runs every 15 minutes. Custom sources refresh independently from the Bittrees collector. Source-sharing permission is explicit, and revoking sharing removes that source's stories from the current public snapshot without discarding unrelated stories.
+
+The user MCP endpoint supports read, curate and separately authorized publish scopes with expiring, revocable keys. Official-client integration tests passed for scope boundaries, ownership, source selection, grounding, SSRF, token revocation and failure retention. Nine unit tests pass. This is manually provisioned bearer authentication, not OAuth; custom source ingestion supports public HTTPS RSS/Atom.

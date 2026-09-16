@@ -42,6 +42,17 @@ export default function Page() {
         account details and personal RSS connections remain private. You can
         unpublish your newspaper in Your newspaper settings.
       </p>
+      <h2>AI connections and ranking history</h2>
+      <p>
+        You can grant a revocable AI connection permission to read or curate
+        your own newspaper. Public publishing requires a separate permission.
+        Ranking history stores scores, sample counts and the scoring settings in
+        effect; it does not store your interest notes. AI activity logs record
+        tool names and outcomes, not prompts or connection keys. Custom sources
+        remain private unless you explicitly allow their stories in published
+        editions. Enabling automatic publication authorizes scheduled public
+        snapshots.
+      </p>
       <h2>Controls and retention</h2>
       <p>
         Delivery is opt-in per verified destination. You may pause it, remove a

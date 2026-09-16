@@ -19,6 +19,7 @@ export type Item = {
   summary_kind: string;
   published_at: string;
   owner_id?: string | null;
+  ranking?: import("./scoring").Score;
 };
 export type Edition = {
   id: string;
@@ -39,7 +40,9 @@ export const defaults = preferencesSchema.parse({});
 export function matches(i: Item, p: Preferences) {
   return (
     (!p.topics.length || p.topics.includes(i.topic)) &&
-    (!p.sources.length || !!i.owner_id || p.sources.includes(i.source_id)) &&
+    (!p.sources.length ||
+      p.sources.includes(i.source_id) ||
+      (!!i.owner_id && !p.sources.some((id) => id.startsWith("private:")))) &&
     !p.blocked.some((w) =>
       `${i.title} ${i.excerpt} ${i.summary || ""}`
         .toLowerCase()

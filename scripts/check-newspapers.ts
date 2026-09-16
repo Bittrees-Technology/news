@@ -86,6 +86,12 @@ try {
     "INSERT INTO items(id,source_id,topic,kind,title,url,excerpt,published_at,owner_id) VALUES($1,'private-fixture','Tech','article',$2,'https://example.invalid/private','Private evidence',now(),$3)",
     [id, secretTitle, a.id],
   );
+  const source = (
+    await pool().query(
+      "SELECT source_id FROM items WHERE owner_id IS NULL ORDER BY published_at DESC LIMIT 1",
+    )
+  ).rows[0].source_id;
+  await req("preferences", { ...defaults, sources: [source] }, a.cookie);
   assert.ok((await page("/" + slug, a.cookie)).text.includes(secretTitle));
   const feed = {
     name: "Custom science desk",

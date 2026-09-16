@@ -1,3 +1,5 @@
+import { rankingSchema } from "./scoring";
+import { rankedItems } from "./ranking";
 import { randomUUID, createHmac } from "node:crypto";
 import { pool, tx } from "./db";
 import { periodFor, preferencesSchema, selectItems, type Item } from "./model";
@@ -11,7 +13,7 @@ export function unsubscribeToken(id: string) {
 export async function queueDigests(now = new Date()) {
   const dests = (
     await pool().query(
-      "SELECT d.*,a.preferences FROM destinations d JOIN accounts a ON a.id=d.account_id WHERE d.enabled=true AND (d.kind='email' OR d.reachable=true) LIMIT 1000",
+      "SELECT d.*,a.preferences,a.ranking FROM destinations d JOIN accounts a ON a.id=d.account_id WHERE d.enabled=true AND (d.kind='email' OR d.reachable=true) LIMIT 1000",
     )
   ).rows;
   let queued = 0;
@@ -20,12 +22,22 @@ export async function queueDigests(now = new Date()) {
     if (!period) continue;
     const all = (
       await pool().query(
-        "SELECT * FROM items WHERE (owner_id IS NULL OR owner_id=$1) AND published_at>=$2 AND published_at<$3 ORDER BY published_at DESC LIMIT 2000",
+        "SELECT i.*,c.summary AS curated_summary FROM items i LEFT JOIN article_curation c ON c.item_id=i.id AND c.account_id=$1 WHERE (i.owner_id IS NULL OR i.owner_id=$1) AND COALESCE(c.excluded,false)=false AND i.published_at>=$2 AND i.published_at<$3 ORDER BY i.published_at DESC LIMIT 2000",
         [d.account_id, period.start, period.end],
       )
-    ).rows as Item[];
+    ).rows.map(({ curated_summary, ...i }) =>
+      curated_summary
+        ? { ...i, summary: curated_summary, summary_kind: "extractive" }
+        : i,
+    ) as Item[];
     const prefs = preferencesSchema.parse(d.preferences);
-    const selected = selectItems(all, prefs);
+    const selected = await rankedItems(
+      all,
+      prefs,
+      rankingSchema.parse(d.ranking),
+      d.account_id,
+      prefs.length,
+    );
     if (!selected.length) continue;
     const unsubscribe = `${process.env.APP_URL}/unsubscribe?id=${d.id}&token=${unsubscribeToken(d.id)}`;
     const date = period.end.toISOString().slice(0, 10);
