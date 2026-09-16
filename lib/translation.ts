@@ -104,10 +104,10 @@ async function attachTranslations(items: Item[]): Promise<Item[]> {
 export async function claimTranslation() {
   // A separate outbound worker can retry a failed item without blocking an edition.
   await pool().query(
-    "UPDATE translations SET status='failed' WHERE status='working' AND attempts>=3 AND claimed_at<now()-interval '5 minutes'",
+    "UPDATE translations SET status='failed' WHERE status='working' AND attempts>=3 AND claimed_at<now()-interval '10 minutes'",
   );
   const r = await pool().query(`WITH candidate AS (
-    SELECT key FROM translations WHERE (status='pending' OR status='working' AND claimed_at<now()-interval '5 minutes') AND attempts<3 ORDER BY created_at DESC FOR UPDATE SKIP LOCKED LIMIT 1
+    SELECT key FROM translations WHERE (status='pending' OR status='working' AND claimed_at<now()-interval '10 minutes') AND attempts<3 ORDER BY created_at DESC FOR UPDATE SKIP LOCKED LIMIT 1
   ) UPDATE translations t SET status='working',claimed_at=now(),lease=gen_random_uuid(),attempts=attempts+1 FROM candidate c WHERE t.key=c.key RETURNING t.key,t.lease,t.payload`);
   return r.rows[0] || null;
 }

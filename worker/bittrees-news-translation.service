@@ -2,7 +2,7 @@
 Description=Bittrees News public news translation worker
 After=network-online.target
 [Service]
-ExecStart=/usr/bin/python3 %h/.local/lib/bittrees-news/translate.py
+ExecStart=%h/.local/lib/bittrees-news/translation-env/bin/python %h/.local/lib/bittrees-news/translate.py
 Restart=on-failure
 RestartSec=30
 NoNewPrivileges=true
