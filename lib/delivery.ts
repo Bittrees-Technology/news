@@ -1,3 +1,5 @@
+import { newspaperEmail } from "./newspaper-email";
+import { subscriptionContent, subscriptionStillAllowed } from "./subscriptions";
 import { rankingSchema } from "./scoring";
 import { rankedItems } from "./ranking";
 import { randomUUID, createHmac } from "node:crypto";
@@ -13,7 +15,7 @@ export function unsubscribeToken(id: string) {
 export async function queueDigests(now = new Date()) {
   const dests = (
     await pool().query(
-      "SELECT d.*,a.preferences,a.ranking FROM destinations d JOIN accounts a ON a.id=d.account_id WHERE d.enabled=true AND (d.kind='email' OR d.reachable=true) LIMIT 1000",
+      "SELECT d.*,a.preferences,a.ranking FROM destinations d JOIN accounts a ON a.id=d.account_id WHERE d.enabled=true AND (d.kind='email' OR d.reachable=true) AND NOT EXISTS(SELECT 1 FROM news_subscriptions s WHERE s.destination_id=d.id) LIMIT 1000",
     )
   ).rows;
   let queued = 0;
@@ -68,7 +70,71 @@ export async function queueDigests(now = new Date()) {
     );
     queued += r.rowCount || 0;
   }
+  queued += await queueSubscriptions(now);
   return { queued };
+}
+export async function queueSubscriptions(now = new Date()) {
+  const subscriptions = (
+    await pool().query(
+      "SELECT s.*,d.revision AS destination_revision FROM news_subscriptions s JOIN destinations d ON d.id=s.destination_id WHERE s.enabled=true AND d.enabled=true AND (d.kind='email' OR d.reachable=true) ORDER BY s.created_at LIMIT 1000",
+    )
+  ).rows;
+  let queued = 0;
+  for (const s of subscriptions) {
+    const edition = await subscriptionContent(s, now);
+    if (!edition?.items.length) continue;
+    const unsubscribe = `${process.env.APP_URL}/unsubscribe?id=${s.id}&token=${unsubscribeToken(s.id)}`;
+    const text =
+      `${edition.name} — ${s.cadence} edition\n${edition.period.start.toISOString().slice(0, 10)} to ${edition.period.end.toISOString().slice(0, 10)} (UTC)\n\n` +
+      edition.items
+        .map(
+          (i) =>
+            `${i.title}\n${i.summary || i.excerpt}\n${i.user_edited ? "Edited by the newspaper owner.\n" : ""}${i.url}`,
+        )
+        .join("\n\n") +
+      `\n\nManage subscriptions: ${process.env.APP_URL}/account/delivery\nPause this subscription: ${unsubscribe}`;
+    const result = await pool().query(
+      "INSERT INTO deliveries(id,account_id,destination_id,revision,period,payload,subscription_id,subscription_revision) SELECT gen_random_uuid(),s.account_id,d.id,d.revision,$3,$4,s.id,s.revision FROM news_subscriptions s JOIN destinations d ON d.id=s.destination_id WHERE s.id=$1 AND s.revision=$2 AND s.enabled=true AND d.enabled=true ON CONFLICT(destination_id,period) DO NOTHING RETURNING id",
+      [
+        s.id,
+        s.revision,
+        `subscription:${s.id}:${edition.period.key}`,
+        JSON.stringify({
+          subject: `${edition.name} · ${s.cadence} · ${edition.period.end.toISOString().slice(0, 10)}`,
+          text,
+          unsubscribe,
+          itemIds: edition.items.map((i) => i.id),
+          html: newspaperEmail(
+            edition.name,
+            edition.items,
+            edition.period.end.toISOString().slice(0, 10),
+            unsubscribe,
+          ),
+        }),
+      ],
+    );
+    queued += result.rowCount || 0;
+  }
+  return queued;
+}
+export async function deliveryAuthorized(q: any, db: any = pool()) {
+  if (!q.subscription_id) return true;
+  if (
+    !(await subscriptionStillAllowed(
+      q.subscription_id,
+      q.subscription_revision,
+      db,
+    ))
+  )
+    return false;
+  const ids: string[] = q.payload.itemIds || [];
+  const n = (
+    await db.query(
+      "SELECT count(*)::int n FROM items i WHERE i.id=ANY($1::text[]) AND (i.owner_id IS NULL OR i.owner_id=$2 OR EXISTS(SELECT 1 FROM connections c WHERE c.account_id=i.owner_id AND 'private:'||c.id::text=i.source_id AND c.share_public=true))",
+      [ids, q.account_id],
+    )
+  ).rows[0].n;
+  return n === new Set(ids).size;
 }
 export async function claimDelivery(kind: string) {
   return tx(async (db) => {
@@ -82,7 +148,12 @@ export async function claimDelivery(kind: string) {
       q.kind === "email" &&
       (await db.query("SELECT 1 FROM suppressions WHERE value=$1", [q.value]))
         .rowCount;
-    if (!q.enabled || q.revision !== q.current_revision || suppressed) {
+    if (
+      !q.enabled ||
+      q.revision !== q.current_revision ||
+      suppressed ||
+      !(await deliveryAuthorized(q, db))
+    ) {
       await db.query(
         "UPDATE deliveries SET status='cancelled',error='Destination changed or delivery paused' WHERE id=$1",
         [q.id],
@@ -107,7 +178,7 @@ export async function dispatchEmails() {
           [q.destination_id, q.revision],
         )
       ).rowCount;
-      if (!valid) {
+      if (!valid || !(await deliveryAuthorized(q))) {
         await pool().query(
           "UPDATE deliveries SET status='cancelled' WHERE id=$1",
           [q.id],
@@ -120,6 +191,7 @@ export async function dispatchEmails() {
         q.payload.text,
         q.id,
         q.payload.unsubscribe,
+        q.payload.html,
       );
       await pool().query(
         "UPDATE deliveries SET status='sent',sent_at=now(),provider_id=$2 WHERE id=$1",
@@ -138,6 +210,17 @@ export async function dispatchEmails() {
 export async function unsubscribe(id: string, proof: string) {
   if (!proof || hash(proof) !== hash(unsubscribeToken(id))) return false;
   await tx(async (d) => {
+    const sub = await d.query(
+      "UPDATE news_subscriptions SET enabled=false,revision=revision+1 WHERE id=$1 RETURNING id",
+      [id],
+    );
+    if (sub.rowCount) {
+      await d.query(
+        "UPDATE deliveries SET status='cancelled' WHERE subscription_id=$1 AND status='pending'",
+        [id],
+      );
+      return;
+    }
     await d.query(
       "UPDATE destinations SET enabled=false,revision=revision+1 WHERE id=$1",
       [id],

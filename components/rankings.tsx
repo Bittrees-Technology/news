@@ -18,7 +18,7 @@ type Point = {
   samples: number;
   config: unknown;
 };
-export function Rankings() {
+export function Rankings({ showHistory = true }: { showHistory?: boolean }) {
   const [profile, setProfile] = useState<RankingProfile>(
       () => cachedData("ranking")?.profile ?? defaultRanking,
     ),
@@ -216,147 +216,151 @@ export function Rankings() {
           Save ranking preferences
         </button>
       </form>
-      <section className="panel">
-        <h2>Rankings over time</h2>
-        <p>
-          The latest recorded score per day is shown. No earlier history is
-          invented. Newspaper/feed scores average their selected articles;
-          public rankings may compare different owner-selected weights.
-        </p>
-        <button
-          disabled={busy}
-          onClick={() =>
-            void run(async () => {
-              await call("ranking/refresh", {});
-              await load();
-              setStatus("Current scores recorded.");
-            })
-          }
-        >
-          Refresh my scores
-        </button>
-        <div className="form-grid">
-          <label className="field">
-            Compare
-            <select
-              value={kind}
-              onChange={(e) => {
-                setKind(e.target.value);
-                setEntity("");
-              }}
-            >
-              <option value="source">Sources</option>
-              <option value="newspaper">Newspapers</option>
-              <option value="feed">Named feeds</option>
-            </select>
-          </label>
-          <label className="field">
-            Show history for
-            <select
-              value={chosen || ""}
-              onChange={(e) => setEntity(e.target.value)}
-            >
-              {!options.length && <option value="">No observations yet</option>}
-              {options.map(([key, p]) => (
-                <option key={key} value={key}>
-                  {p.name} (
-                  {p.owner_key === "public"
-                    ? "public comparison"
-                    : "your ranking"}
-                  )
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        {points.length ? (
-          <>
-            <svg
-              viewBox="0 0 640 180"
-              role="img"
-              aria-label="Score history from 0 to 100"
-              className="ranking-chart"
-            >
-              <title>Observed scores over time</title>
-              {[0, 50, 100].map((v) => (
-                <g key={v}>
-                  <line
-                    x1="35"
-                    x2="625"
-                    y1={160 - v * 1.4}
-                    y2={160 - v * 1.4}
-                    stroke="var(--rule)"
-                  />
-                  <text
-                    x="0"
-                    y={165 - v * 1.4}
-                    fill="currentColor"
-                    fontSize="12"
-                  >
-                    {v}
-                  </text>
-                </g>
-              ))}
-              <polyline
-                fill="none"
-                stroke="var(--accent)"
-                strokeWidth="2"
-                points={points
-                  .map((p, n) => `${chartX(p)},${160 - p.score * 1.4}`)
-                  .join(" ")}
-              />
-              {points.map((p, n) => (
-                <circle
-                  key={p.bucket}
-                  cx={chartX(p)}
-                  cy={160 - p.score * 1.4}
-                  r="3"
-                  fill="var(--accent)"
-                >
-                  <title>
-                    {new Date(p.bucket).toISOString()}: {p.score}
-                  </title>
-                </circle>
-              ))}
-            </svg>
-            <div className="history-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Recorded hour (UTC)</th>
-                    <th>Score</th>
-                    <th>Position</th>
-                    <th>Samples</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {points
-                    .slice(-30)
-                    .reverse()
-                    .map((p) => (
-                      <tr key={p.bucket}>
-                        <td>
-                          {new Date(p.bucket)
-                            .toISOString()
-                            .slice(0, 16)
-                            .replace("T", " ")}
-                        </td>
-                        <td>{p.score.toFixed(1)}</td>
-                        <td>#{p.position}</td>
-                        <td>{p.samples}</td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        ) : (
+      {showHistory && (
+        <section className="panel">
+          <h2>Rankings over time</h2>
           <p>
-            No history for this category yet. Name your newspaper and refresh
-            your scores to begin.
+            The latest recorded score per day is shown. No earlier history is
+            invented. Newspaper/feed scores average their selected articles;
+            public rankings may compare different owner-selected weights.
           </p>
-        )}
-      </section>
+          <button
+            disabled={busy}
+            onClick={() =>
+              void run(async () => {
+                await call("ranking/refresh", {});
+                await load();
+                setStatus("Current scores recorded.");
+              })
+            }
+          >
+            Refresh my scores
+          </button>
+          <div className="form-grid">
+            <label className="field">
+              Compare
+              <select
+                value={kind}
+                onChange={(e) => {
+                  setKind(e.target.value);
+                  setEntity("");
+                }}
+              >
+                <option value="source">Sources</option>
+                <option value="newspaper">Newspapers</option>
+                <option value="feed">Named feeds</option>
+              </select>
+            </label>
+            <label className="field">
+              Show history for
+              <select
+                value={chosen || ""}
+                onChange={(e) => setEntity(e.target.value)}
+              >
+                {!options.length && (
+                  <option value="">No observations yet</option>
+                )}
+                {options.map(([key, p]) => (
+                  <option key={key} value={key}>
+                    {p.name} (
+                    {p.owner_key === "public"
+                      ? "public comparison"
+                      : "your ranking"}
+                    )
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {points.length ? (
+            <>
+              <svg
+                viewBox="0 0 640 180"
+                role="img"
+                aria-label="Score history from 0 to 100"
+                className="ranking-chart"
+              >
+                <title>Observed scores over time</title>
+                {[0, 50, 100].map((v) => (
+                  <g key={v}>
+                    <line
+                      x1="35"
+                      x2="625"
+                      y1={160 - v * 1.4}
+                      y2={160 - v * 1.4}
+                      stroke="var(--rule)"
+                    />
+                    <text
+                      x="0"
+                      y={165 - v * 1.4}
+                      fill="currentColor"
+                      fontSize="12"
+                    >
+                      {v}
+                    </text>
+                  </g>
+                ))}
+                <polyline
+                  fill="none"
+                  stroke="var(--accent)"
+                  strokeWidth="2"
+                  points={points
+                    .map((p, n) => `${chartX(p)},${160 - p.score * 1.4}`)
+                    .join(" ")}
+                />
+                {points.map((p, n) => (
+                  <circle
+                    key={p.bucket}
+                    cx={chartX(p)}
+                    cy={160 - p.score * 1.4}
+                    r="3"
+                    fill="var(--accent)"
+                  >
+                    <title>
+                      {new Date(p.bucket).toISOString()}: {p.score}
+                    </title>
+                  </circle>
+                ))}
+              </svg>
+              <div className="history-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Recorded hour (UTC)</th>
+                      <th>Score</th>
+                      <th>Position</th>
+                      <th>Samples</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {points
+                      .slice(-30)
+                      .reverse()
+                      .map((p) => (
+                        <tr key={p.bucket}>
+                          <td>
+                            {new Date(p.bucket)
+                              .toISOString()
+                              .slice(0, 16)
+                              .replace("T", " ")}
+                          </td>
+                          <td>{p.score.toFixed(1)}</td>
+                          <td>#{p.position}</td>
+                          <td>{p.samples}</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : (
+            <p>
+              No history for this category yet. Name your newspaper and refresh
+              your scores to begin.
+            </p>
+          )}
+        </section>
+      )}
     </>
   );
 }

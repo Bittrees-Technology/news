@@ -235,7 +235,12 @@ export function NewspaperSettings({
                   ? "Save & enable automatic publication"
                   : "Save private newspaper"}
           </button>
-          {exists && <Link href={"/" + paper.slug}>Open front cover</Link>}
+          {exists && (
+            <>
+              <Link href="/account/preview">Generate & edit preview</Link>
+              <Link href={"/" + paper.slug}>Open front cover</Link>
+            </>
+          )}
         </div>
       </form>
       {exists && (
@@ -407,6 +412,11 @@ export function NewspaperSettings({
           </form>
         </section>
       )}
+      <p>
+        <Link href="/examples/daily-2026-09-17">
+          View the daily newspaper example
+        </Link>
+      </p>
       <p>
         Choose the stories on your front cover in{" "}
         <Link href="/account/topics">Topics & interests</Link> and{" "}

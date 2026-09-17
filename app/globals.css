@@ -100,7 +100,7 @@ nav {
 }
 .edition-head h1 {
   font:
-    600 clamp(32px, 5vw, 46px)/1.1 Georgia,
+    600 clamp(32px, 5vw, 46px) / 1.1 Georgia,
     serif;
   letter-spacing: -1.4px;
   margin: 5px 0 10px;
@@ -643,4 +643,196 @@ input[readonly] {
   flex-basis: 100%;
   font-size: 12px;
   color: var(--muted);
+}
+
+/* A printed-paper surface inside the account workspace, independent of UI theme. */
+.broadsheet {
+  background: #fffef8;
+  color: #181818;
+  border: 1px solid #aaa89e;
+  padding: 36px 40px;
+  margin: 24px auto;
+  max-width: 1180px;
+  font-family: Georgia, "Times New Roman", serif;
+}
+.paper-masthead {
+  text-align: center;
+  border-bottom: 5px double #181818;
+  margin-bottom: 22px;
+}
+.paper-masthead h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(32px, 5.5vw, 68px);
+  font-weight: 900;
+  letter-spacing: -2px;
+  line-height: 1.05;
+  margin: 14px 0;
+  color: #181818;
+}
+.paper-date {
+  font-size: 13px;
+  margin: 0;
+}
+.paper-deck {
+  font-size: 17px;
+  margin: 12px auto 20px;
+  max-width: 65ch;
+}
+.paper-edition {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  border-top: 1px solid #181818;
+  padding: 8px 0;
+  font-size: 12px;
+}
+.paper-columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+.paper-story {
+  border-bottom: 1px solid #9a998f;
+  padding-bottom: 22px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.paper-lead {
+  grid-column: span 2;
+}
+.paper-story h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 25px;
+  line-height: 1.12;
+  margin: 7px 0 10px;
+  letter-spacing: -0.5px;
+}
+.paper-lead h2 {
+  font-size: clamp(30px, 3.4vw, 42px);
+}
+.broadsheet a {
+  color: inherit;
+  text-decoration: none;
+}
+.broadsheet a:hover {
+  text-decoration: underline;
+}
+.paper-section {
+  font-weight: bold;
+  font-size: 13px;
+  margin: 0;
+}
+.paper-byline {
+  font-size: 12px;
+  color: #505047;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #cfcdc2;
+}
+.paper-copy {
+  font-size: 16px;
+  line-height: 1.65;
+  white-space: pre-line;
+}
+.paper-lead .paper-copy {
+  columns: 2;
+  column-gap: 24px;
+}
+.paper-edit-note,
+.paper-colophon {
+  font-size: 12px;
+  color: #505047;
+}
+.paper-colophon {
+  border-top: 2px solid #181818;
+  margin-top: 24px;
+  padding-top: 12px;
+}
+.preview-toolbar {
+  display: grid;
+  gap: 18px;
+}
+.paper-editor fieldset {
+  border: 1px solid var(--rule);
+  padding: 16px;
+  margin: 16px 0;
+}
+.paper-editor textarea {
+  min-height: 140px;
+}
+@media (max-width: 700px) {
+  .broadsheet {
+    padding: 20px 16px;
+  }
+  .paper-columns {
+    grid-template-columns: 1fr;
+  }
+  .paper-lead {
+    grid-column: auto;
+  }
+  .paper-lead .paper-copy {
+    columns: 1;
+  }
+  .paper-edition {
+    flex-wrap: wrap;
+  }
+  .paper-masthead h1 {
+    letter-spacing: -1px;
+  }
+}
+@media print {
+  body {
+    background: white !important;
+  }
+  body > header,
+  body > footer,
+  .site-header,
+  .preview-toolbar,
+  .preview-publish,
+  .paper-editor,
+  .notice,
+  .account-tabs {
+    display: none !important;
+  }
+  .broadsheet {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    max-width: none;
+  }
+  .paper-story {
+    break-inside: avoid;
+  }
+  .paper-columns {
+    display: block;
+    columns: 2;
+  }
+  .paper-lead .paper-copy {
+    columns: 1;
+  }
+  .paper-story a::after {
+    content: none;
+  }
+}
+
+@media print {
+  .site > header,
+  .site > footer,
+  .preview-toolbar + p {
+    display: none !important;
+  }
+  .site {
+    max-width: none;
+    padding: 0;
+  }
+}
+
+a.primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  border-radius: 6px;
+  text-decoration: none;
+  margin-right: 10px;
 }

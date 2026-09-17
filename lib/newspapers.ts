@@ -9,6 +9,7 @@ import { HttpError, preferencesSchema, selectItems, type Item } from "./model";
 import { sources, topics } from "./catalog";
 const reserved = new Set([
   "account",
+  "examples",
   "api",
   "archive",
   "saved",
@@ -216,4 +217,27 @@ export async function newspaperPage(
     items: selected,
     publishedAt: paper.last_published_at,
   };
+}
+
+export const newspaperDetailsSchema = newspaperSchema.pick({
+  name: true,
+  slug: true,
+  description: true,
+});
+export async function saveNewspaperDetails(accountId: string, input: unknown) {
+  const b = newspaperDetailsSchema.parse(input),
+    existing = await newspaperSettings(accountId);
+  if (!existing.newspaper)
+    return saveNewspaper(accountId, {
+      ...b,
+      published: false,
+      auto_publish: false,
+    });
+  if (existing.newspaper.slug !== b.slug)
+    throw new HttpError(400, "Your newspaper address cannot be changed.");
+  await pool().query(
+    "UPDATE newspapers SET name=$2,description=$3,updated_at=now(),publication_version=publication_version+1 WHERE account_id=$1",
+    [accountId, b.name, b.description],
+  );
+  return newspaperSettings(accountId);
 }

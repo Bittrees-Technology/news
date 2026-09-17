@@ -1,4 +1,5 @@
 "use client";
+import { Subscriptions } from "./subscriptions";
 import { StaffPanel } from "./staff-panel";
 import { Analytics } from "./analytics";
 import { AiConnection } from "./ai-connection";
@@ -313,19 +314,18 @@ export function Account({
         </div>
       </div>
       <nav className="account-tabs" aria-label="Your newspaper settings">
-        {accountTabs
-          .map(([key, label, href]) => (
-            <Link
-              key={key}
-              href={href}
-              prefetch={true}
-              onMouseEnter={() => prefetchAccountSection(key)}
-              onFocus={() => prefetchAccountSection(key)}
-              aria-current={section === key ? "page" : undefined}
-            >
-              {label}
-            </Link>
-          ))}
+        {accountTabs.map(([key, label, href]) => (
+          <Link
+            key={key}
+            href={href}
+            prefetch={true}
+            onMouseEnter={() => prefetchAccountSection(key)}
+            onFocus={() => prefetchAccountSection(key)}
+            aria-current={section === key ? "page" : undefined}
+          >
+            {label}
+          </Link>
+        ))}
       </nav>
       {statusBox}
       {section === "settings" && (
@@ -334,7 +334,9 @@ export function Account({
       {section === "newspaper" && (
         <NewspaperSettings connections={data.connections} />
       )}
-      {section === "analytics" && <Analytics role={data.account?.role || "member"} />}
+      {section === "analytics" && (
+        <Analytics role={data.account?.role || "member"} />
+      )}
       {section === "ai" && <AiConnection />}
       {(section === "topics" || section === "sources") && (
         <form
@@ -562,8 +564,14 @@ export function Account({
       )}
       {section === "delivery" && (
         <>
+          <Subscriptions
+            destinationVersion={JSON.stringify(
+              (data.destinations || []).map((d) => [d.id, d.enabled]),
+            )}
+            onChange={load}
+          />
           <section className="panel">
-            <h2>Digest delivery</h2>
+            <h2>Verified delivery destinations</h2>
             <p>
               Email comes from main@bittrees.org. Wallet delivery uses Chirpy /
               XMTP when the Bittrees sender is active. Each destination is

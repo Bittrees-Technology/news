@@ -106,7 +106,7 @@ export async function buildPersonalEdition(
       p,
       c.profile,
       c.scores,
-      100,
+      p.length,
     ).map(({ owner_id, ...i }) => i);
   };
   return {
@@ -235,7 +235,7 @@ export async function publishPersonal(accountId: string, automatic = false) {
       "No eligible public stories match your filters. The previous edition is retained.",
     );
   const result = await pool().query(
-    "UPDATE newspapers SET snapshot=$2,published=true,last_published_at=now(),publish_error=NULL,next_publish_at=$3 WHERE account_id=$1 AND publication_version=$4 AND ($5=false OR (auto_publish=true AND (next_publish_at IS NULL OR next_publish_at<=now()))) RETURNING slug",
+    "WITH published AS (UPDATE newspapers SET snapshot=$2,published=true,last_published_at=now(),publish_error=NULL,next_publish_at=$3 WHERE account_id=$1 AND publication_version=$4 AND ($5=false OR (auto_publish=true AND (next_publish_at IS NULL OR next_publish_at<=now()))) RETURNING account_id) INSERT INTO newspaper_editions(account_id,snapshot) SELECT account_id,$2 FROM published RETURNING id",
     [
       accountId,
       JSON.stringify(edition),

@@ -367,6 +367,13 @@ export function Newspaper({
           clear selection
         </p>
       )}
+      {mode === "public" && (
+        <p>
+          <Link className="primary" href="/account/delivery">
+            Subscribe — daily, weekly or monthly
+          </Link>
+        </p>
+      )}
       {message && (
         <p role="status" className="notice">
           {message} <Link href="/account">Your account</Link>
@@ -460,7 +467,6 @@ export function Newspaper({
           ))}
         </section>
       )}
-
     </>
   );
 }

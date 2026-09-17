@@ -7,6 +7,7 @@ type Key = {
   scopes: string[];
   expires_at: string;
   last_used_at: string | null;
+  validated_at?: string | null;
 };
 export function AiConnection() {
   const [keys, setKeys] = useState<Key[]>(
@@ -15,6 +16,7 @@ export function AiConnection() {
     [name, setName] = useState("My AI curator"),
     [curate, setCurate] = useState(true),
     [publish, setPublish] = useState(false),
+    [delivery, setDelivery] = useState(false),
     [days, setDays] = useState(30),
     [secret, setSecret] = useState(""),
     [endpoint, setEndpoint] = useState("https://news.bittrees.org/api/mcp"),
@@ -49,7 +51,9 @@ export function AiConnection() {
         <p>
           Your AI can read rankings, add private RSS/Atom sources, refresh them
           immediately, adjust interests and feeds, and select source-grounded
-          summaries. Its work runs independently of the Bittrees news desk.
+          summaries. It can name your paper, generate a preview, and edit its
+          contents. Subscription management requires the separate delivery
+          permission.
         </p>
         <p>
           This connection works with MCP clients supporting an HTTP endpoint and
@@ -72,6 +76,7 @@ export function AiConnection() {
                   "read",
                   ...(curate ? ["curate"] : []),
                   ...(publish ? ["publish"] : []),
+                  ...(delivery ? ["delivery"] : []),
                 ],
               });
               setSecret(d.token);
@@ -108,6 +113,14 @@ export function AiConnection() {
               onChange={(e) => setPublish(e.target.checked)}
             />
             Allow my AI to publish my newspaper publicly
+          </label>
+          <label className="check-line">
+            <input
+              type="checkbox"
+              checked={delivery}
+              onChange={(e) => setDelivery(e.target.checked)}
+            />
+            Allow my AI to manage subscriptions to my verified destinations
           </label>
           <label className="field">
             Connection expires
@@ -160,6 +173,11 @@ export function AiConnection() {
         {keys.map((k) => (
           <div className="connection" key={k.id}>
             <strong>{k.name}</strong>
+            <p>
+              {k.validated_at
+                ? "Validated: a tool call succeeded"
+                : "Awaiting validation: connect your AI and ask it to read your newspaper"}
+            </p>
             <p>
               {k.scopes.join(", ")} · Expires{" "}
               {new Date(k.expires_at).toLocaleDateString()}

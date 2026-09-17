@@ -16,6 +16,8 @@ export type Item = {
   url: string;
   excerpt: string;
   summary?: string;
+  original_title?: string;
+  user_edited?: boolean;
   summary_kind: string;
   published_at: string;
   owner_id?: string | null;

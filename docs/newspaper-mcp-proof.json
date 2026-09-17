@@ -1,0 +1,77 @@
+{
+  "date": "2026-09-17",
+  "passed": true,
+  "events": [
+    {
+      "action": "initialize_and_list_tools",
+      "passed": true,
+      "tools": [
+        "set_newspaper",
+        "get_delivery",
+        "generate_newspaper",
+        "get_preview",
+        "edit_preview",
+        "get_newspaper",
+        "list_articles",
+        "add_source",
+        "refresh_source",
+        "set_preferences",
+        "set_feed",
+        "set_ranking",
+        "curate_summary",
+        "refresh_rankings"
+      ]
+    },
+    {
+      "action": "set_newspaper",
+      "passed": true
+    },
+    {
+      "action": "set_preferences",
+      "passed": true
+    },
+    {
+      "action": "add_source",
+      "passed": true
+    },
+    {
+      "action": "refresh_source",
+      "passed": true
+    },
+    {
+      "action": "set_feed",
+      "passed": true
+    },
+    {
+      "action": "set_feed",
+      "passed": true
+    },
+    {
+      "action": "set_ranking",
+      "passed": true
+    },
+    {
+      "action": "get_newspaper",
+      "passed": true
+    },
+    {
+      "action": "get_delivery",
+      "passed": true
+    },
+    {
+      "action": "generate_newspaper",
+      "passed": true
+    },
+    {
+      "action": "edit_preview",
+      "passed": true
+    },
+    {
+      "action": "get_preview",
+      "passed": true
+    }
+  ],
+  "articleCount": 10,
+  "emailsSent": 0,
+  "fixtureRemoved": true
+}

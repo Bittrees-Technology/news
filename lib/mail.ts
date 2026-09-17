@@ -9,6 +9,7 @@ export async function sendEmail(
   text: string,
   id: string,
   unsubscribe?: string,
+  html?: string,
 ) {
   if (!emailReady())
     throw new HttpError(
@@ -37,6 +38,7 @@ export async function sendEmail(
       to: [to],
       subject,
       text,
+      ...(html ? {html} : {}),
       ...(unsubscribe
         ? {
             headers: {

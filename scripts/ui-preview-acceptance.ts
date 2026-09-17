@@ -1,0 +1,101 @@
+import { randomUUID, randomBytes } from "node:crypto";
+import { pool } from "../lib/db";
+import { hash } from "../lib/auth";
+// Uses disposable records, never an existing user's login or settings.
+if (process.env.NEWS_BROWSER_ACCEPTANCE !== "1")
+  throw Error(
+    "Set NEWS_BROWSER_ACCEPTANCE=1 to create and remove a live acceptance account.",
+  );
+const { chromium } = await import(
+  process.env.PLAYWRIGHT_MODULE || "playwright"
+);
+const account = randomUUID(),
+  session = randomBytes(32).toString("hex");
+let browser: any;
+try {
+  await pool().query("INSERT INTO accounts(id) VALUES($1)", [account]);
+  await pool().query(
+    "INSERT INTO sessions(hash,account_id,expires_at) VALUES($1,$2,now()+interval '10 minutes')",
+    [hash(session), account],
+  );
+  browser = await chromium.launch({
+    headless: true,
+    executablePath: process.env.CHROMIUM_EXECUTABLE,
+  });
+  const context = await browser.newContext({
+    viewport: { width: 1360, height: 1000 },
+  });
+  await context.addCookies([
+    {
+      name: "__Host-news-session",
+      value: session,
+      domain: "news.bittrees.org",
+      secure: true,
+      path: "/",
+      httpOnly: true,
+      sameSite: "Lax",
+    },
+  ]);
+  const page = await context.newPage();
+  await page.route("https://insights.bittrees.org/**", (r: any) => r.abort());
+  await page.goto("https://news.bittrees.org/account");
+  await page
+    .getByLabel("Newspaper name", { exact: true })
+    .fill("UI proof " + account.slice(0, 8));
+  await page
+    .getByLabel("Front-cover introduction")
+    .fill("A private browser acceptance paper.");
+  await page
+    .getByRole("button", { name: "Save private newspaper", exact: true })
+    .click();
+  await page.getByRole("link", { name: "Generate & edit preview" }).click();
+  await page
+    .getByRole("button", { name: "Generate preview", exact: true })
+    .click();
+  await page.locator(".paper-story").first().waitFor({ timeout: 30000 });
+  await page
+    .getByRole("button", { name: "Edit contents", exact: true })
+    .click();
+  await page
+    .getByLabel("Headline", { exact: true })
+    .first()
+    .fill("Browser verified headline edit");
+  await page.getByRole("button", { name: "Save edits", exact: true }).click();
+  await page.getByText("Edits saved privately.", { exact: true }).waitFor();
+  await page.reload();
+  await page
+    .locator(".broadsheet")
+    .getByRole("link", { name: "Browser verified headline edit", exact: true })
+    .waitFor();
+  await page.goto("https://news.bittrees.org/account/delivery");
+  await page
+    .getByRole("heading", { name: "Newspaper subscriptions", exact: true })
+    .waitFor();
+  await page
+    .getByText(
+      "Verify an email or wallet destination below before subscribing.",
+      { exact: true },
+    )
+    .waitFor();
+  await page.goto("https://news.bittrees.org/account/analytics");
+  await page
+    .getByRole("button", { name: "Save ranking preferences", exact: true })
+    .waitFor();
+  console.log(
+    JSON.stringify({
+      passed: true,
+      checks: [
+        "account form saved private paper",
+        "preview generated",
+        "headline edit survived reload",
+        "verified destination required",
+        "member ranking form available",
+      ],
+      emailsSent: 0,
+    }),
+  );
+} finally {
+  if (browser) await browser.close();
+  await pool().query("DELETE FROM accounts WHERE id=$1", [account]);
+  await pool().end();
+}

@@ -1,3 +1,5 @@
+import { getDraft, generateDraft, editDraft, publishDraft } from "./drafts";
+import { deliverySettings, saveSubscription } from "./subscriptions";
 import { sourceHealth } from "./source-health";
 import {
   roles,
@@ -70,6 +72,7 @@ import {
   queueDigests,
   dispatchEmails,
   claimDelivery,
+  deliveryAuthorized,
   unsubscribe,
 } from "./delivery";
 export function json(
@@ -84,7 +87,7 @@ export function json(
 }
 async function body(r: Request) {
   const text = await r.text();
-  if (text.length > 20000) throw new HttpError(413, "Request too large.");
+  if (text.length > 250000) throw new HttpError(413, "Request too large.");
   try {
     return JSON.parse(text);
   } catch {
@@ -184,13 +187,14 @@ export async function api(r: Request) {
     if (path === "worker/validate" && method === "POST") {
       authorizeBearer(r, "WORKER_SECRET");
       const b = z.object({ id: z.uuid() }).parse(await body(r));
+      const delivery = (
+        await pool().query(
+          "SELECT q.* FROM deliveries q JOIN destinations d ON d.id=q.destination_id WHERE q.id=$1 AND q.status='sending' AND d.kind='wallet' AND d.enabled=true AND d.reachable=true AND q.revision=d.revision",
+          [b.id],
+        )
+      ).rows[0];
       return json({
-        valid: !!(
-          await pool().query(
-            "SELECT 1 FROM deliveries q JOIN destinations d ON d.id=q.destination_id WHERE q.id=$1 AND q.status='sending' AND d.enabled=true AND d.reachable=true AND q.revision=d.revision",
-            [b.id],
-          )
-        ).rowCount,
+        valid: !!delivery && (await deliveryAuthorized(delivery)),
       });
     }
     if (path === "worker/claim" && method === "POST") {
@@ -338,10 +342,35 @@ export async function api(r: Request) {
     const a = await currentAccount(r);
     if (path === "analytics" && method === "GET") {
       const edition = await latestEdition();
-      if (edition && canScores(a!.role)) edition.data.items = await publicRanked(edition.data.items);
-      return json({ health: await sourceHealth(), edition: scoreVisibility(edition, a!.role) });
+      if (edition && canScores(a!.role))
+        edition.data.items = await publicRanked(edition.data.items);
+      return json({
+        health: await sourceHealth(),
+        edition: scoreVisibility(edition, a!.role),
+      });
     }
     if (method !== "GET") checkOrigin(r);
+    if (path === "subscriptions" && method === "GET")
+      return json(await deliverySettings(a!.id));
+    if (path === "subscriptions" && method === "POST")
+      return json(await saveSubscription(a!.id, await body(r)));
+    if (path === "newspaper/draft" && method === "GET")
+      return json(scoreVisibility(await getDraft(a!.id), a!.role));
+    if (path === "newspaper/draft" && method === "POST")
+      return json(
+        scoreVisibility(await editDraft(a!.id, await body(r)), a!.role),
+      );
+    if (path === "newspaper/generate" && method === "POST") {
+      await rateLimit("draft:" + a!.id, 10);
+      return json(scoreVisibility(await generateDraft(a!.id), a!.role));
+    }
+    if (path === "newspaper/publish-draft" && method === "POST") {
+      const b = z
+        .object({ revision: z.number().int().min(0) })
+        .parse(await body(r));
+      return json(await publishDraft(a!.id, b.revision));
+    }
+
     if (path === "staff/roles") {
       if (a!.role !== "super_admin")
         throw new HttpError(403, "Super-admin access required.");
@@ -438,8 +467,6 @@ export async function api(r: Request) {
         return json({ ok: true });
       }
     }
-    if (path === "ranking" || path === "ranking/refresh")
-      requireScores(a!.role);
     if (path === "ranking" && method === "GET")
       return json({
         profile: rankingSchema.parse(
@@ -449,7 +476,7 @@ export async function api(r: Request) {
             ])
           ).rows[0].ranking,
         ),
-        history: await historyFor(a!.id),
+        history: canScores(a!.role) ? await historyFor(a!.id) : [],
       });
     if (path === "ranking" && method === "POST") {
       const b = rankingSchema.parse(await body(r));
@@ -476,7 +503,7 @@ export async function api(r: Request) {
       return json({
         tokens: (
           await pool().query(
-            "SELECT id,name,scopes,expires_at,last_used_at FROM mcp_tokens WHERE account_id=$1 ORDER BY created_at DESC",
+            "SELECT id,name,scopes,expires_at,last_used_at,validated_at FROM mcp_tokens WHERE account_id=$1 ORDER BY created_at DESC",
             [a!.id],
           )
         ).rows,

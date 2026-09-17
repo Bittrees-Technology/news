@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { viewer } from "@/lib/viewer";
 import { newspaperPage } from "@/lib/newspapers";
-import { Newspaper } from "./newspaper";
+import { Broadsheet } from "./broadsheet";
 export async function NamedNewspaper({
   slug,
   feed,
@@ -46,20 +46,25 @@ export async function NamedNewspaper({
           UTC
         </p>
       )}
-      <Newspaper
-        key={paper.slug + "/" + (feed || "")}
-        initialItems={JSON.parse(
+      {paper.published && (
+        <p>
+          <Link
+            className="primary"
+            href={`/account/delivery?paper=${encodeURIComponent(paper.slug)}${feed ? "&feed=" + encodeURIComponent(feed) : ""}`}
+          >
+            Subscribe to {paper.feedName || paper.name}
+          </Link>
+        </p>
+      )}
+      <Broadsheet
+        name={paper.feedName ? `${paper.name} / ${paper.feedName}` : paper.name}
+        description={paper.description}
+        date={paper.publishedAt || new Date().toISOString()}
+        items={JSON.parse(
           JSON.stringify(
             scoreVisibility(await withTranslations(paper.items), account?.role),
           ),
         )}
-        title={
-          paper.feedName ? `${paper.name} / ${paper.feedName}` : paper.name
-        }
-        description={
-          paper.description || "A personal newspaper, curated with TBN."
-        }
-        mode="named"
       />
     </>
   );

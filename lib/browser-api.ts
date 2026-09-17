@@ -53,7 +53,9 @@ export class BrowserApi {
     this.notify();
   };
   private observe(value: any) {
-    const identity = value.account ? `${value.account.id}:${value.account.role || "member"}` : null;
+    const identity = value.account
+      ? `${value.account.id}:${value.account.role || "member"}`
+      : null;
     if (this.identity !== undefined && this.identity !== identity) this.reset();
     this.identity = identity;
     this.entries.set("session", {
@@ -119,11 +121,13 @@ export class BrowserApi {
               ? ["newspaper", "ranking"]
               : path.startsWith("connections")
                 ? ["account", "newspaper", "ranking", "sources"]
-                : path === "preferences"
-                  ? ["account", "newspaper", "ranking"]
-                  : path.startsWith("destinations")
-                    ? ["account"]
-                    : [];
+                : path === "subscriptions"
+                  ? ["account"]
+                  : path === "preferences"
+                    ? ["account", "newspaper", "ranking"]
+                    : path.startsWith("destinations")
+                      ? ["account"]
+                      : [];
         this.invalidate(invalidations);
       }
       return d;

@@ -66,5 +66,13 @@ CREATE TABLE IF NOT EXISTS ranking_history(owner_key text NOT NULL,kind text NOT
 CREATE INDEX IF NOT EXISTS ranking_history_recent ON ranking_history(owner_key,bucket DESC);
 CREATE TABLE IF NOT EXISTS mcp_tokens(id uuid PRIMARY KEY,account_id uuid NOT NULL REFERENCES accounts ON DELETE CASCADE,name text NOT NULL,hash text UNIQUE NOT NULL,scopes text[] NOT NULL,created_at timestamptz NOT NULL DEFAULT now(),expires_at timestamptz NOT NULL,last_used_at timestamptz);
 CREATE TABLE IF NOT EXISTS curation_audit(id uuid PRIMARY KEY,account_id uuid NOT NULL REFERENCES accounts ON DELETE CASCADE,actor text NOT NULL,action text NOT NULL,status text NOT NULL,created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS news_subscriptions(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),account_id uuid NOT NULL REFERENCES accounts ON DELETE CASCADE,destination_id uuid NOT NULL REFERENCES destinations ON DELETE CASCADE,target text NOT NULL CHECK(target IN ('main','personal','newspaper','feed')),target_key text NOT NULL,newspaper_owner uuid REFERENCES accounts ON DELETE CASCADE,feed_id uuid REFERENCES newspaper_feeds ON DELETE CASCADE,cadence text NOT NULL CHECK(cadence IN ('daily','weekly','monthly')),enabled boolean NOT NULL DEFAULT false,revision int NOT NULL DEFAULT 1,created_at timestamptz NOT NULL DEFAULT now(),UNIQUE(account_id,destination_id,target_key));
+ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS subscription_id uuid REFERENCES news_subscriptions ON DELETE CASCADE;
+ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS subscription_revision int;
+CREATE TABLE IF NOT EXISTS newspaper_editions(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),account_id uuid NOT NULL REFERENCES accounts ON DELETE CASCADE,published_at timestamptz NOT NULL DEFAULT now(),snapshot jsonb NOT NULL);
+CREATE INDEX IF NOT EXISTS newspaper_editions_period ON newspaper_editions(account_id,published_at DESC);
+ALTER TABLE newspapers ADD COLUMN IF NOT EXISTS draft jsonb;
+ALTER TABLE newspapers ADD COLUMN IF NOT EXISTS draft_revision int NOT NULL DEFAULT 0;
+ALTER TABLE mcp_tokens ADD COLUMN IF NOT EXISTS validated_at timestamptz;
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
 `;
