@@ -17,6 +17,7 @@ export default async function Page() {
   } catch {}
   return (
     <Newspaper
+      live
       edition={
         edition
           ? JSON.parse(JSON.stringify(scoreVisibility(edition, account?.role)))

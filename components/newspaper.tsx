@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { call } from "./client";
 import { sourceName } from "@/lib/catalog";
 import {
@@ -19,6 +20,7 @@ export function Newspaper({
   title,
   description,
   health,
+  live = false,
 }: {
   edition?: Edition | null;
   initialItems?: Item[];
@@ -26,7 +28,9 @@ export function Newspaper({
   title?: string;
   description?: string;
   health?: SourceHealth | null;
+  live?: boolean;
 }) {
+  const router = useRouter();
   const [items, setItems] = useState<Item[]>(
       initialItems || edition?.data.items || [],
     ),
@@ -42,6 +46,39 @@ export function Newspaper({
     [personal, setPersonal] = useState(false),
     [help, setHelp] = useState(false);
   const refs = useRef(new Map<string, HTMLElement>());
+  useEffect(() => {
+    if (mode === "public" && !personal) {
+      setItems(edition?.data.items || []);
+      setCursor(-1);
+    }
+  }, [edition, mode, personal]);
+  useEffect(() => {
+    if (!live || personal) return;
+    let stopped = false, pending = false;
+    const controller = new AbortController();
+    async function check() {
+      if (document.visibilityState !== "visible" || pending) return;
+      pending = true;
+      try {
+        const response = await fetch("/api/health", { cache: "no-store", signal: controller.signal });
+        if (!response.ok) return;
+        const latest = await response.json();
+        if (!stopped && latest.publishedAt && latest.publishedAt !== edition?.published_at) router.refresh();
+      } catch { /* Keep the current edition readable during network outages. */ }
+      finally { pending = false; }
+    }
+    void check();
+    const timer = window.setInterval(check, 60_000);
+    window.addEventListener("focus", check);
+    document.addEventListener("visibilitychange", check);
+    return () => {
+      stopped = true;
+      controller.abort();
+      window.clearInterval(timer);
+      window.removeEventListener("focus", check);
+      document.removeEventListener("visibilitychange", check);
+    };
+  }, [live, personal, edition?.published_at, router]);
   useEffect(() => {
     try {
       setState(
