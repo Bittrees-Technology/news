@@ -3,7 +3,8 @@ import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { call, cachedData } from "@/lib/browser-api";
 import { topics, sources } from "@/lib/catalog";
-import { defaults, type Preferences } from "@/lib/model";
+import { Broadsheet } from "./broadsheet";
+import { defaults, type Item, type Preferences } from "@/lib/model";
 type Paper = {
   name: string;
   slug: string;
@@ -47,6 +48,11 @@ export function NewspaperSettings({
       name: c.name + " (your source)",
     })),
   ];
+  const [preview, setPreview] = useState<{
+    name: string;
+    items: Item[];
+    builtAt: string;
+  } | null>(null);
   const [paper, setPaper] = useState<Paper>(
     () =>
       cachedData("newspaper")?.newspaper ?? {
@@ -68,6 +74,12 @@ export function NewspaperSettings({
     [feed, setFeed] = useState<Feed>(freshFeed),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (preview)
+      document
+        .getElementById("filtered-feed-preview")
+        ?.scrollIntoView({ behavior: "smooth" });
+  }, [preview]);
   async function load() {
     const d = await call("newspaper");
     if (d.newspaper) {
@@ -245,11 +257,27 @@ export function NewspaperSettings({
       </form>
       {exists && (
         <section className="panel">
-          <h2>Your named feeds</h2>
+          <h2>Your named feeds ({feeds.length}/20)</h2>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              setFeed(freshFeed());
+              setPreview(null);
+              setMessage("");
+              document
+                .getElementById("named-feed-form")
+                ?.scrollIntoView({ behavior: "smooth" });
+            }}
+          >
+            Add another feed
+          </button>
           <p>
             Give each section a custom name, such as “Local futures” or “Science
             desk”. Each gets its own page and follows your newspaper’s
-            visibility.
+            visibility. A feed’s name is only its label; choose topics, sources
+            or required keywords below to filter its stories. Saving filters
+            does not replace an already published edition.
           </p>
           {feeds.map((f) => (
             <div className="connection" key={f.id}>
@@ -270,6 +298,18 @@ export function NewspaperSettings({
                   disabled={busy}
                   onClick={() =>
                     void run(async () => {
+                      setPreview(
+                        await call("newspaper/feeds/preview", { id: f.id }),
+                      );
+                    })
+                  }
+                >
+                  Preview saved filters
+                </button>
+                <button
+                  disabled={busy}
+                  onClick={() =>
+                    void run(async () => {
                       await call("newspaper/feeds", { id: f.id }, "DELETE");
                       if (feed.id === f.id) setFeed(freshFeed());
                       await load();
@@ -283,17 +323,29 @@ export function NewspaperSettings({
             </div>
           ))}
           <form
+            id="named-feed-form"
+            onInvalid={(e) =>
+              setMessage((e.target as HTMLInputElement).validationMessage)
+            }
             onSubmit={(e) => {
               e.preventDefault();
               void run(async () => {
                 await call("newspaper/feeds", feed);
                 setFeed(freshFeed());
                 await load();
-                setMessage("Feed saved.");
+                setPreview(null);
+                setMessage(
+                  "Feed saved. Use Preview saved filters to check its stories. Publish a new newspaper edition when you want readers to see the changes.",
+                );
               });
             }}
           >
             <h3>{feed.id ? "Edit feed" : "Create a feed"}</h3>
+            {message && (
+              <p role="status" className="notice">
+                {message}
+              </p>
+            )}
             <label className="field">
               Feed / topic name
               <input
@@ -305,7 +357,15 @@ export function NewspaperSettings({
                   setFeed({
                     ...feed,
                     name: e.target.value,
-                    ...(!feed.id ? { slug: slugify(e.target.value) } : {}),
+                    ...(!feed.id
+                      ? {
+                          slug:
+                            slugify(e.target.value).length > 0 &&
+                            slugify(e.target.value).length < 3
+                              ? slugify(e.target.value) + "-feed"
+                              : slugify(e.target.value),
+                        }
+                      : {}),
                   })
                 }
                 placeholder="e.g. Science desk"
@@ -324,6 +384,7 @@ export function NewspaperSettings({
               />
               <span className="muted">
                 news.bittrees.org/{paper.slug}/{feed.slug || "feed-name"}
+                {" · Use 3–60 lowercase letters, numbers or hyphens."}
               </span>
             </label>
             <fieldset>
@@ -356,9 +417,31 @@ export function NewspaperSettings({
               </div>
             </fieldset>
             <label className="field">
+              Required keywords or phrases
+              <input
+                maxLength={500}
+                value={feed.preferences.requiredKeywords || ""}
+                onChange={(e) =>
+                  setFeed({
+                    ...feed,
+                    preferences: {
+                      ...feed.preferences,
+                      requiredKeywords: e.target.value,
+                    },
+                  })
+                }
+                placeholder="e.g. Nintendo 3DS, handheld gaming"
+              />
+              <span className="muted">
+                Only include stories mentioning at least one comma-separated
+                term. Leave blank for no keyword restriction.
+              </span>
+            </label>
+            <label className="field">
               Interests to prioritize
               <textarea
                 maxLength={1000}
+                aria-description="Prioritizes matching stories without excluding other stories. Use required keywords for a strict filter."
                 value={feed.preferences.interests}
                 onChange={(e) =>
                   setFeed({
@@ -371,6 +454,10 @@ export function NewspaperSettings({
                 }
               />
             </label>
+            <p className="muted">
+              Interests affect ordering; they do not exclude stories. Use
+              required keywords to restrict results.
+            </p>
             <details>
               <summary>Choose sources for this feed</summary>
               <p className="muted">Leave empty to include all sources.</p>
@@ -401,7 +488,7 @@ export function NewspaperSettings({
             </details>
             <div className="button-row">
               <button disabled={busy} className="primary">
-                Save feed
+                {feed.id ? "Save feed changes" : "Create feed"}
               </button>
               {feed.id && (
                 <button type="button" onClick={() => setFeed(freshFeed())}>
@@ -410,6 +497,28 @@ export function NewspaperSettings({
               )}
             </div>
           </form>
+        </section>
+      )}
+      {preview && (
+        <section id="filtered-feed-preview" aria-label="Filtered feed preview">
+          <h2>Preview: {preview.name}</h2>
+          <p>
+            Private preview of saved filters. {preview.items.length} matching
+            stories. Published pages keep their previous edition until you
+            publish again.
+          </p>
+          {!preview.items.length && (
+            <p>
+              No matches. Try fewer topic or source restrictions, or broaden the
+              required keywords.
+            </p>
+          )}
+          <Broadsheet
+            name={preview.name}
+            date={preview.builtAt}
+            items={preview.items}
+            preview
+          />
         </section>
       )}
       <p>

@@ -1,4 +1,10 @@
-import { getDraft, generateDraft, editDraft, publishDraft } from "./drafts";
+import {
+  getDraft,
+  generateDraft,
+  editDraft,
+  publishDraft,
+  generationReady,
+} from "./drafts";
 import { deliverySettings, saveSubscription } from "./subscriptions";
 import { sourceHealth } from "./source-health";
 import {
@@ -26,6 +32,7 @@ import {
   sourceScores,
 } from "./ranking";
 import {
+  buildPersonalEdition,
   addPersonalSource,
   changeSourceSharing,
   publishPersonal,
@@ -528,6 +535,30 @@ export async function api(r: Request) {
       return json(await newspaperSettings(a!.id));
     if (path === "newspaper" && method === "POST")
       return json(await saveNewspaper(a!.id, await body(r)));
+    if (path === "newspaper/feeds/preview" && method === "POST") {
+      const b = z.object({ id: z.uuid() }).parse(await body(r));
+      if (!(await generationReady(a!.id)))
+        throw new HttpError(
+          403,
+          "Connect and validate an AI connection with curation permission before generating a feed preview.",
+        );
+      const owned = await pool().query(
+        "SELECT id FROM newspaper_feeds WHERE id=$1 AND account_id=$2",
+        [b.id, a!.id],
+      );
+      if (!owned.rowCount) throw new HttpError(404, "Feed not found");
+      await rateLimit("feed-preview:" + a!.id, 10);
+      const edition = await buildPersonalEdition(a!.id);
+      return json(
+        scoreVisibility(
+          {
+            ...edition.feeds.find((f) => f.id === b.id),
+            builtAt: edition.builtAt,
+          },
+          a!.role,
+        ),
+      );
+    }
     if (path === "newspaper/feeds" && method === "POST")
       return json(await saveFeed(a!.id, await body(r)));
     if (path === "newspaper/feeds" && method === "DELETE") {

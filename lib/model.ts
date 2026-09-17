@@ -43,6 +43,7 @@ export const preferencesSchema = z.object({
   sources: z.array(z.string().max(100)).max(250).default([]),
   blocked: z.array(z.string().max(80)).max(50).default([]),
   interests: z.string().max(1000).default(""),
+  requiredKeywords: z.string().max(500).optional(),
   length: z.number().int().min(5).max(50).default(20),
 });
 export type Preferences = z.infer<typeof preferencesSchema>;
@@ -50,9 +51,17 @@ export const defaults = preferencesSchema.parse({});
 export function matches(i: Item, p: Preferences) {
   return (
     (!p.topics.length || p.topics.includes(i.topic)) &&
-    (!p.sources.length ||
-      p.sources.includes(i.source_id) ||
-      (!!i.owner_id && !p.sources.some((id) => id.startsWith("private:")))) &&
+    (!p.sources.length || p.sources.includes(i.source_id)) &&
+    (!(p.requiredKeywords || "").trim() ||
+      p
+        .requiredKeywords!.split(",")
+        .map((w) => w.trim().toLowerCase())
+        .filter(Boolean)
+        .some((w) =>
+          `${i.title} ${i.excerpt} ${i.summary || ""}`
+            .toLowerCase()
+            .includes(w),
+        )) &&
     !p.blocked.some((w) =>
       `${i.title} ${i.excerpt} ${i.summary || ""}`
         .toLowerCase()

@@ -112,3 +112,17 @@ test("hosted editor rejects invented claims and permits whitespace-normalized so
   );
   assert.equal(isSourcePassage("", "anything"), false);
 });
+
+test("explicit sources exclude unselected personal sources", () => {
+  const personal = { ...item, source_id: "private:example", owner_id: "owner" };
+  assert(!matches(personal, { ...defaults, sources: [item.source_id] }));
+  assert(matches(personal, { ...defaults, sources: [personal.source_id] }));
+  assert(matches(personal, defaults));
+});
+test("required feed keywords filter while interests only prioritize", () => {
+  const settings = { ...defaults, requiredKeywords: "3DS, handheld gaming" };
+  assert(!matches(item, settings));
+  assert(matches({ ...item, title: "Nintendo 3DS update" }, settings));
+  assert(matches({ ...item, summary: "Handheld gaming news" }, settings));
+  assert(matches(item, { ...defaults, interests: "3DS" }));
+});

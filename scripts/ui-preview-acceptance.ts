@@ -50,6 +50,26 @@ try {
   await page
     .getByRole("button", { name: "Save private newspaper", exact: true })
     .click();
+  for (const name of ["Science test", "Technology test", "AI"]) {
+    await page
+      .getByRole("button", { name: "Add another feed", exact: true })
+      .click();
+    await page.getByLabel("Feed / topic name", { exact: true }).fill(name);
+    if (name === "AI")
+      await page
+        .getByLabel(/Required keywords or phrases/)
+        .fill("nonexistent-regression-keyword-88331");
+    await page
+      .getByRole("button", { name: "Create feed", exact: true })
+      .click();
+    await page
+      .locator("#named-feed-form")
+      .getByText("Feed saved.", { exact: false })
+      .waitFor();
+  }
+  await page
+    .getByRole("heading", { name: "Your named feeds (3/20)", exact: true })
+    .waitFor();
   await page.getByRole("link", { name: "Generate & edit preview" }).click();
   const generate = page.getByRole("button", {
     name: "Generate preview",
@@ -104,6 +124,17 @@ try {
     .locator(".broadsheet")
     .getByRole("link", { name: "Browser verified headline edit", exact: true })
     .waitFor();
+  await page.goto("https://news.bittrees.org/account");
+  const third = page
+    .locator(".connection")
+    .filter({ has: page.getByRole("link", { name: "AI", exact: true }) });
+  await third.getByRole("button", { name: "Preview saved filters" }).click();
+  await page
+    .getByText(
+      "No matches. Try fewer topic or source restrictions, or broaden the required keywords.",
+      { exact: true },
+    )
+    .waitFor();
   await page.goto("https://news.bittrees.org/account/delivery");
   await page
     .getByRole("heading", { name: "Newspaper subscriptions", exact: true })
@@ -123,6 +154,8 @@ try {
       passed: true,
       checks: [
         "account form saved private paper",
+        "three named feeds saved, including two-letter name with valid address",
+        "third feed strict filter excluded non-matching stories",
         "generation denied before MCP validation; enabled after a real tool call",
         "preview generated",
         "headline edit survived reload",

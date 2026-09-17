@@ -45,3 +45,9 @@ The preview and published editions now use numbered newspaper sheets, with page 
 Personal draft generation now requires the account to have an unexpired MCP key with curation scope and a successful authenticated tool call. Creating a key or listing tools is insufficient. Read-only, expired and revoked connections do not qualify. This is enforced by the shared generation service, including browser API and MCP callers. Run `get_newspaper` to validate a newly connected client before requesting generation. Existing drafts and public examples remain readable and editable. This requirement does not imply that clicking Generate invokes an external AI: it assembles sourced material from saved settings; the connected client can then edit it through the tools.
 
 Validation: 30 unit tests; isolated integration checks for absent, unvalidated, read-only, expired and revoked connections; three-page example with ten stories; 390px mobile without horizontal overflow; printed PDF also three pages.
+
+## Named-feed fixes
+
+Named feeds remain limited to twenty, independently of the ten RSS source connections. The form now offers an explicit Add another feed action, reports save/validation errors beside the fields, and creates valid addresses for short names (for example, AI becomes ai-feed). A saved feed can be previewed privately with a validated curation connection; this does not replace drafts or publish anything. Preview access checks account ownership.
+
+Selected source filters now exclude unselected personal RSS sources. Optional required keywords/phrases restrict stories to at least one comma-separated term, while interests remain ranking preferences. Feed labels do not filter content. Published editions retain their issued content until the owner publishes a new edition. Existing saved feeds are not rewritten.

@@ -119,12 +119,32 @@ try {
     slug: "test-desk",
     preferences: defaults,
   });
+  await tool(ownerKey, "set_feed", {
+    name: "Second feed",
+    slug: "second-feed",
+    preferences: { ...defaults, requiredKeywords: "no matching fixture" },
+  });
+  await tool(ownerKey, "set_feed", {
+    name: "Third feed",
+    slug: "third-feed",
+    preferences: { ...defaults, requiredKeywords: "Verified fixture" },
+  });
   await tool(ownerKey, "set_ranking", defaultRanking);
   const settings = await tool(ownerKey, "get_newspaper");
   assert.equal(settings.preferences.interests, "fixture source material");
   assert.ok(settings.rankingProfile.weights);
   let draft = await tool(ownerKey, "generate_newspaper");
   assert.equal(draft.draft.front.length, 1);
+  assert.equal(draft.draft.feeds.length, 3);
+  assert.equal(
+    draft.draft.feeds.find((f: any) => f.slug === "second-feed").items.length,
+    0,
+  );
+  assert.equal(
+    draft.draft.feeds.find((f: any) => f.slug === "third-feed").items.length,
+    1,
+  );
+
   assert.ok(!draft.draft.front[0].ranking);
   const stale = draft.draft_revision;
   draft = await tool(ownerKey, "edit_preview", {
