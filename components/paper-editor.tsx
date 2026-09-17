@@ -9,6 +9,7 @@ type Draft = {
   slug: string;
   description: string;
   draft_revision: number;
+  generationReady?: boolean;
   draft: { builtAt: string; front: Item[] } | null;
 };
 export function PaperEditor() {
@@ -19,7 +20,10 @@ export function PaperEditor() {
     [dirty, setDirty] = useState(false),
     [editing, setEditing] = useState(false);
   function accept(d: Draft) {
-    setPaper(d);
+    setPaper((previous) => ({
+      ...d,
+      generationReady: d.generationReady ?? previous?.generationReady,
+    }));
     setItems(d.draft?.front || []);
     setDirty(false);
   }
@@ -69,7 +73,7 @@ export function PaperEditor() {
         </div>
         <div className="button-row">
           <button
-            disabled={busy || dirty || !paper}
+            disabled={busy || dirty || !paper?.generationReady}
             onClick={() =>
               void run(async () => {
                 accept(await call("newspaper/generate", {}));
@@ -109,6 +113,21 @@ export function PaperEditor() {
           </Link>
         </p>
       )}
+      {paper && !paper.generationReady && (
+        <p className="notice">
+          <Link href="/account/ai">Connect your AI</Link> with curation
+          permission, then ask it to read your newspaper to validate the
+          connection. Reload this page to enable generation. Saved previews
+          remain available.
+        </p>
+      )}
+      {paper && (
+        <p className="preview-explanation">
+          Generation arranges source excerpts using your saved settings. To have
+          your AI rewrite or edit the newspaper, ask it to use your connected
+          newspaper tools.
+        </p>
+      )}
       {paper && !paper.draft && (
         <p>
           Generate a private preview using your saved settings. This does not
@@ -117,7 +136,7 @@ export function PaperEditor() {
       )}
       {editing && (
         <section className="panel paper-editor">
-          <h2>Edit the front page</h2>
+          <h2>Edit the newspaper</h2>
           <p>
             Change headlines and summaries, reorder stories, or remove them.
             Source links stay attached. Regenerating replaces saved edits.

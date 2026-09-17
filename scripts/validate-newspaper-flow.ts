@@ -14,6 +14,7 @@ import {
   unsubscribeToken,
 } from "../lib/delivery";
 import { api } from "../lib/api";
+import { generateDraft, generationReady } from "../lib/drafts";
 const direct = new URL(process.env.DATABASE_URL!);
 direct.hostname = direct.hostname.replace("-pooler", "");
 const control = new Pool({ connectionString: direct.toString(), max: 1 });
@@ -43,6 +44,8 @@ try {
     "INSERT INTO sources(id,status,checked_at) VALUES($1,'healthy',now())",
     [sources[0].id],
   );
+  assert.equal(await generationReady(author), false);
+  await assert.rejects(generateDraft(author), /Connect and validate/);
   const ownerKey = (
     await createMcpToken(author, {
       name: "Acceptance owner",
@@ -94,6 +97,12 @@ try {
       !listed.includes("set_subscription") &&
       !listed.includes("ranking_history"),
   );
+  assert.equal(
+    await generationReady(author),
+    false,
+    "Creating/listing a key does not validate it",
+  );
+  await assert.rejects(generateDraft(author), /Connect and validate/);
   await tool(ownerKey, "set_newspaper", {
     name: "Acceptance Daily",
     slug: "acceptance-daily",
@@ -329,7 +338,25 @@ try {
     )
   ).rows[0];
   assert.ok(validated.validated_at);
+  await pool().query(
+    "UPDATE mcp_tokens SET validated_at=now() WHERE account_id=$1",
+    [stranger],
+  );
+  assert.equal(
+    await generationReady(stranger),
+    false,
+    "Read-only validation cannot enable generation",
+  );
+  await pool().query(
+    "UPDATE mcp_tokens SET expires_at=now()-interval '1 second' WHERE account_id=$1",
+    [author],
+  );
+  assert.equal(await generationReady(author), false);
+  await assert.rejects(generateDraft(author), /Connect and validate/);
   await pool().query("DELETE FROM mcp_tokens WHERE account_id=$1", [author]);
+  assert.equal(await generationReady(author), false);
+  await assert.rejects(generateDraft(author), /Connect and validate/);
+
   assert.equal(
     (
       await mcp(

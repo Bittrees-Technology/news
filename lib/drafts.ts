@@ -15,6 +15,13 @@ export const editDraftSchema = z.object({
     .min(1)
     .max(100),
 });
+export async function generationReady(accountId: string): Promise<boolean> {
+  const result = await pool().query(
+    "SELECT EXISTS(SELECT 1 FROM mcp_tokens WHERE account_id=$1 AND validated_at IS NOT NULL AND expires_at>now() AND 'curate'=ANY(scopes)) AS ready",
+    [accountId],
+  );
+  return result.rows[0].ready;
+}
 export async function getDraft(accountId: string) {
   const p = (
     await pool().query(
@@ -23,9 +30,14 @@ export async function getDraft(accountId: string) {
     )
   ).rows[0];
   if (!p) throw new HttpError(409, "Name and save your newspaper first.");
-  return p;
+  return { ...p, generationReady: await generationReady(accountId) };
 }
 export async function generateDraft(accountId: string) {
+  if (!(await generationReady(accountId)))
+    throw new HttpError(
+      403,
+      "Connect and validate an AI connection with curation permission before generating a newspaper. In your AI client, run get_newspaper first.",
+    );
   const p = await getDraft(accountId),
     draft = await buildPersonalEdition(accountId);
   if (!draft.front.length)
@@ -42,7 +54,7 @@ export async function generateDraft(accountId: string) {
       409,
       "The preview changed while generating. Reload before trying again.",
     );
-  return r.rows[0];
+  return { ...r.rows[0], generationReady: true };
 }
 export async function editDraft(accountId: string, input: unknown) {
   const b = editDraftSchema.parse(input);

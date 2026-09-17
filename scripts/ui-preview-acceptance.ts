@@ -1,6 +1,8 @@
 import { randomUUID, randomBytes } from "node:crypto";
 import { pool } from "../lib/db";
 import { hash } from "../lib/auth";
+import { createMcpToken } from "../lib/mcp";
+import assert from "node:assert/strict";
 // Uses disposable records, never an existing user's login or settings.
 if (process.env.NEWS_BROWSER_ACCEPTANCE !== "1")
   throw Error(
@@ -49,9 +51,44 @@ try {
     .getByRole("button", { name: "Save private newspaper", exact: true })
     .click();
   await page.getByRole("link", { name: "Generate & edit preview" }).click();
+  const generate = page.getByRole("button", {
+    name: "Generate preview",
+    exact: true,
+  });
   await page
-    .getByRole("button", { name: "Generate preview", exact: true })
-    .click();
+    .getByRole("link", { name: "Connect your AI", exact: true })
+    .waitFor();
+  assert.equal(await generate.isDisabled(), true);
+  const denied = await context.request.post(
+    "https://news.bittrees.org/api/newspaper/generate",
+    {
+      headers: { origin: "https://news.bittrees.org" },
+      data: {},
+    },
+  );
+  assert.equal(denied.status(), 403);
+  const key = await createMcpToken(account, {
+    name: "Browser acceptance",
+    scopes: ["read", "curate"],
+    days: 7,
+  });
+  const validation = await fetch("https://news.bittrees.org/api/mcp", {
+    method: "POST",
+    headers: {
+      authorization: "Bearer " + key.token,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/call",
+      params: { name: "get_newspaper", arguments: {} },
+    }),
+  });
+  const validated = await validation.json();
+  assert.ok(validated.result && !validated.result.isError);
+  await page.reload();
+  await generate.click();
   await page.locator(".paper-story").first().waitFor({ timeout: 30000 });
   await page
     .getByRole("button", { name: "Edit contents", exact: true })
@@ -86,6 +123,7 @@ try {
       passed: true,
       checks: [
         "account form saved private paper",
+        "generation denied before MCP validation; enabled after a real tool call",
         "preview generated",
         "headline edit survived reload",
         "verified destination required",

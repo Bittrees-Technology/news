@@ -37,3 +37,11 @@ Subscriptions and destinations have independent revisions. Queue insertion is id
 - Desktop 1360px and phone 390px example renders: ten stories, no horizontal overflow. The example displays original publication dates and preserves publisher links.
 
 Run `npm test`, `npm run typecheck`, `npm run build`. `scripts/validate-newspaper-flow.ts` uses an isolated, disposable database schema over an unpooled connection and never dispatches mail. The two live acceptance scripts require explicit environment flags; `ui-preview-acceptance.ts` also takes `PLAYWRIGHT_MODULE` and optional `CHROMIUM_EXECUTABLE` for the operator's browser runtime. Neither uses an existing user's identity or grants staff roles.
+
+## Paged preview and connection requirement
+
+The preview and published editions now use numbered newspaper sheets, with page navigation, an opening masthead, running headers and separate print pages (A3 portrait). Stories are kept whole, in their saved order; pagination accounts for longer edits. Mobile stacks stories within each numbered page for readability.
+
+Personal draft generation now requires the account to have an unexpired MCP key with curation scope and a successful authenticated tool call. Creating a key or listing tools is insufficient. Read-only, expired and revoked connections do not qualify. This is enforced by the shared generation service, including browser API and MCP callers. Run `get_newspaper` to validate a newly connected client before requesting generation. Existing drafts and public examples remain readable and editable. This requirement does not imply that clicking Generate invokes an external AI: it assembles sourced material from saved settings; the connected client can then edit it through the tools.
+
+Validation: 30 unit tests; isolated integration checks for absent, unvalidated, read-only, expired and revoked connections; three-page example with ten stories; 390px mobile without horizontal overflow; printed PDF also three pages.

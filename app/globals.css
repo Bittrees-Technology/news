@@ -836,3 +836,117 @@ a.primary {
   text-decoration: none;
   margin-right: 10px;
 }
+
+/* A visible stack of newspaper sheets, shared by previews and issued editions. */
+.paper-page-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin: 24px 0;
+}
+.paper-page-nav a {
+  padding: 6px 10px;
+  border: 1px solid var(--rule);
+}
+.paper-sheet {
+  min-height: 1060px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 24px #0003;
+  scroll-margin-top: 20px;
+  margin-bottom: 40px;
+}
+.paper-sheet .paper-colophon {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: auto;
+  padding-top: 12px;
+}
+.paper-sheet .paper-columns {
+  padding-bottom: 40px;
+}
+.paper-running-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 3px double #181818;
+  padding-bottom: 12px;
+  font-size: 12px;
+}
+.paper-running-head strong {
+  font-size: 22px;
+}
+.paper-inside-title {
+  font:
+    bold 32px Georgia,
+    serif;
+  margin: 24px 0;
+}
+.paper-sheet .paper-columns {
+  column-gap: 28px;
+}
+.paper-inside .paper-columns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 700px) {
+  .paper-sheet {
+    min-height: 0;
+  }
+  .paper-running-head {
+    flex-wrap: wrap;
+  }
+  .paper-inside .paper-columns {
+    grid-template-columns: 1fr;
+  }
+  .paper-sheet .paper-colophon {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+@media print {
+  @page {
+    size: A3 portrait;
+    margin: 14mm;
+  }
+  .paper-page-nav,
+  .preview-explanation {
+    display: none !important;
+  }
+  .paper-sheet {
+    min-height: 370mm;
+    box-shadow: none;
+    margin: 0;
+    break-after: page;
+    page-break-after: always;
+  }
+  .paper-sheet:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+  .paper-sheet .paper-columns {
+    display: grid;
+    columns: auto;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .paper-inside .paper-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .paper-sheet .paper-copy {
+    font-size: 12pt;
+  }
+}
+@media (min-width: 701px), print {
+  .paper-front .paper-story:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+  .paper-front .paper-story:nth-child(3) h2 {
+    font-size: 30px;
+    max-width: 38ch;
+  }
+  .paper-front .paper-story:nth-child(3) .paper-copy {
+    max-width: 80ch;
+  }
+}
