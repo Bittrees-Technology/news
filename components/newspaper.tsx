@@ -2,7 +2,6 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
 import { call } from "./client";
-import { factorNames, type Factor } from "@/lib/scoring";
 import { sourceName } from "@/lib/catalog";
 import {
   countries,
@@ -38,7 +37,6 @@ export function Newspaper({
     [hideRead, setHideRead] = useState(false),
     [state, setState] = useState<State>({}),
     [signed, setSigned] = useState(false),
-    [staffRole, setStaffRole] = useState("member"),
     [message, setMessage] = useState(""),
     [cursor, setCursor] = useState(-1),
     [personal, setPersonal] = useState(false),
@@ -53,7 +51,6 @@ export function Newspaper({
     call("session")
       .then(async (a) => {
         setSigned(!!a.account);
-        setStaffRole(a.account?.role || "member");
         if (a.account) {
           const rows = await call("reading");
           setState(
@@ -443,50 +440,7 @@ export function Newspaper({
                 </small>
               )}
 
-              {["moderator", "editor", "admin", "super_admin"].includes(
-                staffRole,
-              ) && (
-                <details>
-                  <summary>Editorial review</summary>
-                  <p>
-                    Article ID: <code>{i.id}</code>
-                  </p>
-                  <Link href="/account/settings">Open review workspace</Link>
-                </details>
-              )}
-              {["admin", "super_admin"].includes(staffRole) && i.ranking && (
-                <details className="score-detail">
-                  <summary>
-                    Article score {i.ranking.value.toFixed(1)} / 100 · Source
-                    consistency {i.ranking.sourceScore.toFixed(0)}
-                  </summary>
-                  <ul>
-                    {Object.entries(i.ranking.factors).map(([key, value]) => (
-                      <li key={key}>
-                        {factorNames[key as Factor]}: {value} / 100
-                      </li>
-                    ))}
-                  </ul>
-                  <p>
-                    These are curation signals, not a fact-check.{" "}
-                    <Link href="/account/rankings">
-                      Adjust weights and view history
-                    </Link>
-                  </p>
-                </details>
-              )}
               <div className="story-bottom">
-                <span>
-                  {i.translation?.language && i.translation.language !== "en"
-                    ? "English translation · see original above"
-                    : i.kind === "podcast"
-                      ? "Episode description"
-                      : i.summary_kind === "extractive"
-                        ? "AI-selected source excerpt"
-                        : i.summary_kind === "generated"
-                          ? "Generated summary"
-                          : "Publisher excerpt / data"}
-                </span>
                 <div>
                   <button
                     onClick={() => void mutate(i.id, "is_read")}
@@ -506,53 +460,7 @@ export function Newspaper({
           ))}
         </section>
       )}
-      {health ? (
-        <div className="source-stats">
-          <p>
-            {health.healthy} sources reachable · {health.unavailable}{" "}
-            unavailable
-            {health.unchecked > 0
-              ? ` · ${health.unchecked} not checked`
-              : ""} · <Link href="/account/sources">Choose your sources</Link>
-          </p>
-          {health.checkedAt && (
-            <p>
-              Latest source check:{" "}
-              {new Date(health.checkedAt).toLocaleString("en-GB", {
-                timeZone: "UTC",
-              })}{" "}
-              UTC
-            </p>
-          )}
-          {health.issues.length > 0 && (
-            <details>
-              <summary>View unavailable sources</summary>
-              <ul>
-                {health.issues.map((issue) => (
-                  <li key={issue.name}>
-                    <a
-                      href={issue.homepage}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {issue.name}
-                    </a>
-                    : {issue.reason}.
-                  </li>
-                ))}
-              </ul>
-            </details>
-          )}
-        </div>
-      ) : (
-        edition && (
-          <p className="source-stats">
-            {edition.data.feedsOk} sources available ·{" "}
-            {edition.data.feedsFailed} unavailable when this edition was
-            collected · <Link href="/account/sources">Choose your sources</Link>
-          </p>
-        )
-      )}
+
     </>
   );
 }

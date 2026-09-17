@@ -18,7 +18,7 @@ export function AccountWorkspace() {
       "topics",
       "sources",
       "delivery",
-      "rankings",
+      "analytics",
       "ai",
       "settings",
     ].includes(section)

@@ -1,6 +1,6 @@
 "use client";
 import { StaffPanel } from "./staff-panel";
-import { Rankings } from "./rankings";
+import { Analytics } from "./analytics";
 import { AiConnection } from "./ai-connection";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -87,14 +87,14 @@ export type AccountSection =
   | "sources"
   | "delivery"
   | "settings"
-  | "rankings"
+  | "analytics"
   | "ai";
 const accountTabs: [AccountSection, string, string][] = [
   ["newspaper", "Your newspaper", "/account"],
   ["topics", "Topics & interests", "/account/topics"],
   ["sources", "Sources & feeds", "/account/sources"],
   ["delivery", "Delivery", "/account/delivery"],
-  ["rankings", "Rankings", "/account/rankings"],
+  ["analytics", "Analytics", "/account/analytics"],
   ["ai", "AI connection", "/account/ai"],
   ["settings", "Account", "/account/settings"],
 ];
@@ -314,11 +314,6 @@ export function Account({
       </div>
       <nav className="account-tabs" aria-label="Your newspaper settings">
         {accountTabs
-          .filter(
-            ([key]) =>
-              key !== "rankings" ||
-              ["admin", "super_admin"].includes(data.account?.role || ""),
-          )
           .map(([key, label, href]) => (
             <Link
               key={key}
@@ -339,12 +334,7 @@ export function Account({
       {section === "newspaper" && (
         <NewspaperSettings connections={data.connections} />
       )}
-      {section === "rankings" &&
-        (["admin", "super_admin"].includes(data.account?.role || "") ? (
-          <Rankings />
-        ) : (
-          <p>Administrator access is required to view article scores.</p>
-        ))}
+      {section === "analytics" && <Analytics role={data.account?.role || "member"} />}
       {section === "ai" && <AiConnection />}
       {(section === "topics" || section === "sources") && (
         <form

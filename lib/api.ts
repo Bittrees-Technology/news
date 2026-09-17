@@ -1,3 +1,4 @@
+import { sourceHealth } from "./source-health";
 import {
   roles,
   canReview,
@@ -16,6 +17,7 @@ import { validatePreferences } from "./newspapers";
 import { mcp, createMcpToken } from "./mcp";
 import { rankingSchema } from "./scoring";
 import {
+  publicRanked,
   historyFor,
   accountCandidates,
   rankedItems,
@@ -334,6 +336,11 @@ export async function api(r: Request) {
       });
     }
     const a = await currentAccount(r);
+    if (path === "analytics" && method === "GET") {
+      const edition = await latestEdition();
+      if (edition && canScores(a!.role)) edition.data.items = await publicRanked(edition.data.items);
+      return json({ health: await sourceHealth(), edition: scoreVisibility(edition, a!.role) });
+    }
     if (method !== "GET") checkOrigin(r);
     if (path === "staff/roles") {
       if (a!.role !== "super_admin")

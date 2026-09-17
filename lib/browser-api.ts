@@ -171,7 +171,7 @@ export function prefetchAccountSection(section: string) {
     {
       newspaper: "newspaper",
       sources: "sources",
-      rankings: "ranking",
+      analytics: "analytics",
       ai: "mcp/tokens",
     } as Record<string, string>
   )[section];
