@@ -955,3 +955,6 @@ a.primary {
 }
 
 .brand-mark { flex-shrink: 0; }
+@media (max-width: 600px) {
+  .brand span { display: none; }
+}
