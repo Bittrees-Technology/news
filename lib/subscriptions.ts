@@ -185,6 +185,7 @@ export async function subscriptionContent(
   at = new Date(),
 ): Promise<{
   name: string;
+  readMorePath: string;
   items: Item[];
   period: NonNullable<ReturnType<typeof periodFor>>;
 } | null> {
@@ -204,12 +205,13 @@ export async function subscriptionContent(
           .map((i: Item) => [i.id, i] as [string, Item]),
       ).values(),
     ];
-    return { name: "The Bittrees News", items: items.slice(0, 50), period };
+    return { name: "The Bittrees News", readMorePath: "/", items: s.kind === "email" ? items : items.slice(0, 50), period };
   }
   if (s.target === "personal") {
     const e = await buildPersonalEdition(s.account_id);
     return {
       name: "My personal newspaper",
+      readMorePath: "/account/preview",
       items: e.front
         .filter(
           (i) =>
@@ -246,7 +248,7 @@ export async function subscriptionContent(
   const feed = s.feed_id
     ? (
         await pool().query(
-          "SELECT name FROM newspaper_feeds WHERE id=$1 AND account_id=$2",
+          "SELECT name,slug FROM newspaper_feeds WHERE id=$1 AND account_id=$2",
           [s.feed_id, p.account_id],
         )
       ).rows[0]
@@ -269,6 +271,7 @@ export async function subscriptionContent(
   );
   return {
     name: p.name + (feed ? " / " + feed.name : ""),
+    readMorePath: "/" + encodeURIComponent(p.slug) + (feed ? "/" + encodeURIComponent(feed.slug) : ""),
     items: [
       ...new Map<string, Item>(
         selected

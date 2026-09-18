@@ -1,4 +1,4 @@
-import { newspaperEmail } from "./newspaper-email";
+import { newspaperEmail, compactSummary, digestArticles } from "./newspaper-email";
 import { subscriptionContent, subscriptionStillAllowed } from "./subscriptions";
 import { rankingSchema } from "./scoring";
 import { rankedItems } from "./ranking";
@@ -34,24 +34,25 @@ export async function queueDigests(now = new Date()) {
     ) as Item[];
     const prefs = preferencesSchema.parse(d.preferences);
     const selected = await rankedItems(
-      all,
+      d.kind === "email" ? all.filter(i => i.kind === "article") : all,
       prefs,
       rankingSchema.parse(d.ranking),
       d.account_id,
-      prefs.length,
+      d.kind === "email" ? 3 : prefs.length,
     );
     if (!selected.length) continue;
     const unsubscribe = `${process.env.APP_URL}/unsubscribe?id=${d.id}&token=${unsubscribeToken(d.id)}`;
     const date = period.end.toISOString().slice(0, 10);
+    const readMore = `${process.env.APP_URL}/`;
     const text =
       `TBN · The Bittrees News — ${d.cadence} edition\n${period.start.toISOString().slice(0, 10)} to ${date} (UTC)\n\n` +
       selected
         .map(
           (i) =>
-            `${i.title}\n${i.summary ? "Summary: " + i.summary : "Publisher excerpt / data: " + i.excerpt}\n${i.url}`,
+            `${i.title}\n${d.kind === "email" ? compactSummary(i.summary || i.excerpt) : i.summary || i.excerpt}\n${i.url}`,
         )
         .join("\n\n") +
-      `\n\nManage your sources: ${process.env.APP_URL}/account\nPause these deliveries: ${unsubscribe}`;
+      `\n\nRead more: ${readMore}\nManage your sources: ${process.env.APP_URL}/account\nPause these deliveries: ${unsubscribe}`;
     const r = await pool().query(
       "INSERT INTO deliveries(id,account_id,destination_id,revision,period,payload) SELECT $1,$2,id,revision,$3,$4 FROM destinations WHERE id=$5 AND enabled=true AND revision=$6 ON CONFLICT(destination_id,period) DO NOTHING RETURNING id",
       [
@@ -60,6 +61,7 @@ export async function queueDigests(now = new Date()) {
         period.key,
         JSON.stringify({
           subject: `TBN · ${d.cadence} · ${date}`,
+          ...(d.kind === "email" ? {html: newspaperEmail("The Bittrees News", selected, date, unsubscribe, readMore)} : {}),
           text,
           unsubscribe,
           itemIds: selected.map((i) => i.id),
@@ -76,23 +78,29 @@ export async function queueDigests(now = new Date()) {
 export async function queueSubscriptions(now = new Date()) {
   const subscriptions = (
     await pool().query(
-      "SELECT s.*,d.revision AS destination_revision FROM news_subscriptions s JOIN destinations d ON d.id=s.destination_id WHERE s.enabled=true AND d.enabled=true AND (d.kind='email' OR d.reachable=true) ORDER BY s.created_at LIMIT 1000",
+      "SELECT s.*,d.kind,a.preferences,a.ranking,d.revision AS destination_revision FROM news_subscriptions s JOIN destinations d ON d.id=s.destination_id JOIN accounts a ON a.id=s.account_id WHERE s.enabled=true AND d.enabled=true AND (d.kind='email' OR d.reachable=true) ORDER BY s.created_at LIMIT 1000",
     )
   ).rows;
   let queued = 0;
   for (const s of subscriptions) {
     const edition = await subscriptionContent(s, now);
     if (!edition?.items.length) continue;
+    const email = s.kind === "email";
+    const prefs = preferencesSchema.parse(s.preferences);
+    const profile = rankingSchema.parse(s.ranking);
+    const selected = email ? digestArticles(edition.items, prefs, profile, now) : edition.items;
+    if (!selected.length) continue;
+    const readMore = new URL(edition.readMorePath, process.env.APP_URL).href;
     const unsubscribe = `${process.env.APP_URL}/unsubscribe?id=${s.id}&token=${unsubscribeToken(s.id)}`;
     const text =
       `${edition.name} — ${s.cadence} edition\n${edition.period.start.toISOString().slice(0, 10)} to ${edition.period.end.toISOString().slice(0, 10)} (UTC)\n\n` +
-      edition.items
+      selected
         .map(
           (i) =>
-            `${i.title}\n${i.summary || i.excerpt}\n${i.user_edited ? "Edited by the newspaper owner.\n" : ""}${i.url}`,
+            `${i.title}\n${email ? compactSummary(i.summary || i.excerpt) : i.summary || i.excerpt}\n${i.user_edited ? "Edited by the newspaper owner.\n" : ""}${i.url}`,
         )
         .join("\n\n") +
-      `\n\nManage subscriptions: ${process.env.APP_URL}/account/delivery\nPause this subscription: ${unsubscribe}`;
+      `\n\nRead more: ${readMore}\nManage subscriptions: ${process.env.APP_URL}/account/delivery\nPause this subscription: ${unsubscribe}`;
     const result = await pool().query(
       "INSERT INTO deliveries(id,account_id,destination_id,revision,period,payload,subscription_id,subscription_revision) SELECT gen_random_uuid(),s.account_id,d.id,d.revision,$3,$4,s.id,s.revision FROM news_subscriptions s JOIN destinations d ON d.id=s.destination_id WHERE s.id=$1 AND s.revision=$2 AND s.enabled=true AND d.enabled=true ON CONFLICT(destination_id,period) DO NOTHING RETURNING id",
       [
@@ -103,12 +111,13 @@ export async function queueSubscriptions(now = new Date()) {
           subject: `${edition.name} · ${s.cadence} · ${edition.period.end.toISOString().slice(0, 10)}`,
           text,
           unsubscribe,
-          itemIds: edition.items.map((i) => i.id),
+          itemIds: selected.map((i) => i.id),
           html: newspaperEmail(
             edition.name,
-            edition.items,
+            selected,
             edition.period.end.toISOString().slice(0, 10),
             unsubscribe,
+            readMore,
           ),
         }),
       ],
