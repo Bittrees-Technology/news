@@ -1,3 +1,4 @@
+import {recentUniqueStories} from './recent-stories';
 import {communityAdjustment} from "./feedback";
 import { pool } from "./db";
 import {
@@ -124,4 +125,9 @@ export async function historyFor(accountId: string) {
       [accountId],
     )
   ).rows;
+}
+
+export async function recentPublicRanked(){
+ const items=(await pool().query("SELECT * FROM items WHERE owner_id IS NULL AND published_at>=now()-interval '24 hours' AND published_at<=now() ORDER BY published_at DESC LIMIT 2000")).rows as Item[];
+ return recentUniqueStories(await publicRanked(items));
 }

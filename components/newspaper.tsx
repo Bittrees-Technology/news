@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import {ArticleFeedback} from "./article-feedback";
 import {articleTags,addedTopics,tagStyle} from "@/lib/tags";
 import {defaultReaderFilters,readerFiltersSchema,matchesReaderFilters,exclusionFilters,type ReaderFilters} from "@/lib/reader-filters";
+import {recentUniqueStories} from "@/lib/recent-stories";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { call } from "./client";
@@ -33,6 +34,8 @@ export function Newspaper({
   live?: boolean;
 }) {
   const router = useRouter();
+  const [now,setNow]=useState(()=>Date.now());
+  useEffect(()=>{const timer=setInterval(()=>setNow(Date.now()),60000);return()=>clearInterval(timer);},[]);
   const [items, setItems] = useState<Item[]>(
       initialItems || edition?.data.items || [],
     ),
@@ -179,18 +182,16 @@ export function Newspaper({
   );
   const visible = useMemo(
     () =>
-      items.filter(
+      (live?recentUniqueStories(items,now):items).filter(
         (i) =>
           (mode === "saved" || tab === "all" || (tab === "podcasts" ? i.kind === "podcast" : tab === "news" ? i.kind === "article" : !["article","podcast"].includes(i.kind))) &&
           (!rankOrder||rankOrder.includes(i.id)) &&
           matchesReaderFilters(articleTags(i),geography.get(i.id)!,filters) &&
           (!hideRead || !state[i.id]?.is_read),
       ).sort((a,b)=>{
-        if(filters.sort==='saved' && !!state[a.id]?.saved!==!!state[b.id]?.saved)return Number(!!state[b.id]?.saved)-Number(!!state[a.id]?.saved);
-        if(filters.sort==='newest')return new Date(b.published_at).getTime()-new Date(a.published_at).getTime();
         const order=rankOrder||items.map(i=>i.id);return order.indexOf(a.id)-order.indexOf(b.id);
       }),
-    [items, tab, filters, hideRead, state, mode, geography,rankOrder],
+    [items, tab, filters, hideRead, state, mode, geography,rankOrder,live,now],
   );
   const topics = [...new Set([...items.flatMap(articleTags),...catalogTopics,...addedTopics,...filters.topics,...filters.excludedTopics])]
     .filter((t) => t !== "Portugal" && t !== "Europe")
@@ -358,7 +359,6 @@ export function Newspaper({
             <div className="filter-options exclusion-tags">{options.map(o=><button key={o.value} className={filters[key].includes(o.value)?'excluded':''} aria-pressed={!filters[key].includes(o.value)} aria-label={`${filters[key].includes(o.value)?'Include':'Exclude'} ${o.label}`} onClick={()=>toggleExcluded(key,o.value)}>{o.label}{filters[key].includes(o.value)&&<span aria-hidden="true" className="tag-cross">×</span>}</button>)}{!options.length&&<p>No countries found.</p>}</div>
           </details>;
         })}
-        <label className="reader-sort">Order <select aria-label="Article order" value={filters.sort} onChange={e=>updateFilters({...filters,sort:e.target.value as ReaderFilters['sort']})}><option value="score">Highest score first</option><option value="saved">Saved first</option><option value="newest">Newest first</option></select></label>
       </div>
       {help && (
         <p className="notice">
@@ -378,7 +378,7 @@ export function Newspaper({
           {message} <Link href="/account">Your account</Link>
         </p>
       )}
-      {!!visible.length&&<section className="top-three" aria-label="Top three"><h2>Top 3</h2><p className="muted">Highest ranked stories matching your filters.</p><div className="top-three-grid">{[...visible].sort((a,b)=>{const order=rankOrder||items.map(i=>i.id);return order.indexOf(a.id)-order.indexOf(b.id);}).slice(0,3).map((i,n)=><article key={i.id}><span>0{n+1} · {sourceName(i.source_id)}</span><h3><Link href={i.owner_id?i.url:`/story/${i.id}`}>{i.translation?.title||i.title}</Link></h3><p>{(i.briefing_preview||i.translation?.summary||i.summary||i.excerpt).slice(0,220)}…</p></article>)}</div></section>}
+      {live&&<p className="muted">Last 24 hours</p>}
       {!visible.length ? (
         <div className="empty">
           <h2>

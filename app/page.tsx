@@ -5,7 +5,7 @@ export const metadata = pageMetadata(siteName, siteDescription, "/");
 import { viewer } from "@/lib/viewer";
 import { scoreVisibility } from "@/lib/roles";
 import { withTranslations } from "@/lib/translation";
-import { publicRanked } from "@/lib/ranking";
+import { recentPublicRanked } from "@/lib/ranking";
 import { latestEdition } from "@/lib/publish";
 import { Newspaper } from "@/components/newspaper";
 export const dynamic = "force-dynamic";
@@ -16,7 +16,7 @@ export default async function Page() {
     edition = await latestEdition();
     if (edition)
       edition.data.items = await withTranslations(
-        await withBriefings(await publicRanked(edition.data.items)),
+        await withBriefings(await recentPublicRanked()),
       );
   } catch {}
   return (
