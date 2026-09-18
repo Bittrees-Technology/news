@@ -43,6 +43,8 @@ try {
   assert.deepEqual((await (await request('reader-filters',fixtures[1].session)).json()).topics,[]);
   const itemId=fixtures[0].id.replaceAll('-','').repeat(2);
   await pool().query("INSERT INTO items(id,source_id,topic,kind,title,url,excerpt,published_at,owner_id) VALUES($1,'feedback-test','Tech','article','Feedback test','https://example.org','Private fixture',now(),$2)",[itemId,fixtures[0].id]);
+  assert.equal((await request('reader-order','',{ids:[itemId]})).status,401);
+  assert.deepEqual(await (await request('reader-order',fixtures[1].session,{ids:[itemId]})).json(),[]);
   assert.equal((await request('feedback','',{id:itemId,value:1})).status,401);
   assert.equal((await request('feedback',fixtures[1].session,{id:itemId,value:1})).status,404);
   assert.equal((await request('feedback',fixtures[0].session,{id:itemId,value:1})).status,200);

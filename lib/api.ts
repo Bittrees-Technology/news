@@ -591,6 +591,13 @@ export async function api(r: Request) {
         ),
       );
     }
+    if(path === "reader-order" && method === "POST"){
+      const {ids}=z.object({ids:z.array(z.string().length(64)).max(500)}).parse(await body(r));
+      const items=(await pool().query("SELECT * FROM items WHERE id=ANY($1::text[]) AND (owner_id IS NULL OR owner_id=$2)",[ids,a!.id])).rows;
+      const account=(await pool().query("SELECT preferences,ranking FROM accounts WHERE id=$1",[a!.id])).rows[0];
+      const ranked=await rankedItems(items,preferencesSchema.parse(account.preferences),rankingSchema.parse(account.ranking||{}),a!.id,500);
+      return json(ranked.map(i=>i.id));
+    }
     if(path === "reader-filters" && method === "GET")return json(readerFiltersSchema.parse((await pool().query("SELECT reader_filters FROM accounts WHERE id=$1",[a!.id])).rows[0].reader_filters));
     if(path === "reader-filters" && method === "POST"){
       const filters=readerFiltersSchema.parse(await body(r));

@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import {ArticleFeedback} from "./article-feedback";
 import {articleTags,addedTopics,tagStyle} from "@/lib/tags";
-import {defaultReaderFilters,readerFiltersSchema,matchesReaderFilters,interactionAdjustment,type ReaderFilters} from "@/lib/reader-filters";
+import {defaultReaderFilters,readerFiltersSchema,matchesReaderFilters,exclusionFilters,type ReaderFilters} from "@/lib/reader-filters";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { call } from "./client";
@@ -36,7 +36,10 @@ export function Newspaper({
   const [items, setItems] = useState<Item[]>(
       initialItems || edition?.data.items || [],
     ),
-    [tab, setTab] = useState("news"),
+    [tab, setTab] = useState("all"),
+    [countrySearch,setCountrySearch]=useState(""),
+    [rankOrder,setRankOrder]=useState<string[]|null>(null),
+    [rankRevision,setRankRevision]=useState(0),
     [filters, setFilters] = useState<ReaderFilters>(defaultReaderFilters),
     [votes,setVotes] = useState<Record<string,number>>({}),
     [state, setState] = useState<State>({}),
@@ -52,10 +55,16 @@ export function Newspaper({
     if(signed){saveQueue.current=saveQueue.current.catch(()=>{}).then(async()=>{await call('reader-filters',next);setMessage('Filters saved to your account.');}).catch(e=>setMessage('Could not save filters: '+e.message));}
     else {try{localStorage.setItem('tbn-guest-filters',JSON.stringify(next));}catch{}}
   }
-  function toggleFilter(key:Exclude<keyof ReaderFilters,'hideRead'>,value:string){
-    const opposite:Record<string,Exclude<keyof ReaderFilters,'hideRead'>>={topics:'excludedTopics',excludedTopics:'topics',countries:'excludedCountries',excludedCountries:'countries',regions:'excludedRegions',excludedRegions:'regions'};
-    updateFilters({...filters,[key]:filters[key].includes(value)?filters[key].filter(t=>t!==value):[...filters[key],value],[opposite[key]]:filters[opposite[key]].filter(t=>t!==value)});
+  function toggleExcluded(key:'excludedTopics'|'excludedCountries'|'excludedRegions',value:string){
+    updateFilters({...exclusionFilters(filters),[key]:filters[key].includes(value)?filters[key].filter(t=>t!==value):[...filters[key],value]});
   }
+  const itemIds=items.map(i=>i.id).join(',');
+  useEffect(()=>{
+    let active=true;setRankOrder(null);
+    if(!signed||!itemIds)return;
+    void call('reader-order',{ids:itemIds.split(',')}).then(ids=>{if(active)setRankOrder(ids);}).catch(()=>{if(active)setMessage('Could not apply your ranking preferences. Showing the edition order.');});
+    return()=>{active=false;};
+  },[signed,itemIds,rankRevision]);
   const refs = useRef(new Map<string, HTMLElement>());
   useEffect(() => {
     if (mode === "public" && !personal) {
@@ -99,16 +108,16 @@ export function Newspaper({
         if(a.account){
           const [rows,f,v]=await Promise.all([call('reading'),call('reader-filters'),call('feedback')]);if(!active)return;
           setState(Object.fromEntries(rows.map((r:{item_id:string;is_read:boolean;saved:boolean})=>[r.item_id,r])));
-          setFilters(readerFiltersSchema.parse(f));setVotes(v);
+          setFilters(exclusionFilters(readerFiltersSchema.parse(f)));setVotes(v);
           if(mode==='saved'){const saved=await call('saved');if(active)setItems(saved);}
         }else{
           setState(JSON.parse(localStorage.getItem('bittrees-news-reading')||'{}'));
-          setFilters(readerFiltersSchema.parse(JSON.parse(localStorage.getItem('tbn-guest-filters')||'{}')));
+          setFilters(exclusionFilters(readerFiltersSchema.parse(JSON.parse(localStorage.getItem('tbn-guest-filters')||'{}'))));
           setVotes(JSON.parse(localStorage.getItem('tbn-guest-votes')||'{}'));
         }
       }catch(e){if(active)setMessage('Could not load your preferences. Please refresh to retry.');}
     }
-    function vote(e:Event){const d=(e as CustomEvent).detail;setVotes(v=>({...v,[d.id]:d.value}));}
+    function vote(e:Event){const d=(e as CustomEvent).detail;setVotes(v=>({...v,[d.id]:d.value}));setRankRevision(v=>v+1);}
     void load();window.addEventListener('news-auth',load);window.addEventListener('news-vote',vote);
     return()=>{active=false;window.removeEventListener('news-auth',load);window.removeEventListener('news-vote',vote);};
   }, [mode]);
@@ -172,14 +181,16 @@ export function Newspaper({
     () =>
       items.filter(
         (i) =>
-          (mode === "saved" ||
-            (tab === "podcasts"
-              ? i.kind === "podcast"
-              : i.kind !== "podcast")) &&
+          (mode === "saved" || tab === "all" || (tab === "podcasts" ? i.kind === "podcast" : tab === "news" ? i.kind === "article" : !["article","podcast"].includes(i.kind))) &&
+          (!rankOrder||rankOrder.includes(i.id)) &&
           matchesReaderFilters(articleTags(i),geography.get(i.id)!,filters) &&
           (!hideRead || !state[i.id]?.is_read),
-      ).map((item,index)=>({item,score:-index+interactionAdjustment(votes[item.id]||0,!!state[item.id]?.saved,!!state[item.id]?.is_read,signed)})).sort((a,b)=>b.score-a.score).map(({item})=>item),
-    [items, tab, filters, hideRead, state, mode, geography, votes,signed],
+      ).sort((a,b)=>{
+        if(filters.sort==='saved' && !!state[a.id]?.saved!==!!state[b.id]?.saved)return Number(!!state[b.id]?.saved)-Number(!!state[a.id]?.saved);
+        if(filters.sort==='newest')return new Date(b.published_at).getTime()-new Date(a.published_at).getTime();
+        const order=rankOrder||items.map(i=>i.id);return order.indexOf(a.id)-order.indexOf(b.id);
+      }),
+    [items, tab, filters, hideRead, state, mode, geography,rankOrder],
   );
   const topics = [...new Set([...items.flatMap(articleTags),...catalogTopics,...addedTopics,...filters.topics,...filters.excludedTopics])]
     .filter((t) => t !== "Portugal" && t !== "Europe")
@@ -197,7 +208,7 @@ export function Newspaper({
     setState(next);
     try {
       if(!signed)localStorage.setItem("bittrees-news-reading", JSON.stringify(next));
-      if (signed) await call("reading", { id, field, value: v });
+      if (signed) {await call("reading", { id, field, value: v });setRankRevision(n=>n+1);}
       else if (field === "saved")
         setMessage(
           "Saved on this device. Sign in to build your library across editions.",
@@ -295,6 +306,7 @@ export function Newspaper({
         <div className="tabs" aria-label="Content type">
           {mode !== "saved" && (
             <>
+              <button className={tab === "all" ? "active" : ""} onClick={()=>setTab("all")}>All</button>
               <button
                 className={tab === "news" ? "active" : ""}
                 onClick={() => {
@@ -313,6 +325,7 @@ export function Newspaper({
               >
                 Podcasts
               </button>
+              <button className={tab === "data" ? "active" : ""} onClick={()=>setTab("data")}>Data</button>
             </>
           )}
         </div>
@@ -334,20 +347,18 @@ export function Newspaper({
         </div>
       </div>
       <div className="reader-filters" data-insights-ignore="true">
-        <span className="geography-note">{signed?'Account filters · saved automatically':'Guest filters · on this device'} · Match any selection within each group; exclusions always win.</span>
-        <button onClick={()=>updateFilters({...defaultReaderFilters,hideRead})}>Clear filters</button>
-        {([
-          ['Topics',topics.map(t=>({value:t,label:t})),'topics','excludedTopics'],
-          ['Countries',countries.map(c=>({value:c.code,label:c.name})),'countries','excludedCountries'],
-          ['Regions',regions.map(r=>({value:r,label:r})),'regions','excludedRegions'],
-        ] as const).map(([label,options,include,exclude])=><details key={label}>
-          <summary>{label} · {filters[include].length} included · {filters[exclude].length} excluded</summary>
-          <div className="filter-options">{options.map(o=><div key={o.value} className="filter-option">
-            <span style={label==='Topics'?tagStyle(o.value):undefined}>{o.label}</span>
-            <label><input type="checkbox" checked={filters[include].includes(o.value)} aria-label={`Include ${o.label}`} onChange={()=>toggleFilter(include,o.value)}/> Include</label>
-            <label><input type="checkbox" checked={filters[exclude].includes(o.value)} aria-label={`Exclude ${o.label}`} onChange={()=>toggleFilter(exclude,o.value)}/> Exclude</label>
-          </div>)}</div>
-        </details>)}
+        <span className="geography-note">{signed?'Saved to your account':'Saved on this device'} · Everything included unless crossed out. Click a tag to exclude or restore it.</span>
+        <div className="topic-filters exclusion-tags">{topics.map(t=><button key={t} style={tagStyle(t)} className={filters.excludedTopics.includes(t)?'excluded':''} aria-pressed={!filters.excludedTopics.includes(t)} aria-label={`${filters.excludedTopics.includes(t)?'Include':'Exclude'} ${t}`} onClick={()=>toggleExcluded('excludedTopics',t)}>{t}{filters.excludedTopics.includes(t)&&<span aria-hidden="true" className="tag-cross">×</span>}</button>)}</div>
+        <button onClick={()=>updateFilters({...defaultReaderFilters,hideRead,sort:filters.sort})}>Include everything</button>
+        {(['Countries','Regions'] as const).map(label=>{
+          const key=label==='Countries'?'excludedCountries':'excludedRegions';
+          const options=label==='Countries'?countries.filter(c=>`${c.name} ${c.code}`.toLowerCase().includes(countrySearch.toLowerCase())).map(c=>({value:c.code,label:c.name})):regions.map(r=>({value:r,label:r}));
+          return <details key={label}><summary>{label} · {filters[key].length?`${filters[key].length} excluded`:'All included'}</summary>
+            {label==='Countries'&&<input type="search" aria-label="Search countries" placeholder="Search countries…" value={countrySearch} onChange={e=>setCountrySearch(e.target.value)}/>}
+            <div className="filter-options exclusion-tags">{options.map(o=><button key={o.value} className={filters[key].includes(o.value)?'excluded':''} aria-pressed={!filters[key].includes(o.value)} aria-label={`${filters[key].includes(o.value)?'Include':'Exclude'} ${o.label}`} onClick={()=>toggleExcluded(key,o.value)}>{o.label}{filters[key].includes(o.value)&&<span aria-hidden="true" className="tag-cross">×</span>}</button>)}{!options.length&&<p>No countries found.</p>}</div>
+          </details>;
+        })}
+        <label className="reader-sort">Order <select aria-label="Article order" value={filters.sort} onChange={e=>updateFilters({...filters,sort:e.target.value as ReaderFilters['sort']})}><option value="score">Highest score first</option><option value="saved">Saved first</option><option value="newest">Newest first</option></select></label>
       </div>
       {help && (
         <p className="notice">

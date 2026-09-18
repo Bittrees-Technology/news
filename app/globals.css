@@ -983,3 +983,10 @@ a.primary {
 .filter-option > span {min-width:100px;border-radius:4px;padding:3px;}
 .filter-option label {display:flex;align-items:center;gap:3px;}
 .filter-option input {width:auto;margin:0;}
+.exclusion-tags {display:flex;flex-wrap:wrap;gap:6px;}
+.reader-filters > .topic-filters {flex-basis:100%;margin:0 0 6px;}
+.exclusion-tags button {position:relative;padding:6px 12px;font-size:13px;}
+.exclusion-tags button.excluded {opacity:.55;text-decoration:line-through;padding-right:27px;}
+.tag-cross {position:absolute;right:7px;top:50%;transform:translateY(-50%);font-size:22px;font-weight:700;text-decoration:none;}
+.reader-sort {display:flex;align-items:center;gap:6px;font-size:13px;}
+.reader-sort select {width:auto;padding:6px;}
