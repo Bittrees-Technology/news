@@ -28,7 +28,7 @@ test(
     const a = scoreArticle(item, defaults, defaultRanking, 80, now);
     assert.ok(a.value >= 0 && a.value <= 100);
     assert.equal(a.factors.grounding, 100);
-    assert.equal(a.factors.relevance, 50);
+    assert.equal(a.factors.relevance, 70);
     assert.deepEqual(a, scoreArticle(item, defaults, defaultRanking, 80, now));
     assert.equal(
       scoreArticle(

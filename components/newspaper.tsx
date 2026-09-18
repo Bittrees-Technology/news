@@ -406,7 +406,7 @@ export function Newspaper({
                 if (el) refs.current.set(i.id, el);
                 else refs.current.delete(i.id);
               }}
-              className={`story ${n < 3 && tab === "news" ? "lead" : ""} ${state[i.id]?.is_read ? "read" : ""} ${cursor === n ? "cursor" : ""}`}
+              className={`story ${n < 3 ? "lead" : ""} ${state[i.id]?.is_read ? "read" : ""} ${cursor === n ? "cursor" : ""}`}
             >
               <div className="story-meta">
                 {articleTags(i).map(tag=><span className="topic colored-tag" style={tagStyle(tag)} key={tag}>{tag}</span>)}

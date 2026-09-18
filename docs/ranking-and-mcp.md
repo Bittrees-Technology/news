@@ -2,7 +2,7 @@
 
 ## Scoring
 
-Version `tbn-transparent-v1` applies five normalized weights: freshness 20, relevance 25, source consistency 20, evidence support 25 and completeness 10. Owners can change all weights. Freshness has a 48-hour half-life; relevance measures interest-term matches (neutral 50 without interests); consistency is the source's successful collection percentage over 30 days (neutral 50 before observation); grounding rewards exact-source summaries and distinguishes unsupported paraphrases; completeness measures available title, HTTPS link, timestamp and excerpt. These are transparent curation heuristics, not factual-accuracy or editorial-independence assessments.
+Version `tbn-global-v3` applies five normalized weights: freshness 20, relevance 25, source consistency 20, evidence support 25 and completeness 10. Owners can change all weights. Freshness has a 48-hour half-life; relevance measures explicit personal interest-term matches, or global relevance when no interests are set; consistency is the source's successful collection percentage over 30 days (neutral 50 before observation); grounding rewards exact-source summaries and distinguishes unsupported paraphrases; completeness measures available title, HTTPS link, timestamp and excerpt. These are transparent curation heuristics, not factual-accuracy or editorial-independence assessments.
 
 Hard filters cover topics, selected sources, exclusions, content type, age, minimum score, presence of summary, duplicate headlines and source caps. They affect personal pages and digests. Feed-specific interests and selectors remain independent; an owner's scoring profile applies across their feeds. Newspaper/feed scores average selected article scores, with sample size and rank stored. Public comparisons include only published papers and may involve different weights. Source history reports collection consistency, not an invented credibility score.
 
@@ -30,3 +30,9 @@ No scope grants account deletion, email/wallet administration, main Bittrees pub
 ## Validation
 
 Unit tests cover deterministic/bounded scores, relevance weight changes, grounding, hard filters, duplicates, source caps and UTC publication boundaries. Integration checks use isolated accounts and the official MCP client to verify scope separation, token revocation, cross-account isolation, SSRF rejection, summary grounding, real history, opt-in automated snapshots and retention of the previous edition on failure. No test email or wallet message is sent by these checks.
+
+## Global audience default
+
+Global relevance applies equally to articles, podcasts and data, including compact three-item digests. It uses story text (including available English translations), never publisher location, popularity, or a preferred country. Explicit worldwide/cross-border impact scores 95; mentions of multiple countries score 85; broad economy, politics, science, technology, health, climate, energy and decentralized technology coverage scores 70; otherwise the neutral baseline is 50. Signals do not stack with repeated keywords. These are transparent editorial heuristics, not proof of worldwide importance; a country mention can be incidental. Availability of translations affects detection.
+
+Relevance retains its 25% default weight alongside freshness, source consistency, grounding and completeness. Saved personal interests replace the global relevance default and editable weights and filters still apply. The homepage remains a single descending-score list for the last 24 hours: the first three receive the same outline treatment across content tabs, without a separate “Top 3” heading or repeated stories. Existing published personal snapshots keep their approved order until republished.

@@ -1,8 +1,9 @@
 import { z } from "zod";
+import { globalRelevance } from "./global-relevance";
 import type { Item, Preferences } from "./model";
 export const factorNames = {
   freshness: "Freshness",
-  relevance: "Interest match",
+  relevance: "Global / interest relevance",
   source: "Source consistency",
   grounding: "Evidence support",
   completeness: "Content completeness",
@@ -46,7 +47,7 @@ export type Score = {
   version: string;
   feedbackAdjustment?: number;
 };
-export const scoreVersion = "tbn-transparent-v2";
+export const scoreVersion = "tbn-global-v3";
 const clean = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
 export function scoreArticle(
   i: Item,
@@ -76,7 +77,7 @@ export function scoreArticle(
           terms.filter((t) => clean(i.title + " " + i.excerpt).includes(t))
             .length) /
         terms.length
-      : 50,
+      : globalRelevance(i),
     source: sourceScore,
     grounding: summary
       ? evidence.includes(summary)

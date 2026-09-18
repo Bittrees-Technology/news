@@ -38,7 +38,7 @@ test("compact emails cap stories and summaries and link to the subscribed feed",
  assert.ok(!html.includes("Headline 3"));
  assert.ok(compactSummary(items[0].excerpt).length<=180);
  const chosen=digestArticles([...items,{...items[0],id:"pod",kind:"podcast",title:"Quantum podcast"}],{...defaults,interests:"quantum"},undefined,new Date("2026-09-18T01:00:00Z"));
- assert.equal(chosen.length,3);assert.ok(chosen.every(i=>i.kind==="article"));
+ assert.equal(chosen.length,3);assert.equal(chosen[0].id,"pod");
  const relevant={...items[5],title:"Quantum research breakthrough"};
  assert.equal(digestArticles([...items.slice(0,5),relevant],{...defaults,interests:"quantum"},undefined,new Date("2026-09-18T01:00:00Z"))[0].id,"5");
 });

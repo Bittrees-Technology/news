@@ -34,7 +34,7 @@ export function newspaperEmail(
 // Relevance/quality scoring, not a fabricated popularity count. Preserve owner edits.
 export function digestArticles(items: Item[], prefs: Preferences, profile: RankingProfile = defaultRanking, now = new Date()) {
   const seen = new Set<string>();
-  return items.filter(i => i.kind === "article")
+  return items.filter(i => ["article", "podcast", "data"].includes(i.kind))
     .map(i => ({item:i, score:scoreArticle(i, prefs, profile, i.ranking?.sourceScore ?? 50, now).value}))
     .sort((a,b) => b.score-a.score || Date.parse(b.item.published_at)-Date.parse(a.item.published_at) || a.item.id.localeCompare(b.item.id))
     .filter(({item}) => {const key=item.title.toLowerCase().replace(/[^\p{L}\p{N}]/gu, ""); if(seen.has(key))return false; seen.add(key); return true;})
