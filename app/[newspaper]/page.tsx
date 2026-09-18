@@ -1,6 +1,7 @@
+import {newspaperMetadata} from "@/lib/newspaper-seo";
 import { NamedNewspaper } from "@/components/named-newspaper";
 export const dynamic = "force-dynamic";
-export const metadata = { robots: { index: false, follow: false } };
+export async function generateMetadata({params}:{params:Promise<{newspaper:string;feed?:string}>}) {const p=await params;return newspaperMetadata(p.newspaper,p.feed);}
 export default async function Page({
   params,
 }: {

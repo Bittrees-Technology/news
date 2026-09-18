@@ -1,3 +1,5 @@
+import {pageMetadata} from "@/lib/seo";
+export const metadata=pageMetadata('About & sources','How The Bittrees News selects sources and publishes world, economy, technology and science news three times daily.','/about');
 import { sources } from "@/lib/catalog";
 export default function Page() {
   return (

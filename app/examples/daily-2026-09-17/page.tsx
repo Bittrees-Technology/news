@@ -4,6 +4,7 @@ import example from "@/public/examples/bittrees-daily-2026-09-17.json";
 import type { Item } from "@/lib/model";
 export const metadata = {
   title: "The Bittrees Daily — 17 September 2026 example",
+  robots: {index:false,follow:true},
 };
 export default function Page() {
   return (

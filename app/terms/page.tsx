@@ -1,3 +1,5 @@
+import {pageMetadata} from "@/lib/seo";
+export const metadata=pageMetadata('Terms','Terms for reading, curating and publishing newspapers with The Bittrees News.','/terms');
 export default function Page() {
   return (
     <article className="prose">

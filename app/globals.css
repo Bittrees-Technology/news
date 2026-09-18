@@ -72,6 +72,9 @@ select:focus-visible {
   border-bottom: 1px solid var(--rule);
 }
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-weight: 750;
   font-size: 20px;
   letter-spacing: -0.6px;
@@ -950,3 +953,5 @@ a.primary {
     max-width: 80ch;
   }
 }
+
+.brand-mark { flex-shrink: 0; }

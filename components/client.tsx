@@ -39,6 +39,7 @@ export function Header() {
   return (
     <header className="topbar">
       <Link className="brand" href="/">
+        <img className="brand-mark" src="/brand/tbn-mark.svg" width="34" height="34" alt="" aria-hidden="true" />
         TBN<span> / the bittrees news</span>
       </Link>
       <nav>

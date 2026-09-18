@@ -1,3 +1,5 @@
+import {pageMetadata} from "@/lib/seo";
+export const metadata=pageMetadata('Privacy','How The Bittrees News handles account details, wallet connections, subscriptions and optional analytics.','/privacy');
 export default function Page() {
   return (
     <article className="prose">
