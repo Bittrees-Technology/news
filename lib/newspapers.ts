@@ -9,6 +9,7 @@ import { HttpError, preferencesSchema, selectItems, type Item } from "./model";
 import { sources, topics } from "./catalog";
 const reserved = new Set([
   "account",
+  "story",
   "examples",
   "api",
   "archive",
