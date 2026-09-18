@@ -54,6 +54,7 @@ export async function NamedNewspaper({
           >
             Subscribe to {paper.feedName || paper.name}
           </Link>
+          {" · "}<a href={`/rss.xml?newspaper=${encodeURIComponent(paper.slug)}${feed ? "&feed="+encodeURIComponent(feed):""}`}>RSS feed</a>
         </p>
       )}
       <Broadsheet

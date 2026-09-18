@@ -10,6 +10,8 @@ import { sources, topics } from "./catalog";
 const reserved = new Set([
   "account",
   "story",
+  "rss",
+  "rss.xml",
   "examples",
   "api",
   "archive",

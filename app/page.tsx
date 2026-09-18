@@ -1,7 +1,8 @@
 import {withBriefings} from '@/lib/story-documents';
 import { EditionSchema } from "@/components/edition-schema";
 import { pageMetadata, siteName, siteDescription, siteUrl } from "@/lib/seo";
-export const metadata = pageMetadata(siteName, siteDescription, "/");
+const baseMetadata=pageMetadata(siteName,siteDescription,"/");
+export const metadata = {...baseMetadata,alternates:{...baseMetadata.alternates,types:{"application/rss+xml":"/rss.xml"}}};
 import { viewer } from "@/lib/viewer";
 import { scoreVisibility } from "@/lib/roles";
 import { withTranslations } from "@/lib/translation";
