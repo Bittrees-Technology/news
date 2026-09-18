@@ -378,6 +378,7 @@ export function Newspaper({
           {message} <Link href="/account">Your account</Link>
         </p>
       )}
+      {!!visible.length&&<section className="top-three" aria-label="Top three"><h2>Top 3</h2><p className="muted">Highest ranked stories matching your filters.</p><div className="top-three-grid">{[...visible].sort((a,b)=>{const order=rankOrder||items.map(i=>i.id);return order.indexOf(a.id)-order.indexOf(b.id);}).slice(0,3).map((i,n)=><article key={i.id}><span>0{n+1} · {sourceName(i.source_id)}</span><h3><Link href={i.owner_id?i.url:`/story/${i.id}`}>{i.translation?.title||i.title}</Link></h3><p>{(i.briefing_preview||i.translation?.summary||i.summary||i.excerpt).slice(0,220)}…</p></article>)}</div></section>}
       {!visible.length ? (
         <div className="empty">
           <h2>
@@ -428,7 +429,7 @@ export function Newspaper({
                   {i.translation?.title || i.title}
                 </a>
               </h2>
-              <p>{i.translation?.summary ?? i.summary ?? i.excerpt}</p>
+              <p>{i.briefing_preview ?? i.translation?.summary ?? i.summary ?? i.excerpt}</p>
               {i.translation?.language && i.translation.language !== "en" && (
                 <details className="translation-original">
                   <summary>Translated to English · View original</summary>
@@ -461,6 +462,7 @@ export function Newspaper({
                     {state[i.id]?.saved ? "★ Saved" : "☆ Save"}
                   </button>
                   <ArticleFeedback id={i.id} />
+                  {!i.owner_id&&<Link href={`/story/${i.id}`}>Full briefing ↗</Link>}
                 </div>
               </div>
             </article>

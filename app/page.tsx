@@ -1,3 +1,4 @@
+import {withBriefings} from '@/lib/story-documents';
 import { EditionSchema } from "@/components/edition-schema";
 import { pageMetadata, siteName, siteDescription, siteUrl } from "@/lib/seo";
 export const metadata = pageMetadata(siteName, siteDescription, "/");
@@ -15,7 +16,7 @@ export default async function Page() {
     edition = await latestEdition();
     if (edition)
       edition.data.items = await withTranslations(
-        await publicRanked(edition.data.items),
+        await withBriefings(await publicRanked(edition.data.items)),
       );
   } catch {}
   return (

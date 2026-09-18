@@ -42,6 +42,9 @@ function item(
     title: clean(title, 250),
     url,
     excerpt: clean(excerpt),
+    source_context: clean(excerpt,12000),
+    authors: [],
+    publication:s.name,
     summary_kind: "excerpt",
     published_at: time.toISOString(),
     owner_id: owner || null,
@@ -118,12 +121,16 @@ export async function fetchSource(s: Source, owner?: string): Promise<Item[]> {
           s,
           e.title,
           e.link,
-          e.contentSnippet || e.summary || e.content || "",
+          e["content:encodedSnippet"] || e.contentSnippet || e.summary || e.content || "",
           e.isoDate || e.pubDate || now,
           owner,
         ),
       );
     }
+  }
+  if(!['hfpapers','worldbank','github','defillama'].includes(s.kind)){
+    const feed=await parser.parseString(body);
+    for(const row of list){if(!row)continue;const e=feed.items.find(e=>e.link===row.url);const author=e?.creator || e?.['dc:creator'];row.authors=author?[clean(String(author),200)]:[];row.publication=clean(feed.title||s.name,200);}
   }
   return list
     .filter((i): i is Item => !!i)
@@ -137,7 +144,7 @@ export async function fetchSource(s: Source, owner?: string): Promise<Item[]> {
 export async function storeItems(items: Item[]) {
   for (const i of items)
     await pool().query(
-      `INSERT INTO items(id,source_id,topic,kind,title,url,excerpt,published_at,owner_id,tags) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT(id) DO UPDATE SET fetched_at=now(),excerpt=EXCLUDED.excerpt,title=EXCLUDED.title,tags=EXCLUDED.tags,topic=EXCLUDED.topic`,
+      `INSERT INTO items(id,source_id,topic,kind,title,url,excerpt,published_at,owner_id,tags,authors,publication,source_context) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) ON CONFLICT(id) DO UPDATE SET fetched_at=now(),excerpt=EXCLUDED.excerpt,title=EXCLUDED.title,tags=EXCLUDED.tags,topic=EXCLUDED.topic,authors=EXCLUDED.authors,publication=EXCLUDED.publication,source_context=EXCLUDED.source_context`,
       [
         i.id,
         i.source_id,
@@ -148,9 +155,10 @@ export async function storeItems(items: Item[]) {
         i.excerpt,
         i.published_at,
         i.owner_id,
-        articleTags(i),
+        articleTags(i),i.authors||[],i.publication||null,i.source_context||i.excerpt,
       ],
     );
+  await pool().query("INSERT INTO story_documents(item_id) SELECT id FROM items WHERE id=ANY($1::text[]) AND owner_id IS NULL ON CONFLICT DO NOTHING",[items.map(i=>i.id)]);
 }
 export async function collect() {
   let ok = 0,

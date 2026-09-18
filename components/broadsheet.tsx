@@ -98,6 +98,7 @@ export function Broadsheet({
                   {i.translation?.summary ?? i.summary ?? i.excerpt}
                 </p>
                 {!preview && <ArticleFeedback id={i.id} />}
+                {!preview&&!i.owner_id&&<a href={`/story/${i.id}`}>Full briefing ↗</a>}
                 {i.user_edited && (
                   <p className="paper-edit-note">
                     Edited by the newspaper owner.{" "}

@@ -13,5 +13,7 @@ export default async function sitemap():Promise<MetadataRoute.Sitemap>{
  entries.push({url,lastModified:p.last_published_at||undefined});
  for(const slug of p.feed_slugs)if(p.snapshot.feeds?.some((s:{slug:string})=>s.slug===slug))entries.push({url:url+'/'+encodeURIComponent(slug),lastModified:p.last_published_at||undefined});
  }
+ const stories=(await pool().query("SELECT item_id,generated_at FROM story_documents WHERE document IS NOT NULL ORDER BY generated_at DESC LIMIT 5000")).rows;
+ for(const s of stories)entries.push({url:siteUrl+"/story/"+s.item_id,lastModified:s.generated_at});
  return entries;
 }

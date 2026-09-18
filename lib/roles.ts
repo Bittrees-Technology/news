@@ -36,7 +36,7 @@ export function scoreVisibility<T>(data: T, role?: string): T {
       : value && typeof value === "object" && !(value instanceof Date)
         ? Object.fromEntries(
             Object.entries(value)
-              .filter(([k]) => !["ranking", "source_score"].includes(k))
+              .filter(([k]) => !["ranking", "source_score", "source_context"].includes(k))
               .map(([k, v]) => [k, clean(v)]),
           )
         : value;

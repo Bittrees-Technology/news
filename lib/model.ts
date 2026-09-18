@@ -13,11 +13,15 @@ export type Item = {
   source_id: string;
   topic: string;
   tags?: string[];
+  authors?:string[];
+  publication?:string;
+  source_context?:string;
   kind: string;
   title: string;
   url: string;
   excerpt: string;
   summary?: string;
+  briefing_preview?:string;
   original_title?: string;
   user_edited?: boolean;
   summary_kind: string;
@@ -29,6 +33,7 @@ export type Item = {
     language: string;
     title?: string;
     summary?: string;
+  briefing_preview?:string;
     model: string;
   };
   ranking?: import("./scoring").Score;

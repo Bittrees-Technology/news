@@ -27,6 +27,7 @@ try {
     assert.equal('source_score' in sources.sources[0],['admin','super_admin'].includes(role));
   }
   assert.equal((await request('ranking')).status,401);
+  assert.equal((await request('editor/story/claim','',{})).status,401);
   const edition=await (await request('edition')).json();
   assert.equal(JSON.stringify(edition).includes('"ranking":'),false);
   assert.equal((await request('staff/reviews',fixtures[1].session,{item_id:'missing',status:'approved',note:'Should be denied'})).status,403);

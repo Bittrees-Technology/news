@@ -990,3 +990,16 @@ a.primary {
 .tag-cross {position:absolute;right:7px;top:50%;transform:translateY(-50%);font-size:22px;font-weight:700;text-decoration:none;}
 .reader-sort {display:flex;align-items:center;gap:6px;font-size:13px;}
 .reader-sort select {width:auto;padding:6px;}
+.site {max-width:1440px;width:100%;}
+.reader-filters {width:100%;}
+.reader-filters > .topic-filters {width:100%;}
+.reader-filters details {flex:1 1 260px;min-width:0;}
+.reader-filters .filter-options {width:100%;}
+.top-three {margin:20px 0;}
+.top-three-grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;}
+.top-three-grid article {padding:16px;border:1px solid var(--rule);border-radius:8px;}
+.top-three-grid h3 {font-size:19px;line-height:1.35;margin:8px 0;}
+.top-three-grid p {font-size:14px;line-height:1.5;}
+.standalone-story {max-width:78ch;margin:32px auto;line-height:1.75;}
+.standalone-story small {overflow-wrap:anywhere;}
+@media(max-width:700px){.top-three-grid{grid-template-columns:1fr;}.site{padding:0 16px;}}
