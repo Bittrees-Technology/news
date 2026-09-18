@@ -4,6 +4,8 @@ export default function Page() {
   return (
     <article className="prose">
       <h1>Privacy</h1>
+      <h2>Article feedback</h2>
+      <p>Thumbs-up and thumbs-down feedback is collected only while signed in. We store your account ID, article ID, vote and timestamps to improve article selection and source ratings. Votes are linked to your account, not anonymous. Click your selected thumb again to delete a vote; deleting your account removes its votes. Ranking uses votes from the last 90 days.</p>
       <p>
         Effective 16 September 2026. Bittrees operates this newspaper. Public
         reading requires no account. We do not add advertising trackers or sell

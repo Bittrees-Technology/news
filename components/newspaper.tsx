@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState, useRef } from "react";
+import {ArticleFeedback} from "./article-feedback";
+import {articleTags,addedTopics,tagStyle} from "@/lib/tags";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { call } from "./client";
@@ -172,13 +174,13 @@ export function Newspaper({
             (tab === "podcasts"
               ? i.kind === "podcast"
               : i.kind !== "podcast")) &&
-          (topic === "All" || i.topic === topic) &&
+          (topic === "All" || articleTags(i).includes(topic)) &&
           matchesGeography(geography.get(i.id)!, country, region) &&
           (!hideRead || !state[i.id]?.is_read),
       ),
     [items, tab, topic, hideRead, state, mode, geography, country, region],
   );
-  const topics = [...new Set(items.map((i) => i.topic))]
+  const topics = [...new Set([...items.flatMap(articleTags),...addedTopics])]
     .filter((t) => t !== "Portugal" && t !== "Europe")
     .sort();
   async function mutate(
@@ -333,6 +335,7 @@ export function Newspaper({
       <div className="topic-filters">
         {["All", ...topics].map((t) => (
           <button
+            style={t === "All" ? undefined : tagStyle(t)}
             aria-pressed={topic === t}
             className={topic === t ? "selected" : ""}
             key={t}
@@ -446,7 +449,7 @@ export function Newspaper({
               className={`story ${n < 3 && tab === "news" ? "lead" : ""} ${state[i.id]?.is_read ? "read" : ""} ${cursor === n ? "cursor" : ""}`}
             >
               <div className="story-meta">
-                <span className="topic">{i.topic}</span>
+                {articleTags(i).map(tag=><span className="topic colored-tag" style={tagStyle(tag)} key={tag}>{tag}</span>)}
                 <span>{sourceName(i.source_id)}</span>
                 <span>
                   {new Date(i.published_at).toLocaleDateString("en-GB", {
@@ -498,6 +501,7 @@ export function Newspaper({
                   >
                     {state[i.id]?.saved ? "★ Saved" : "☆ Save"}
                   </button>
+                  <ArticleFeedback id={i.id} />
                 </div>
               </div>
             </article>

@@ -1,0 +1,11 @@
+# Topics and signed-in reader feedback
+
+Apple and Nintendo topic labels map to Tech and Gaming. Bitcoin, Crypto, Politics and DAOs are available filters. Articles retain their primary topic and gain a stored tags array based on explicit keyword matches in headlines/excerpts/summaries. Rendering also derives tags for old edition snapshots and translated text. Topic filters match any applicable tag; colors are stable for each tag. These are deterministic labels, not claims of AI semantic understanding.
+
+Feedback requires a valid News session and same-origin request. One account can hold one +1 or -1 vote per article; another click removes it. An upsert changes the existing vote. The server checks article access and rate-limits writes. Anonymous clicks create no feedback record; vote controls are disabled while signed out. Votes are excluded from Insights instrumentation. Existing anonymous local read/save preferences remain on-device, and public source collection continues independently of login.
+
+Records: article_feedback(account_id,item_id,value,created_at,updated_at), with account/article foreign keys and cascade deletion. No IP, wallet address, or email is stored in this table. The account relationship means votes are not anonymous. Undo deletes the record.
+
+Ranking version tbn-transparent-v2 consumes the last 90 days of votes. Personal article influence is ±5 points. Community article influence is at most ±5 points, requires five distinct accounts, and shrinks toward neutral with ten prior neutral votes. For source feedback, each account contributes its mean across that source's articles, so repeated voting on one source is not additional independent support. At least five contributing accounts are required, with a maximum ±10 source-score adjustment. Scores stay within 0–100; existing source/grounding weights remain. Private-source feedback is excluded from public source scoring.
+
+This improves selection in the existing collection/editorial and personal-ranking pipelines. It does not stop fetching a source because it is disliked, and popularity is not a fact-check. Signed-in accounts are not guaranteed unique humans; the cap and minimum sample reduce but do not eliminate coordinated voting risks. Administrators retain score diagnostics; public visitors do not see individual votes or feedback totals.

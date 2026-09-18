@@ -18,7 +18,9 @@ try {
     await pool().query("INSERT INTO identities(kind,value,account_id) VALUES('email',$1,$2)",[email,id]);
     await pool().query("INSERT INTO news_role_grants(kind,value,role) VALUES('email',$1,$2)",[email,role]);
     await pool().query("INSERT INTO sessions VALUES($1,$2,now()+interval '5 minutes')",[hash(session),id]);
-    assert.equal((await request('ranking',session)).status,['admin','super_admin'].includes(role)?200:403);
+    const rankingResponse=await request('ranking',session);
+    assert.equal(rankingResponse.status,200);
+    if(!['admin','super_admin'].includes(role)) assert.deepEqual((await rankingResponse.json()).history,[]);
     assert.equal((await request('staff/roles',session)).status,role==='super_admin'?200:403);
     assert.equal((await request('staff/reviews',session)).status,role==='member'?403:200);
     const sources=await (await request('sources',session)).json();
@@ -33,7 +35,17 @@ try {
   assert.equal((await (await request('account',fixtures[0].session)).json()).account.role,'moderator');
   await pool().query("UPDATE news_role_grants SET protected=true WHERE value=$1",[fixtures[4].email]);
   assert.equal((await request('staff/roles',fixtures[4].session,{kind:'email',value:fixtures[4].email,role:'member'})).status,403);
-  console.log('Verified server role boundaries, score redaction, escalation rejection, grant audit and protected owner.');
+  const itemId=fixtures[0].id.replaceAll('-','').repeat(2);
+  await pool().query("INSERT INTO items(id,source_id,topic,kind,title,url,excerpt,published_at,owner_id) VALUES($1,'feedback-test','Tech','article','Feedback test','https://example.org','Private fixture',now(),$2)",[itemId,fixtures[0].id]);
+  assert.equal((await request('feedback','',{id:itemId,value:1})).status,401);
+  assert.equal((await request('feedback',fixtures[1].session,{id:itemId,value:1})).status,404);
+  assert.equal((await request('feedback',fixtures[0].session,{id:itemId,value:1})).status,200);
+  assert.equal((await request('feedback',fixtures[0].session,{id:itemId,value:-1})).status,200);
+  const votes=(await pool().query('SELECT value FROM article_feedback WHERE item_id=$1',[itemId])).rows;
+  assert.deepEqual(votes,[{value:-1}]);
+  assert.equal((await request('feedback',fixtures[0].session,{id:itemId,value:0})).status,200);
+  assert.equal((await pool().query('SELECT 1 FROM article_feedback WHERE item_id=$1',[itemId])).rowCount,0);
+  console.log('Verified server role boundaries, score redaction, escalation rejection, grant audit, protected owner and authenticated feedback isolation/update/undo.');
 } finally {
   for(const f of fixtures){
     await pool().query('DELETE FROM news_staff_audit WHERE actor=$1',[f.id]);

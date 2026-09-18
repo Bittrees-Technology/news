@@ -1,3 +1,4 @@
+import {articleTags,normalizeTopic} from "./tags";
 import { z } from "zod";
 export class HttpError extends Error {
   constructor(
@@ -11,6 +12,7 @@ export type Item = {
   id: string;
   source_id: string;
   topic: string;
+  tags?: string[];
   kind: string;
   title: string;
   url: string;
@@ -50,7 +52,7 @@ export type Preferences = z.infer<typeof preferencesSchema>;
 export const defaults = preferencesSchema.parse({});
 export function matches(i: Item, p: Preferences) {
   return (
-    (!p.topics.length || p.topics.includes(i.topic)) &&
+    (!p.topics.length || p.topics.some(t=>articleTags(i).includes(normalizeTopic(t)))) &&
     (!p.sources.length || p.sources.includes(i.source_id)) &&
     (!(p.requiredKeywords || "").trim() ||
       p

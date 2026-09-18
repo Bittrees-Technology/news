@@ -958,3 +958,10 @@ a.primary {
 @media (max-width: 600px) {
   .brand span { display: none; }
 }
+
+.colored-tag { display:inline-block; padding:3px 7px; border:1px solid; border-radius:5px; font-size:12px; margin-right:4px; }
+.topic-filters button[aria-pressed="true"] { outline:2px solid currentColor; outline-offset:2px; }
+.article-feedback {display:inline-flex;align-items:center;gap:5px;flex-wrap:wrap;}
+.article-feedback button[aria-pressed="true"] {outline:2px solid var(--accent);}
+.article-feedback small {font-size:11px;}
+@media print {.article-feedback {display:none;}}

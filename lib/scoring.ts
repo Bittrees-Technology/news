@@ -44,8 +44,9 @@ export type Score = {
   factors: Record<Factor, number>;
   sourceScore: number;
   version: string;
+  feedbackAdjustment?: number;
 };
-export const scoreVersion = "tbn-transparent-v1";
+export const scoreVersion = "tbn-transparent-v2";
 const clean = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
 export function scoreArticle(
   i: Item,
@@ -114,6 +115,7 @@ export function rankArticles(
   sourceScores: Record<string, number> = {},
   limit = 100,
   now = new Date(),
+  feedback: Record<string,number> = {},
 ) {
   const seen = new Set<string>(),
     counts = new Map<string, number>();
@@ -135,6 +137,7 @@ export function rankArticles(
         now,
       ),
     }))
+    .map(i=>({...i,ranking:{...i.ranking,value:Math.round(Math.max(0,Math.min(100,i.ranking.value+Math.max(-10,Math.min(10,feedback[i.id]||0))))*10)/10,feedbackAdjustment:Math.max(-10,Math.min(10,feedback[i.id]||0))}}))
     .filter((i) => i.ranking.value >= config.minScore)
     .sort(
       (a, b) =>

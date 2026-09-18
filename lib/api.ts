@@ -590,6 +590,16 @@ export async function api(r: Request) {
         ),
       );
     }
+    if(path === "feedback" && method === "GET")return json(Object.fromEntries((await pool().query("SELECT item_id,value FROM article_feedback WHERE account_id=$1",[a!.id])).rows.map(r=>[r.item_id,r.value])));
+    if(path === "feedback" && method === "POST"){
+      const b=z.object({id:z.string().length(64),value:z.union([z.literal(-1),z.literal(0),z.literal(1)])}).parse(await body(r));
+      await rateLimit("feedback:"+a!.id,120);
+      const allowed=await pool().query("SELECT 1 FROM items i WHERE i.id=$1 AND (i.owner_id IS NULL OR i.owner_id=$2 OR EXISTS(SELECT 1 FROM connections c JOIN newspapers n ON n.account_id=c.account_id WHERE 'private:'||c.id::text=i.source_id AND c.share_public=true AND n.published=true))",[b.id,a!.id]);
+      if(!allowed.rowCount)throw new HttpError(404,"Story not found");
+      if(b.value===0)await pool().query("DELETE FROM article_feedback WHERE account_id=$1 AND item_id=$2",[a!.id,b.id]);
+      else await pool().query("INSERT INTO article_feedback(account_id,item_id,value) VALUES($1,$2,$3) ON CONFLICT(account_id,item_id) DO UPDATE SET value=$3,updated_at=now()",[a!.id,b.id,b.value]);
+      return json({ok:true});
+    }
     if (path === "reading" && method === "GET")
       return json(
         (

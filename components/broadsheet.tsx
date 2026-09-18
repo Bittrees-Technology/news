@@ -1,3 +1,5 @@
+import {articleTags,tagStyle} from "@/lib/tags";
+import {ArticleFeedback} from "./article-feedback";
 import type { Item } from "@/lib/model";
 import { newspaperPages } from "@/lib/pagination";
 import { sourceName } from "@/lib/catalog";
@@ -78,7 +80,7 @@ export function Broadsheet({
                 }
                 key={i.id}
               >
-                <p className="paper-section">{i.topic}</p>
+                <p className="paper-section">{articleTags(i).map(tag=><span className="colored-tag" style={tagStyle(tag)} key={tag}>{tag}</span>)}</p>
                 <h2>
                   <a href={i.url} target="_blank" rel="noopener noreferrer">
                     {i.translation?.title || i.title}
@@ -95,6 +97,7 @@ export function Broadsheet({
                 <p className="paper-copy">
                   {i.translation?.summary ?? i.summary ?? i.excerpt}
                 </p>
+                {!preview && <ArticleFeedback id={i.id} />}
                 {i.user_edited && (
                   <p className="paper-edit-note">
                     Edited by the newspaper owner.{" "}

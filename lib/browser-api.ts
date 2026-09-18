@@ -1,6 +1,7 @@
 // Per-browser-memory presentation cache. Server authorization is never cached here.
 const lifetimes: Record<string, number> = {
   session: 30_000,
+  feedback: 30_000,
   account: 60_000,
   sources: 300_000,
   newspaper: 30_000,
@@ -113,7 +114,7 @@ export class BrowserApi {
         this.reset();
         this.changed();
       } else if (path !== "auth/start") {
-        const invalidations = path.startsWith("mcp/tokens")
+        const invalidations = path === "feedback" ? ["feedback","ranking","sources"] : path.startsWith("mcp/tokens")
           ? ["mcp/tokens"]
           : path.startsWith("ranking")
             ? ["ranking"]

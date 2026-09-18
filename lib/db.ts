@@ -37,6 +37,9 @@ CREATE TABLE IF NOT EXISTS challenges(id uuid PRIMARY KEY,kind text NOT NULL,val
 CREATE TABLE IF NOT EXISTS rate_limits(key text PRIMARY KEY,hits int NOT NULL,resets_at timestamptz NOT NULL);
 CREATE TABLE IF NOT EXISTS sources(id text PRIMARY KEY,status text NOT NULL DEFAULT 'unchecked',checked_at timestamptz,error text,item_count int NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS items(id text PRIMARY KEY,source_id text NOT NULL,topic text NOT NULL,kind text NOT NULL,title text NOT NULL,url text NOT NULL,excerpt text NOT NULL,summary text,summary_kind text NOT NULL DEFAULT 'excerpt',published_at timestamptz NOT NULL,fetched_at timestamptz NOT NULL DEFAULT now(),owner_id uuid REFERENCES accounts ON DELETE CASCADE);
+ALTER TABLE items ADD COLUMN IF NOT EXISTS tags text[] NOT NULL DEFAULT '{}';
+CREATE TABLE IF NOT EXISTS article_feedback(account_id uuid NOT NULL REFERENCES accounts ON DELETE CASCADE,item_id text NOT NULL REFERENCES items ON DELETE CASCADE,value smallint NOT NULL CHECK(value IN (-1,1)),created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(account_id,item_id));
+CREATE INDEX IF NOT EXISTS article_feedback_recent ON article_feedback(updated_at,item_id);
 CREATE INDEX IF NOT EXISTS items_period ON items(published_at DESC);
 CREATE INDEX IF NOT EXISTS items_owner ON items(owner_id);
 CREATE TABLE IF NOT EXISTS editions(id text PRIMARY KEY,publish_at timestamptz NOT NULL,prepared_at timestamptz NOT NULL DEFAULT now(),published_at timestamptz,brief text NOT NULL,data jsonb NOT NULL);

@@ -1,3 +1,4 @@
+import {communityAdjustment} from "./feedback";
 import { pool } from "./db";
 import {
   defaultRanking,
@@ -25,8 +26,10 @@ export async function sourceScores(accountId?: string) {
       [rows.map((r) => r.id)],
     )
   ).rows;
+  const feedback=(await pool().query("SELECT source_id,count(*)::int voters,sum(vote)::float total FROM (SELECT i.source_id,f.account_id,avg(f.value)::float vote FROM article_feedback f JOIN items i ON i.id=f.item_id WHERE f.updated_at>now()-interval '90 days' AND i.source_id=ANY($1::text[]) AND (i.owner_id IS NULL OR i.owner_id=$2) GROUP BY i.source_id,f.account_id) per_reader GROUP BY source_id",[rows.map(r=>r.id),accountId||null])).rows;
+  const adjustments=new Map(feedback.map(r=>[r.source_id,communityAdjustment(r.total,r.voters,10)]));
   return {
-    scores: Object.fromEntries(history.map((r) => [r.source_id, r.score])),
+    scores: Object.fromEntries(history.map((r) => [r.source_id, Math.max(0,Math.min(100,r.score+(adjustments.get(r.source_id)||0)))])),
     observations: history,
   };
 }
@@ -38,12 +41,16 @@ export async function rankedItems(
   limit = 100,
 ) {
   const { scores } = await sourceScores(accountId);
+  const feedback=(await pool().query("SELECT item_id,count(*)::int voters,sum(value)::int total,sum(CASE WHEN account_id=$2 THEN value ELSE 0 END)::int own FROM article_feedback WHERE item_id=ANY($1::text[]) AND updated_at>now()-interval '90 days' GROUP BY item_id",[items.map(i=>i.id),accountId||null])).rows;
+  const adjustments=Object.fromEntries(feedback.map(r=>[r.item_id,communityAdjustment(r.total,r.voters,5)+5*r.own]));
   return rankArticles(
     selectItems(items, prefs, items.length),
     prefs,
     profile,
     scores,
     limit,
+    new Date(),
+    adjustments,
   );
 }
 export async function publicRanked(items: Item[]) {

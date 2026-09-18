@@ -1,3 +1,4 @@
+import {articleTags,normalizeTopic} from "./tags";
 import Parser from "rss-parser";
 import { createHash } from "node:crypto";
 import { safeFetch } from "./safe-fetch";
@@ -136,17 +137,18 @@ export async function fetchSource(s: Source, owner?: string): Promise<Item[]> {
 export async function storeItems(items: Item[]) {
   for (const i of items)
     await pool().query(
-      `INSERT INTO items(id,source_id,topic,kind,title,url,excerpt,published_at,owner_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(id) DO UPDATE SET fetched_at=now(),excerpt=EXCLUDED.excerpt,title=EXCLUDED.title`,
+      `INSERT INTO items(id,source_id,topic,kind,title,url,excerpt,published_at,owner_id,tags) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT(id) DO UPDATE SET fetched_at=now(),excerpt=EXCLUDED.excerpt,title=EXCLUDED.title,tags=EXCLUDED.tags,topic=EXCLUDED.topic`,
       [
         i.id,
         i.source_id,
-        i.topic,
+        normalizeTopic(i.topic),
         i.kind,
         i.title,
         i.url,
         i.excerpt,
         i.published_at,
         i.owner_id,
+        articleTags(i),
       ],
     );
 }
