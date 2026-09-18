@@ -18,6 +18,7 @@ test("global relevance ranks all formats above comparable local coverage", () =>
 test("no preferred country, publisher, or keyword frequency; broad topics qualify", () => {
   assert.equal(globalRelevance({...item,title:"Kenya and Brazil trade talks"}),85);
   assert.equal(globalRelevance({...item,title:"France and Portugal trade talks"}),85);
+  assert.equal(globalRelevance({...item,title:"British tourist rescued in Malawi"}),50);
   assert.equal(globalRelevance({...item,source_id:"world-publisher"}),50);
   assert.equal(globalRelevance({...item,title:"Global ".repeat(100)}),95);
   assert.equal(globalRelevance({...item,topic:"Science"}),70);
