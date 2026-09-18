@@ -30,5 +30,5 @@ while True:
   if not document:document=api('result',{'id':job['item_id'],'briefing':brief(job),'model':'Bittrees-hosted '+config['model']})
   cid=pin(document);api('pinned',{'id':job['item_id'],'cid':cid})
   logging.info('Public briefing archived %s %s',job['item_id'],cid)
- except Exception as e:logging.warning('Briefing worker retry: %s',type(e).__name__)
+ except Exception as e:logging.warning('Briefing worker retry: %s status=%s',type(e).__name__,getattr(e,'code','local'))
  time.sleep(15)
