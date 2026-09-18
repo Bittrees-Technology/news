@@ -39,13 +39,20 @@ export function Header() {
   return (
     <header className="topbar">
       <Link className="brand" href="/">
-        <img className="brand-mark" src="/brand/tbn-mark.svg" width="34" height="34" alt="" aria-hidden="true" />
+        <img
+          className="brand-mark"
+          src="/brand/tbn-mark.svg"
+          width="34"
+          height="34"
+          alt=""
+          aria-hidden="true"
+        />
         TBN<span> / the bittrees news</span>
       </Link>
       <nav>
+        <Link href="/archive">Archive</Link>
         {signed && (
           <>
-            <Link href="/archive">Archive</Link>
             <Link href="/saved">Saved</Link>
           </>
         )}
@@ -63,6 +70,7 @@ export function Footer() {
       <div>
         <Link href="/about">About & sources</Link>
         <Link href="/privacy">Privacy</Link>
+        <Link href="/terms">Terms</Link>
         <a href="https://github.com/Bittrees-Technology/news">Source code</a>
       </div>
     </footer>

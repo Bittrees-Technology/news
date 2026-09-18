@@ -20,3 +20,12 @@ Remaining external work:
 - Content discovery is source-linked aggregation. Editorial transparency and original analysis are ongoing content work, not replaceable with metadata or keyword stuffing.
 
 References: https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap and https://developers.google.com/search/docs/appearance/site-names
+
+Follow-up completion, 18 September:
+- Confirmed the identity assets and initial SEO setup are already live; retained the existing newspaper/sprout mark and social artwork.
+- Made Archive discoverable in navigation for signed-out readers and added the Terms footer link.
+- Added escaped CollectionPage/ItemList structured data to current and archived editions, matching initially visible source-linked stories. No NewsArticle authorship claims are attached to excerpts from other publishers.
+- Public named-feed metadata now checks the current feed record, using its current name and suppressing metadata for removed feeds.
+- Extended deployed checks to parse JSON-LD, verify viewport, public archive links, actual PNG dimensions, unique sitemap URLs, a real archived edition's canonical, and API indexing headers.
+
+No Google/Bing ownership verification or sitemap submission was performed. No Search Console credentials or verification token were available in this task. Those external steps and real-user performance measurement remain outstanding.

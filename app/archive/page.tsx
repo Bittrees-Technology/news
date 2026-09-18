@@ -1,5 +1,6 @@
-import {notFound} from "next/navigation";
-import {pageMetadata,privateMetadata} from "@/lib/seo";
+import { EditionSchema } from "@/components/edition-schema";
+import { notFound } from "next/navigation";
+import { pageMetadata, privateMetadata } from "@/lib/seo";
 import { viewer } from "@/lib/viewer";
 import { scoreVisibility } from "@/lib/roles";
 import { withTranslations } from "@/lib/translation";
@@ -8,11 +9,27 @@ import { pool } from "@/lib/db";
 import { latestEdition } from "@/lib/publish";
 import { Newspaper } from "@/components/newspaper";
 export const dynamic = "force-dynamic";
-export async function generateMetadata({searchParams}:{searchParams:Promise<{id?:string}>}) {
- const {id}=await searchParams;
- if(!id)return pageMetadata("Edition archive","Browse past editions of The Bittrees News, with source-linked world, economy, technology and science reporting.","/archive");
- const e=await latestEdition(id);if(!e)return privateMetadata;
- return pageMetadata("Edition "+new Date(e.publish_at).toISOString().slice(0,16).replace("T"," ")+" UTC","Read this archived edition of The Bittrees News and follow each story to its original source.","/archive?id="+encodeURIComponent(id));
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ id?: string }>;
+}) {
+  const { id } = await searchParams;
+  if (!id)
+    return pageMetadata(
+      "Edition archive",
+      "Browse past editions of The Bittrees News, with source-linked world, economy, technology and science reporting.",
+      "/archive",
+    );
+  const e = await latestEdition(id);
+  if (!e) return privateMetadata;
+  return pageMetadata(
+    "Edition " +
+      new Date(e.publish_at).toISOString().slice(0, 16).replace("T", " ") +
+      " UTC",
+    "Read this archived edition of The Bittrees News and follow each story to its original source.",
+    "/archive?id=" + encodeURIComponent(id),
+  );
 }
 export default async function Page({
   searchParams,
@@ -25,9 +42,19 @@ export default async function Page({
     const e = await latestEdition(id);
     if (e) e.data.items = await withTranslations(e.data.items);
     return e ? (
-      <Newspaper
-        edition={JSON.parse(JSON.stringify(scoreVisibility(e, account?.role)))}
-      />
+      <>
+        <EditionSchema
+          name="The Bittrees News — archived edition"
+          path={"/archive?id=" + encodeURIComponent(id)}
+          date={e.published_at}
+          items={e.data.items.filter((i) => i.kind !== "podcast")}
+        />
+        <Newspaper
+          edition={JSON.parse(
+            JSON.stringify(scoreVisibility(e, account?.role)),
+          )}
+        />
+      </>
     ) : (
       notFound()
     );
