@@ -35,6 +35,12 @@ try {
   assert.equal((await (await request('account',fixtures[0].session)).json()).account.role,'moderator');
   await pool().query("UPDATE news_role_grants SET protected=true WHERE value=$1",[fixtures[4].email]);
   assert.equal((await request('staff/roles',fixtures[4].session,{kind:'email',value:fixtures[4].email,role:'member'})).status,403);
+  assert.equal((await request('reader-filters')).status,401);
+  assert.equal((await request('reader-filters','',{topics:['Crypto']})).status,401);
+  assert.equal((await request('reader-filters',fixtures[0].session,{topics:['Crypto','Bitcoin'],excludedTopics:['Politics'],countries:['PT'],excludedRegions:['Asia']})).status,200);
+  const filters=await (await request('reader-filters',fixtures[0].session)).json();
+  assert.deepEqual(filters.topics,['Crypto','Bitcoin']);assert.equal(filters.hideRead,true);
+  assert.deepEqual((await (await request('reader-filters',fixtures[1].session)).json()).topics,[]);
   const itemId=fixtures[0].id.replaceAll('-','').repeat(2);
   await pool().query("INSERT INTO items(id,source_id,topic,kind,title,url,excerpt,published_at,owner_id) VALUES($1,'feedback-test','Tech','article','Feedback test','https://example.org','Private fixture',now(),$2)",[itemId,fixtures[0].id]);
   assert.equal((await request('feedback','',{id:itemId,value:1})).status,401);

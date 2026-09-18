@@ -43,6 +43,10 @@ export async function rankedItems(
   const { scores } = await sourceScores(accountId);
   const feedback=(await pool().query("SELECT item_id,count(*)::int voters,sum(value)::int total,sum(CASE WHEN account_id=$2 THEN value ELSE 0 END)::int own FROM article_feedback WHERE item_id=ANY($1::text[]) AND updated_at>now()-interval '90 days' GROUP BY item_id",[items.map(i=>i.id),accountId||null])).rows;
   const adjustments=Object.fromEntries(feedback.map(r=>[r.item_id,communityAdjustment(r.total,r.voters,5)+5*r.own]));
+  if(accountId){
+    const reading=(await pool().query("SELECT item_id,saved,is_read FROM reading WHERE account_id=$1 AND item_id=ANY($2::text[])",[accountId,items.map(i=>i.id)])).rows;
+    for(const row of reading) adjustments[row.item_id]=(adjustments[row.item_id]||0)+(row.saved?3:0)-(row.is_read?1:0);
+  }
   return rankArticles(
     selectItems(items, prefs, items.length),
     prefs,

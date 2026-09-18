@@ -5,6 +5,7 @@ export default function Page() {
     <article className="prose">
       <h1>Privacy</h1>
       <h2>Article feedback</h2>
+      <p>Guest votes and reading filters stay in this browser. When signed in, filters and read/save actions are stored with your account. Signed-in interactions carry more weight in personalized ranking; guest activity does not contribute to shared source scores.</p>
       <p>Thumbs-up and thumbs-down feedback is collected only while signed in. We store your account ID, article ID, vote and timestamps to improve article selection and source ratings. Votes are linked to your account, not anonymous. Click your selected thumb again to delete a vote; deleting your account removes its votes. Ranking uses votes from the last 90 days.</p>
       <p>
         Effective 16 September 2026. Bittrees operates this newspaper. Public

@@ -2,15 +2,15 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import {ArticleFeedback} from "./article-feedback";
 import {articleTags,addedTopics,tagStyle} from "@/lib/tags";
+import {defaultReaderFilters,readerFiltersSchema,matchesReaderFilters,interactionAdjustment,type ReaderFilters} from "@/lib/reader-filters";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { call } from "./client";
-import { sourceName } from "@/lib/catalog";
+import { sourceName, topics as catalogTopics } from "@/lib/catalog";
 import {
   countries,
   regions,
   geographyFor,
-  matchesGeography,
 } from "@/lib/geography";
 import type { SourceHealth } from "@/lib/source-health";
 import type { Edition, Item } from "@/lib/model";
@@ -37,16 +37,25 @@ export function Newspaper({
       initialItems || edition?.data.items || [],
     ),
     [tab, setTab] = useState("news"),
-    [topic, setTopic] = useState("All"),
-    [country, setCountry] = useState(""),
-    [region, setRegion] = useState(""),
-    [hideRead, setHideRead] = useState(false),
+    [filters, setFilters] = useState<ReaderFilters>(defaultReaderFilters),
+    [votes,setVotes] = useState<Record<string,number>>({}),
     [state, setState] = useState<State>({}),
     [signed, setSigned] = useState(false),
     [message, setMessage] = useState(""),
     [cursor, setCursor] = useState(-1),
     [personal, setPersonal] = useState(false),
     [help, setHelp] = useState(false);
+  const hideRead=filters.hideRead;
+  const saveQueue=useRef(Promise.resolve());
+  function updateFilters(next:ReaderFilters){
+    setFilters(next);setCursor(-1);
+    if(signed){saveQueue.current=saveQueue.current.catch(()=>{}).then(async()=>{await call('reader-filters',next);setMessage('Filters saved to your account.');}).catch(e=>setMessage('Could not save filters: '+e.message));}
+    else {try{localStorage.setItem('tbn-guest-filters',JSON.stringify(next));}catch{}}
+  }
+  function toggleFilter(key:Exclude<keyof ReaderFilters,'hideRead'>,value:string){
+    const opposite:Record<string,Exclude<keyof ReaderFilters,'hideRead'>>={topics:'excludedTopics',excludedTopics:'topics',countries:'excludedCountries',excludedCountries:'countries',regions:'excludedRegions',excludedRegions:'regions'};
+    updateFilters({...filters,[key]:filters[key].includes(value)?filters[key].filter(t=>t!==value):[...filters[key],value],[opposite[key]]:filters[opposite[key]].filter(t=>t!==value)});
+  }
   const refs = useRef(new Map<string, HTMLElement>());
   useEffect(() => {
     if (mode === "public" && !personal) {
@@ -82,33 +91,26 @@ export function Newspaper({
     };
   }, [live, personal, edition?.published_at, router]);
   useEffect(() => {
-    try {
-      setState(
-        JSON.parse(localStorage.getItem("bittrees-news-reading") || "{}"),
-      );
-    } catch {}
-    call("session")
-      .then(async (a) => {
+    let active=true;
+    async function load(){
+      try{
+        const a=await call('session');if(!active)return;
         setSigned(!!a.account);
-        if (a.account) {
-          const rows = await call("reading");
-          setState(
-            Object.fromEntries(
-              rows.map(
-                (r: { item_id: string; is_read: boolean; saved: boolean }) => [
-                  r.item_id,
-                  r,
-                ],
-              ),
-            ),
-          );
-          if (mode === "saved") setItems(await call("saved"));
-        } else if (mode === "saved")
-          setMessage(
-            "Sign in to keep a saved library across editions and devices.",
-          );
-      })
-      .catch(() => {});
+        if(a.account){
+          const [rows,f,v]=await Promise.all([call('reading'),call('reader-filters'),call('feedback')]);if(!active)return;
+          setState(Object.fromEntries(rows.map((r:{item_id:string;is_read:boolean;saved:boolean})=>[r.item_id,r])));
+          setFilters(readerFiltersSchema.parse(f));setVotes(v);
+          if(mode==='saved'){const saved=await call('saved');if(active)setItems(saved);}
+        }else{
+          setState(JSON.parse(localStorage.getItem('bittrees-news-reading')||'{}'));
+          setFilters(readerFiltersSchema.parse(JSON.parse(localStorage.getItem('tbn-guest-filters')||'{}')));
+          setVotes(JSON.parse(localStorage.getItem('tbn-guest-votes')||'{}'));
+        }
+      }catch(e){if(active)setMessage('Could not load your preferences. Please refresh to retry.');}
+    }
+    function vote(e:Event){const d=(e as CustomEvent).detail;setVotes(v=>({...v,[d.id]:d.value}));}
+    void load();window.addEventListener('news-auth',load);window.addEventListener('news-vote',vote);
+    return()=>{active=false;window.removeEventListener('news-auth',load);window.removeEventListener('news-vote',vote);};
   }, [mode]);
   const translationKeys = items
     .filter(
@@ -174,13 +176,12 @@ export function Newspaper({
             (tab === "podcasts"
               ? i.kind === "podcast"
               : i.kind !== "podcast")) &&
-          (topic === "All" || articleTags(i).includes(topic)) &&
-          matchesGeography(geography.get(i.id)!, country, region) &&
+          matchesReaderFilters(articleTags(i),geography.get(i.id)!,filters) &&
           (!hideRead || !state[i.id]?.is_read),
-      ),
-    [items, tab, topic, hideRead, state, mode, geography, country, region],
+      ).map((item,index)=>({item,score:-index+interactionAdjustment(votes[item.id]||0,!!state[item.id]?.saved,!!state[item.id]?.is_read,signed)})).sort((a,b)=>b.score-a.score).map(({item})=>item),
+    [items, tab, filters, hideRead, state, mode, geography, votes,signed],
   );
-  const topics = [...new Set([...items.flatMap(articleTags),...addedTopics])]
+  const topics = [...new Set([...items.flatMap(articleTags),...catalogTopics,...addedTopics,...filters.topics,...filters.excludedTopics])]
     .filter((t) => t !== "Portugal" && t !== "Europe")
     .sort();
   async function mutate(
@@ -195,7 +196,7 @@ export function Newspaper({
     };
     setState(next);
     try {
-      localStorage.setItem("bittrees-news-reading", JSON.stringify(next));
+      if(!signed)localStorage.setItem("bittrees-news-reading", JSON.stringify(next));
       if (signed) await call("reading", { id, field, value: v });
       else if (field === "saved")
         setMessage(
@@ -321,7 +322,7 @@ export function Newspaper({
               {personal ? "Public newspaper" : "My edition"}
             </button>
           )}
-          <button onClick={() => setHideRead(!hideRead)}>
+          <button onClick={() => updateFilters({...filters,hideRead:!hideRead})}>
             {hideRead ? "Show read" : "Hide read"}
           </button>
           <button
@@ -332,74 +333,21 @@ export function Newspaper({
           </button>
         </div>
       </div>
-      <div className="topic-filters">
-        {["All", ...topics].map((t) => (
-          <button
-            style={t === "All" ? undefined : tagStyle(t)}
-            aria-pressed={topic === t}
-            className={topic === t ? "selected" : ""}
-            key={t}
-            onClick={() => {
-              setTopic(t);
-              if (t === "All") {
-                setCountry("");
-                setRegion("");
-              }
-              setCursor(-1);
-            }}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-      <div className="geography-filters">
-        <select
-          aria-label="Select a country"
-          value={country}
-          onChange={(e) => {
-            setCountry(e.target.value);
-            setRegion("");
-            setCursor(-1);
-          }}
-        >
-          <option value="">Select a country</option>
-          {countries.map((c) => (
-            <option key={c.code} value={c.code}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label="Select a region"
-          value={region}
-          onChange={(e) => {
-            setRegion(e.target.value);
-            setCountry("");
-            setCursor(-1);
-          }}
-        >
-          <option value="">Select a region</option>
-          {regions.map((r) => (
-            <option key={r} value={r}>
-              {r}
-            </option>
-          ))}
-        </select>
-        {(country || region) && (
-          <button
-            onClick={() => {
-              setCountry("");
-              setRegion("");
-              setCursor(-1);
-            }}
-          >
-            Clear location
-          </button>
-        )}
-        <span className="geography-note">
-          Filters this edition by places mentioned in the headlines and
-          summaries.
-        </span>
+      <div className="reader-filters" data-insights-ignore="true">
+        <span className="geography-note">{signed?'Account filters · saved automatically':'Guest filters · on this device'} · Match any selection within each group; exclusions always win.</span>
+        <button onClick={()=>updateFilters({...defaultReaderFilters,hideRead})}>Clear filters</button>
+        {([
+          ['Topics',topics.map(t=>({value:t,label:t})),'topics','excludedTopics'],
+          ['Countries',countries.map(c=>({value:c.code,label:c.name})),'countries','excludedCountries'],
+          ['Regions',regions.map(r=>({value:r,label:r})),'regions','excludedRegions'],
+        ] as const).map(([label,options,include,exclude])=><details key={label}>
+          <summary>{label} · {filters[include].length} included · {filters[exclude].length} excluded</summary>
+          <div className="filter-options">{options.map(o=><div key={o.value} className="filter-option">
+            <span style={label==='Topics'?tagStyle(o.value):undefined}>{o.label}</span>
+            <label><input type="checkbox" checked={filters[include].includes(o.value)} aria-label={`Include ${o.label}`} onChange={()=>toggleFilter(include,o.value)}/> Include</label>
+            <label><input type="checkbox" checked={filters[exclude].includes(o.value)} aria-label={`Exclude ${o.label}`} onChange={()=>toggleFilter(exclude,o.value)}/> Exclude</label>
+          </div>)}</div>
+        </details>)}
       </div>
       {help && (
         <p className="notice">

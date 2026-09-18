@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS translations(key text PRIMARY KEY,payload jsonb NOT N
 CREATE INDEX IF NOT EXISTS translations_pending ON translations(status,created_at);
 CREATE TABLE IF NOT EXISTS editor_jobs(id text PRIMARY KEY,publish_at timestamptz NOT NULL,status text NOT NULL DEFAULT 'pending',payload jsonb NOT NULL,claimed_at timestamptz,result jsonb,error text);
 CREATE TABLE IF NOT EXISTS accounts(id uuid PRIMARY KEY,created_at timestamptz NOT NULL DEFAULT now(),preferences jsonb NOT NULL DEFAULT '{}');
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS reader_filters jsonb NOT NULL DEFAULT '{}';
 CREATE TABLE IF NOT EXISTS identities(kind text NOT NULL CHECK(kind IN ('email','wallet')),value text NOT NULL,account_id uuid NOT NULL REFERENCES accounts ON DELETE CASCADE,verified_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(kind,value));
 CREATE TABLE IF NOT EXISTS news_role_grants(kind text NOT NULL CHECK(kind IN ('email','wallet')),value text NOT NULL,role text NOT NULL CHECK(role IN ('member','moderator','editor','admin','super_admin')),protected boolean NOT NULL DEFAULT false,updated_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(kind,value));
 CREATE TABLE IF NOT EXISTS news_staff_audit(id uuid PRIMARY KEY,actor uuid NOT NULL,action text NOT NULL,detail jsonb NOT NULL,created_at timestamptz NOT NULL DEFAULT now());

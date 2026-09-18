@@ -1,3 +1,4 @@
+import {readerFiltersSchema} from './reader-filters';
 import {
   getDraft,
   generateDraft,
@@ -589,6 +590,12 @@ export async function api(r: Request) {
           ),
         ),
       );
+    }
+    if(path === "reader-filters" && method === "GET")return json(readerFiltersSchema.parse((await pool().query("SELECT reader_filters FROM accounts WHERE id=$1",[a!.id])).rows[0].reader_filters));
+    if(path === "reader-filters" && method === "POST"){
+      const filters=readerFiltersSchema.parse(await body(r));
+      await pool().query("UPDATE accounts SET reader_filters=$2 WHERE id=$1",[a!.id,JSON.stringify(filters)]);
+      return json({ok:true});
     }
     if(path === "feedback" && method === "GET")return json(Object.fromEntries((await pool().query("SELECT item_id,value FROM article_feedback WHERE account_id=$1",[a!.id])).rows.map(r=>[r.item_id,r.value])));
     if(path === "feedback" && method === "POST"){
