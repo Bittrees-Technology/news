@@ -6,7 +6,6 @@ import {articleTags,addedTopics,tagStyle} from "@/lib/tags";
 import {defaultReaderFilters,readerFiltersSchema,matchesReaderFilters,guestReaderFilters,selectReaderFilter,type ReaderFilters} from "@/lib/reader-filters";
 import {recentUniqueStories} from "@/lib/recent-stories";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { call } from "./client";
 import { sourceName, topics as catalogTopics } from "@/lib/catalog";
 import {
@@ -34,9 +33,8 @@ export function Newspaper({
   health?: SourceHealth | null;
   live?: boolean;
 }) {
-  const router = useRouter();
-  const [now,setNow]=useState(()=>Date.now());
-  useEffect(()=>{const timer=setInterval(()=>setNow(Date.now()),60000);return()=>clearInterval(timer);},[]);
+  // Hold the reading window steady until the reader explicitly reloads.
+  const [now]=useState(()=>Date.now());
   const [items, setItems] = useState<Item[]>(
       initialItems || edition?.data.items || [],
     ),
@@ -45,9 +43,8 @@ export function Newspaper({
     [search,setSearch]=useState(""),
     [searchField,setSearchField]=useState<SearchField>("all"),
     [rankOrder,setRankOrder]=useState<string[]|null>(null),
-    [rankRevision,setRankRevision]=useState(0),
     [filters, setFilters] = useState<ReaderFilters>(defaultReaderFilters),
-    [votes,setVotes] = useState<Record<string,number>>({}),
+    [readSnapshot,setReadSnapshot] = useState<State>({}),
     [state, setState] = useState<State>({}),
     [signed, setSigned] = useState(false),
     [message, setMessage] = useState(""),
@@ -70,7 +67,7 @@ export function Newspaper({
     if(!signed||!itemIds)return;
     void call('reader-order',{ids:itemIds.split(',')}).then(ids=>{if(active)setRankOrder(ids);}).catch(()=>{if(active)setMessage('Could not apply your ranking preferences. Showing the edition order.');});
     return()=>{active=false;};
-  },[signed,itemIds,rankRevision]);
+  },[signed,itemIds]);
   const refs = useRef(new Map<string, HTMLElement>());
   useEffect(() => {
     if (mode === "public" && !personal) {
@@ -79,101 +76,27 @@ export function Newspaper({
     }
   }, [edition, mode, personal]);
   useEffect(() => {
-    if (!live || personal) return;
-    let stopped = false, pending = false;
-    let revision: string | undefined;
-    const controller = new AbortController();
-    async function check() {
-      if (document.visibilityState !== "visible" || pending) return;
-      pending = true;
-      try {
-        const response = await fetch("/api/health", { cache: "no-store", signal: controller.signal });
-        if (!response.ok) return;
-        const latest = await response.json();
-        if (!stopped) {
-          const changed=revision !== undefined && revision !== latest.contentRevision;
-          revision=latest.contentRevision;
-          if(changed || (latest.publishedAt && latest.publishedAt !== edition?.published_at)) router.refresh();
-        }
-      } catch { /* Keep the current edition readable during network outages. */ }
-      finally { pending = false; }
-    }
-    void check();
-    const timer = window.setInterval(check, 60_000);
-    window.addEventListener("focus", check);
-    document.addEventListener("visibilitychange", check);
-    return () => {
-      stopped = true;
-      controller.abort();
-      window.clearInterval(timer);
-      window.removeEventListener("focus", check);
-      document.removeEventListener("visibilitychange", check);
-    };
-  }, [live, personal, edition?.published_at, router]);
-  useEffect(() => {
     let active=true;
     async function load(){
       try{
         const a=await call('session');if(!active)return;
         setSigned(!!a.account);
         if(a.account){
-          const [rows,f,v]=await Promise.all([call('reading'),call('reader-filters'),call('feedback')]);if(!active)return;
-          setState(Object.fromEntries(rows.map((r:{item_id:string;is_read:boolean;saved:boolean})=>[r.item_id,r])));
-          setFilters(readerFiltersSchema.parse(f));setVotes(v);
+          const [rows,f]=await Promise.all([call('reading'),call('reader-filters')]);if(!active)return;
+          const reading=Object.fromEntries(rows.map((r:{item_id:string;is_read:boolean;saved:boolean})=>[r.item_id,r]));
+          setState(reading);setReadSnapshot(reading);
+          setFilters(readerFiltersSchema.parse(f));
           if(mode==='saved'){const saved=await call('saved');if(active)setItems(saved);}
         }else{
-          setState(JSON.parse(localStorage.getItem('bittrees-news-reading')||'{}'));
+          const reading=JSON.parse(localStorage.getItem('bittrees-news-reading')||'{}');
+          setState(reading);setReadSnapshot(reading);
           setFilters(guestReaderFilters(readerFiltersSchema.parse(JSON.parse(localStorage.getItem('tbn-guest-filters')||'{}'))));
-          setVotes(JSON.parse(localStorage.getItem('tbn-guest-votes')||'{}'));
         }
       }catch(e){if(active)setMessage('Could not load your preferences. Please refresh to retry.');}
     }
-    function vote(e:Event){const d=(e as CustomEvent).detail;setVotes(v=>({...v,[d.id]:d.value}));setRankRevision(v=>v+1);}
-    void load();window.addEventListener('news-auth',load);window.addEventListener('news-vote',vote);
-    return()=>{active=false;window.removeEventListener('news-auth',load);window.removeEventListener('news-vote',vote);};
+    void load();window.addEventListener('news-auth',load);
+    return()=>{active=false;window.removeEventListener('news-auth',load);};
   }, [mode]);
-  const translationKeys = items
-    .filter(
-      (i) =>
-        i.translation_key &&
-        ["pending", "working"].includes(i.translation_status || ""),
-    )
-    .map((i) => i.translation_key!)
-    .join(",");
-  useEffect(() => {
-    if (!translationKeys) return;
-    let stopped = false,
-      timer: ReturnType<typeof setTimeout>,
-      polls = 0;
-    async function refresh() {
-      try {
-        const rows = await call("translations/status", {
-          keys: translationKeys.split(",").slice(0, 100),
-        });
-        if (!stopped)
-          setItems((current) =>
-            current.map((i) => {
-              const row = rows.find(
-                (r: { key: string }) => r.key === i.translation_key,
-              );
-              return row
-                ? {
-                    ...i,
-                    translation_status: row.status,
-                    translation: row.status === "done" ? row.result : undefined,
-                  }
-                : i;
-            }),
-          );
-      } catch {}
-      if (!stopped && ++polls < 60) timer = setTimeout(refresh, 15000);
-    }
-    timer = setTimeout(refresh, 3000);
-    return () => {
-      stopped = true;
-      clearTimeout(timer);
-    };
-  }, [translationKeys]);
   const geography = useMemo(
     () =>
       new Map(
@@ -196,11 +119,11 @@ export function Newspaper({
           (!rankOrder||rankOrder.includes(i.id)) &&
           matchesReaderFilters(articleTags(i),geography.get(i.id)!,filters) &&
           matchesArticleSearch(i,search,searchField) &&
-          (!hideRead || !state[i.id]?.is_read),
+          (!hideRead || !readSnapshot[i.id]?.is_read),
       ).sort((a,b)=>{
         const order=rankOrder||items.map(i=>i.id);return order.indexOf(a.id)-order.indexOf(b.id);
       }),
-    [items, tab, filters, hideRead, state, mode, geography,rankOrder,live,now,search,searchField],
+    [items, tab, filters, hideRead, readSnapshot, mode, geography,rankOrder,live,now,search,searchField],
   );
   const topics = [...new Set([...items.flatMap(articleTags),...catalogTopics,...addedTopics,...filters.topics,...filters.excludedTopics])]
     .filter((t) => t !== "Portugal" && t !== "Europe")
@@ -218,7 +141,7 @@ export function Newspaper({
     setState(next);
     try {
       if(!signed)localStorage.setItem("bittrees-news-reading", JSON.stringify(next));
-      if (signed) {await call("reading", { id, field, value: v });setRankRevision(n=>n+1);}
+      if (signed) {await call("reading", { id, field, value: v });}
       else if (field === "saved")
         setMessage(
           "Saved on this device. Sign in to build your library across editions.",
@@ -335,12 +258,13 @@ export function Newspaper({
           )}
         </div>
         <div className="actions">
+          <button onClick={()=>window.location.reload()}>Refresh stories</button>
           {signed && mode === "public" && (
             <button onClick={chooseFeed}>
               {personal ? "Public newspaper" : "My edition"}
             </button>
           )}
-          <button onClick={() => updateFilters({...filters,hideRead:!hideRead})}>
+          <button onClick={()=>{setReadSnapshot(state);updateFilters({...filters,hideRead:!hideRead});}}>
             {hideRead ? "Show read" : "Hide read"}
           </button>
           <button
@@ -401,7 +325,7 @@ export function Newspaper({
           {message} <Link href="/account">Your account</Link>
         </p>
       )}
-      {live&&<p className="muted">Last 24 hours</p>}
+      {live&&<p className="muted">Last 24 hours at page load · Refresh stories to update content and rankings.</p>}
       {!visible.length ? (
         <div className="empty">
           <h2>
