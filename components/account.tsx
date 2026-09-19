@@ -1,6 +1,7 @@
 "use client";
 import { ReaderExclusions } from "./reader-exclusions";
 import { Subscriptions } from "./subscriptions";
+import { canAccountSection } from "@/lib/permissions";
 import { StaffPanel } from "./staff-panel";
 import { Analytics } from "./analytics";
 import { AiConnection } from "./ai-connection";
@@ -88,6 +89,8 @@ export type AccountSection =
   | "topics"
   | "sources"
   | "delivery"
+  | "access"
+  | "editorial"
   | "settings"
   | "analytics"
   | "ai";
@@ -98,7 +101,9 @@ const accountTabs: [AccountSection, string, string][] = [
   ["delivery", "Delivery", "/account/delivery"],
   ["analytics", "Analytics", "/account/analytics"],
   ["ai", "AI connection", "/account/ai"],
-  ["settings", "Account", "/account/settings"],
+  ["access", "Access", "/account/access"],
+  ["editorial", "Editorial review", "/account/editorial"],
+  ["settings", "Sign-in methods", "/account/settings"],
 ];
 export function Account({
   section = "newspaper",
@@ -315,7 +320,7 @@ export function Account({
         </div>
       </div>
       <nav className="account-tabs" aria-label="Your newspaper settings">
-        {accountTabs.map(([key, label, href]) => (
+        {accountTabs.filter(([key]) => canAccountSection(key, data.account?.role)).map(([key, label, href]) => (
           <Link
             key={key}
             href={href}
@@ -329,8 +334,8 @@ export function Account({
         ))}
       </nav>
       {statusBox}
-      {section === "settings" && (
-        <StaffPanel role={data.account?.role || "member"} />
+      {(section === "access" || section === "editorial") && (
+        <StaffPanel section={section} role={data.account?.role || "member"} />
       )}
       {section === "newspaper" && (
         <NewspaperSettings connections={data.connections} />

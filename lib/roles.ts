@@ -8,10 +8,8 @@ export const roles = [
   "super_admin",
 ] as const;
 export type NewsRole = (typeof roles)[number];
-export const canScores = (role?: string) =>
-  role === "admin" || role === "super_admin";
-export const canReview = (role?: string) =>
-  ["moderator", "editor", "admin", "super_admin"].includes(role || "");
+export { canScores, canReview, canManageAccess, canApprove } from "./permissions";
+import { canScores } from "./permissions";
 export async function roleForAccount(id?: string): Promise<NewsRole> {
   if (!id) return "member";
   const r = await pool().query(

@@ -21,6 +21,8 @@ export function AccountWorkspace() {
       "analytics",
       "ai",
       "settings",
+      "access",
+      "editorial",
     ].includes(section)
   )
     return null;

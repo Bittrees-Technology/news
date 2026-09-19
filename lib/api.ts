@@ -14,6 +14,8 @@ import { sourceHealth } from "./source-health";
 import {
   roles,
   canReview,
+  canManageAccess,
+  canApprove,
   canScores,
   requireScores,
   scoreVisibility,
@@ -400,7 +402,7 @@ export async function api(r: Request) {
     }
 
     if (path === "staff/roles") {
-      if (a!.role !== "super_admin")
+      if (!canManageAccess(a!.role))
         throw new HttpError(403, "Super-admin access required.");
       if (method === "GET")
         return json(
@@ -468,7 +470,7 @@ export async function api(r: Request) {
             note: z.string().min(3).max(2000),
           })
           .parse(await body(r));
-        if (b.status === "approved" && a!.role === "moderator")
+        if (b.status === "approved" && !canApprove(a!.role))
           throw new HttpError(
             403,
             "Editor or administrator approval required.",

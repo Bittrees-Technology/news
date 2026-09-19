@@ -1,19 +1,20 @@
 "use client";
 import { useEffect, useState } from "react";
+import { canManageAccess, canReview, canApprove, canAccountSection } from "@/lib/permissions";
 import { call } from "./client";
-export function StaffPanel({ role }: { role: string }) {
+export function StaffPanel({ role, section }: { role: string; section: "access" | "editorial" }) {
   const [grants, setGrants] = useState<any[]>([]),
     [reviews, setReviews] = useState<any[]>([]),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
-  const staff = ["moderator", "editor", "admin", "super_admin"].includes(role);
+  const staff = canReview(role);
   async function refresh() {
-    if (role === "super_admin") setGrants(await call("staff/roles"));
-    if (staff) setReviews(await call("staff/reviews"));
+    if (section === "access" && canManageAccess(role)) setGrants(await call("staff/roles"));
+    if (section === "editorial" && staff) setReviews(await call("staff/reviews"));
   }
   useEffect(() => {
     refresh().catch((e) => setMessage(e.message));
-  }, [role]);
+  }, [role, section]);
   async function save(path: string, data: unknown) {
     setBusy(true);
     setMessage("");
@@ -27,16 +28,18 @@ export function StaffPanel({ role }: { role: string }) {
       setBusy(false);
     }
   }
+  if (!canAccountSection(section, role)) return <section className="panel"><h2>Access restricted</h2><p>Your account role does not have access to this section.</p></section>;
   return (
-    <section>
-      <h2>Access and editorial review</h2>
+    <section className="panel">
+      <h2>{section === "access" ? "Access" : "Editorial review"}</h2>
       <p>
         Your role: <strong>{role.replaceAll("_", "-")}</strong>
       </p>
       {message && <p role="status">{message}</p>}
-      {role === "super_admin" && (
+      {section === "access" && canManageAccess(role) && (
         <>
-          <h3>Team roles</h3>
+          <h3>Account roles</h3>
+          <p>Members manage their own newspaper and sign-in methods. Moderators flag and review articles. Editors also approve articles. Admins also see scores and processing diagnostics. Super-admins also assign roles. Staff roles do not grant access to another user’s private newspaper or sign-in methods.</p>
           <p>
             Assign access to a verified email or wallet. Protected super-admin
             identities cannot be changed here.
@@ -83,7 +86,7 @@ export function StaffPanel({ role }: { role: string }) {
           </ul>
         </>
       )}
-      {staff && (
+      {section === "editorial" && staff && (
         <>
           <h3>Article review</h3>
           <p>
@@ -108,7 +111,7 @@ export function StaffPanel({ role }: { role: string }) {
               <select name="status">
                 <option value="flagged">Flag for review</option>
                 <option value="reviewed">Reviewed</option>
-                {role !== "moderator" && (
+                {canApprove(role) && (
                   <option value="approved">Approved</option>
                 )}
               </select>
