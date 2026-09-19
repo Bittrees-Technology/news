@@ -48,7 +48,7 @@ export async function prepare(now = new Date()) {
           slot.id,
           slot.at,
           JSON.stringify({
-            items: diverse(articles, 36),
+            items: articles.slice(0, 36),
             podcasts: pods,
             stats,
           }),

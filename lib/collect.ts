@@ -1,3 +1,4 @@
+import {publicRanked} from "./ranking";
 import {articleTags,normalizeTopic} from "./tags";
 import Parser from "rss-parser";
 import { createHash } from "node:crypto";
@@ -144,7 +145,7 @@ export async function fetchSource(s: Source, owner?: string): Promise<Item[]> {
 export async function storeItems(items: Item[]) {
   for (const i of items)
     await pool().query(
-      `INSERT INTO items(id,source_id,topic,kind,title,url,excerpt,published_at,owner_id,tags,authors,publication,source_context) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) ON CONFLICT(id) DO UPDATE SET fetched_at=now(),excerpt=EXCLUDED.excerpt,title=EXCLUDED.title,tags=EXCLUDED.tags,topic=EXCLUDED.topic,authors=EXCLUDED.authors,publication=EXCLUDED.publication,source_context=EXCLUDED.source_context`,
+      `INSERT INTO items(id,source_id,topic,kind,title,url,excerpt,published_at,owner_id,tags,authors,publication,source_context) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) ON CONFLICT(id) DO UPDATE SET fetched_at=CASE WHEN (items.title,items.excerpt,items.source_context) IS DISTINCT FROM (EXCLUDED.title,EXCLUDED.excerpt,EXCLUDED.source_context) THEN now() ELSE items.fetched_at END,summary=CASE WHEN (items.title,items.excerpt) IS DISTINCT FROM (EXCLUDED.title,EXCLUDED.excerpt) THEN NULL ELSE items.summary END,excerpt=EXCLUDED.excerpt,title=EXCLUDED.title,tags=EXCLUDED.tags,topic=EXCLUDED.topic,authors=EXCLUDED.authors,publication=EXCLUDED.publication,source_context=EXCLUDED.source_context`,
       [
         i.id,
         i.source_id,
@@ -158,7 +159,13 @@ export async function storeItems(items: Item[]) {
         articleTags(i),i.authors||[],i.publication||null,i.source_context||i.excerpt,
       ],
     );
-  await pool().query("INSERT INTO story_documents(item_id) SELECT id FROM items WHERE id=ANY($1::text[]) AND owner_id IS NULL ON CONFLICT DO NOTHING",[items.map(i=>i.id)]);
+  await pool().query(`INSERT INTO story_documents(item_id,content_key) SELECT id,md5(title||'|'||coalesce(source_context,excerpt)) FROM items WHERE id=ANY($1::text[]) AND owner_id IS NULL ON CONFLICT(item_id) DO UPDATE SET content_key=EXCLUDED.content_key,document=CASE WHEN story_documents.content_key IS NULL THEN story_documents.document ELSE NULL END,cid=CASE WHEN story_documents.content_key IS NULL THEN story_documents.cid ELSE NULL END,generated_at=CASE WHEN story_documents.content_key IS NULL THEN story_documents.generated_at ELSE NULL END,pinned_at=CASE WHEN story_documents.content_key IS NULL THEN story_documents.pinned_at ELSE NULL END,claimed_at=NULL,lease=NULL,attempts=0,available_at=now(),error=NULL WHERE story_documents.content_key IS DISTINCT FROM EXCLUDED.content_key`,[items.map(i=>i.id)]);
+}
+export async function prioritizePublicWork(){
+ const rows=(await pool().query("SELECT * FROM items WHERE owner_id IS NULL AND published_at>=now()-interval '24 hours' AND published_at<=now() ORDER BY published_at DESC LIMIT 2000")).rows as Item[];
+ const ranked=await publicRanked(rows);
+ await pool().query("UPDATE story_documents s SET priority=x.score FROM jsonb_to_recordset($1::jsonb) AS x(id text,score numeric) WHERE s.item_id=x.id",[JSON.stringify(ranked.map(i=>({id:i.id,score:i.ranking.value})))]);
+ return ranked;
 }
 export async function collect() {
   let ok = 0,
@@ -203,5 +210,6 @@ export async function collect() {
       }
     }),
   );
+  await prioritizePublicWork();
   return { ok, failed };
 }

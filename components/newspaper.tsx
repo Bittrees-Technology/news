@@ -78,6 +78,7 @@ export function Newspaper({
   useEffect(() => {
     if (!live || personal) return;
     let stopped = false, pending = false;
+    let revision: string | undefined;
     const controller = new AbortController();
     async function check() {
       if (document.visibilityState !== "visible" || pending) return;
@@ -86,7 +87,11 @@ export function Newspaper({
         const response = await fetch("/api/health", { cache: "no-store", signal: controller.signal });
         if (!response.ok) return;
         const latest = await response.json();
-        if (!stopped && latest.publishedAt && latest.publishedAt !== edition?.published_at) router.refresh();
+        if (!stopped) {
+          const changed=revision !== undefined && revision !== latest.contentRevision;
+          revision=latest.contentRevision;
+          if(changed || (latest.publishedAt && latest.publishedAt !== edition?.published_at)) router.refresh();
+        }
       } catch { /* Keep the current edition readable during network outages. */ }
       finally { pending = false; }
     }
@@ -457,7 +462,7 @@ export function Newspaper({
                     {state[i.id]?.saved ? "★ Saved" : "☆ Save"}
                   </button>
                   <ArticleFeedback id={i.id} />
-                  {!i.owner_id&&<Link href={`/story/${i.id}`}>Full briefing ↗</Link>}
+                  {!i.owner_id&&<Link href={`/story/${i.id}`}>Summary ↗</Link>}
                 </div>
               </div>
             </article>

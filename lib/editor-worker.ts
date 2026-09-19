@@ -70,7 +70,7 @@ export async function saveEditorResult(b: z.infer<typeof editorResultSchema>) {
         `The Bittrees News desk selected ${selected.length} source-linked stories across ${[...new Set(selected.map((i) => i.topic))].join(", ")}. Summaries retain source wording; follow each link for the full report.`,
         JSON.stringify({
           items: [...selected, ...j.payload.podcasts],
-          mode: "Bittrees-hosted AI · selected source excerpts",
+          mode: "Bittrees · selected source excerpts",
           model: b.model,
           feedsOk: j.payload.stats.ok,
           feedsFailed: j.payload.stats.failed,

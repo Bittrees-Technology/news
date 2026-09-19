@@ -1,4 +1,4 @@
-import {claimStory,saveStory,saveStoryCid} from './story-documents';
+import {retryStory,claimStory,saveStory,saveStoryCid} from './story-documents';
 import {readerFiltersSchema} from './reader-filters';
 import {
   getDraft,
@@ -116,6 +116,7 @@ export async function api(r: Request) {
       return json({
         ok: true,
         publishedAt: edition?.published_at || null,
+        contentRevision: (await pool().query("SELECT concat_ws('|',(SELECT max(fetched_at) FROM items WHERE owner_id IS NULL),(SELECT max(generated_at) FROM story_documents),(SELECT max(completed_at) FROM translations WHERE status='done')) AS revision")).rows[0].revision,
         sourceCount: sources.length,
         email: emailReady(),
         walletMessaging: await walletReady(),
@@ -185,6 +186,7 @@ export async function api(r: Request) {
     }
     if(path.startsWith('editor/story/') && method==='POST'){
       authorizeBearer(r,'EDITOR_SECRET');
+      if(path==='editor/story/retry')return json(await retryStory(await body(r)));
       if(path==='editor/story/claim')return json(await claimStory());
       if(path==='editor/story/result')return json(await saveStory(await body(r)));
       if(path==='editor/story/pinned')return json(await saveStoryCid(await body(r)));

@@ -22,6 +22,7 @@ export const translationResultSchema = z.object({
   summary: z.string().max(1800).optional(),
   model: z.string().min(1).max(100),
   error: z.boolean().optional(),
+  deferred: z.boolean().optional(),
 });
 export function translatedResult(
   b: z.infer<typeof translationResultSchema>,
@@ -85,14 +86,15 @@ async function attachTranslations(items: Item[]): Promise<Item[]> {
   const keys = publicItems.map(translationKey);
   const rows = await translationStatus(keys);
   const found = new Map(rows.map((r) => [r.key, r]));
-  const missing = publicItems.filter((i) => !found.has(translationKey(i)));
-  if (missing.length)
+  if (publicItems.length)
     await pool().query(
-      `INSERT INTO translations(key,payload) SELECT key,payload FROM jsonb_to_recordset($1::jsonb) AS x(key text,payload jsonb) ON CONFLICT(key) DO NOTHING`,
+      `INSERT INTO translations(key,payload,priority,item_published_at) SELECT key,payload,priority,item_published_at FROM jsonb_to_recordset($1::jsonb) AS x(key text,payload jsonb,priority numeric,item_published_at timestamptz) ON CONFLICT(key) DO UPDATE SET priority=EXCLUDED.priority,item_published_at=EXCLUDED.item_published_at WHERE (translations.priority,translations.item_published_at) IS DISTINCT FROM (EXCLUDED.priority,EXCLUDED.item_published_at)`,
       [
         JSON.stringify(
-          missing.map((i) => ({
+          publicItems.map((i) => ({
             key: translationKey(i),
+            priority: i.ranking?.value || 0,
+            item_published_at: i.published_at,
             payload: { title: i.title, summary: i.summary || i.excerpt },
           })),
         ),
@@ -113,10 +115,10 @@ async function attachTranslations(items: Item[]): Promise<Item[]> {
 export async function claimTranslation() {
   // A separate outbound worker can retry a failed item without blocking an edition.
   await pool().query(
-    "UPDATE translations SET status='failed' WHERE status='working' AND attempts>=3 AND claimed_at<now()-interval '10 minutes'",
+    "UPDATE translations SET status='failed' WHERE status='working' AND attempts>=3 AND claimed_at<now()-interval '40 minutes'",
   );
   const r = await pool().query(`WITH candidate AS (
-    SELECT key FROM translations WHERE (status='pending' OR status='working' AND claimed_at<now()-interval '10 minutes') AND attempts<3 ORDER BY created_at DESC FOR UPDATE SKIP LOCKED LIMIT 1
+    SELECT key FROM translations WHERE (status='pending' OR status='working' AND claimed_at<now()-interval '40 minutes') AND attempts<3 AND available_at<=now() ORDER BY (coalesce(item_published_at,created_at)>=now()-interval '24 hours') DESC,priority DESC,created_at DESC FOR UPDATE SKIP LOCKED LIMIT 1
   ) UPDATE translations t SET status='working',claimed_at=now(),lease=gen_random_uuid(),attempts=attempts+1 FROM candidate c WHERE t.key=c.key RETURNING t.key,t.lease,t.payload`);
   return r.rows[0] || null;
 }
@@ -131,6 +133,10 @@ export async function saveTranslation(
   ).rows[0];
   if (!active)
     throw new HttpError(409, "Translation lease is no longer active");
+  if(b.deferred){
+    const r=await pool().query("UPDATE translations SET status='pending',attempts=greatest(0,attempts-1),lease=NULL,claimed_at=NULL,available_at=now()+interval '30 seconds' WHERE key=$1 AND lease=$2 AND status='working' RETURNING key",[b.key,b.lease]);
+    if(!r.rowCount)throw new HttpError(409,'Translation lease is no longer active');return {ok:true};
+  }
   const result = b.error ? null : translatedResult(b, active.payload);
   const r = await pool().query(
     `UPDATE translations SET status=CASE WHEN $3::boolean THEN CASE WHEN attempts>=3 THEN 'failed' ELSE 'pending' END ELSE 'done' END,result=$4,completed_at=now() WHERE key=$1 AND lease=$2 AND status='working' RETURNING key`,
