@@ -161,3 +161,9 @@ The user superseded the live-refresh requirement: an open newspaper must remain 
 - Final cases showed source-host attribution errors, podcast sponsors assigned to a spaceport, inaccurate limitations and planned software integration presented as available. Raw evidence, outputs and review notes remain private on Acer; no benchmark artifacts were published.
 - Both tested configurations fail the proposed promotion gate. Candidate remains isolated and unloaded; existing production routing stays unchanged. Do not start a broader canary from these results. Future work should first change evidence preparation/output validation and evaluate that version separately, preserving this failed run.
 - 209 samples span 00:50–18:10 UTC. Four production services are active; supervisor is healthy, benchmark completed. Latest edition remains the passing 11:57 cycle. The 19:57 publication and full-day observation remain pending, alongside durable task states, fair scheduling, stronger grounding and source-policy-backed full-body acquisition.
+
+## 19 September, 19:14 UTC observation
+
+- 221 samples span 00:50–19:10 UTC. Production supervisor, telemetry, translation and story services remain active; supervisor is healthy with no candidate resident. Completed benchmark and failed promotion gates are unchanged.
+- Latest published edition remains the passing 11:57 cycle. The third publication is due at 19:57 UTC and is not late. Full-day observation remains due after 20 September 00:50 UTC.
+- No deployment, model, retry, delivery or artifact changes. Preserve the baseline observation window; proceed with the remaining task-state and grounding work after evaluating it. All outstanding implementation gates remain open.
