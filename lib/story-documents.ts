@@ -1,3 +1,4 @@
+import {sourceEvidence} from "./source-evidence";
 import {publicJob} from "./job-contract";
 import {z} from 'zod';
 import {pool,tx} from './db';
@@ -19,7 +20,7 @@ export async function saveStory(input:unknown){
  const b=z.object({id:z.string().regex(/^[a-f0-9]{64}$/),lease:z.uuid(),briefing:briefingSchema,model:z.string().max(100)}).parse(input);
  const i=(await pool().query('SELECT * FROM items WHERE id=$1 AND owner_id IS NULL',[b.id])).rows[0];
  if(!i)throw new HttpError(404,'Public story not found');
- const payload={version:1,id:i.id,title:i.title,kind:i.kind,source:{url:i.url,authors:i.authors,publication:i.publication||sourceName(i.source_id),publishedAt:i.published_at},briefing:b.briefing,model:b.model,generatedAt:new Date().toISOString(),url:`https://news.bittrees.org/story/${i.id}`,notice:'Bittrees briefing generated from publisher-provided feed evidence. Not the original full article; consult the linked source.'};
+ const payload={version:1,evidence:sourceEvidence(i),id:i.id,title:i.title,kind:i.kind,source:{url:i.url,authors:i.authors,publication:i.publication||sourceName(i.source_id),publishedAt:i.published_at},briefing:b.briefing,model:b.model,generatedAt:new Date().toISOString(),url:`https://news.bittrees.org/story/${i.id}`,notice:'Bittrees briefing generated from publisher-provided feed evidence. Not the original full article; consult the linked source.'};
  const r=await pool().query('UPDATE story_documents SET document=$2,generated_at=now(),error=NULL WHERE item_id=$1 AND lease=$3 AND claimed_at>now()-interval \'30 minutes\' RETURNING item_id',[b.id,JSON.stringify(payload),b.lease]);if(!r.rowCount)throw new HttpError(409,'Briefing lease is no longer active');return payload;
 }
 export async function saveStoryCid(input:unknown){const b=z.object({id:z.string().regex(/^[a-f0-9]{64}$/),lease:z.uuid(),cid:z.string().regex(/^b[a-z2-7]{30,120}$/)}).parse(input);const r=await pool().query('UPDATE story_documents s SET cid=$2,pinned_at=now(),error=NULL FROM items i WHERE s.item_id=$1 AND i.id=s.item_id AND i.owner_id IS NULL AND s.document IS NOT NULL AND s.lease=$3 RETURNING s.item_id',[b.id,b.cid,b.lease]);if(!r.rowCount)throw new HttpError(404,'Public briefing not found');return {ok:true};}
