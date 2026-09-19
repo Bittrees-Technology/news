@@ -79,3 +79,9 @@ The user superseded the live-refresh requirement: an open newspaper must remain 
 - Added explicit provenance to newly saved summary artifacts: evidence kind (feed excerpt, episode description, structured observation, or title only), partial/unavailable completeness, `not-acquired` full-text status, nullable source language, retrieval timestamp when known, and a revision hash. Long feed text cannot imply full-text permission or completeness. Existing artifacts are not regenerated or re-pinned.
 - Standalone pages now show the evidence kind and known retrieval time, including a clear distinction between a podcast description and a transcript or a snapshot and a complete dataset. Unknown language stays unknown. This is an evidence-labeling foundation, not completed full-body acquisition or factual validation.
 - Validation: 56 TypeScript tests, production build, and database checks for unchanged-content reuse, source-change invalidation, stale leases and busy deferrals passed. Change commit: `9afc635`. Source-policy review/full-body acquisition, stronger grounding checks, durable task states and fair scheduling remain open. Reader-controlled refresh remains intact.
+
+## 19 September, 05:57 UTC observation
+
+- All four production processing services checked are active; supervisor health is good and no candidate is resident. The isolated benchmark remains completed successfully, with its previously recorded quality failures unchanged.
+- Sixty-two samples now span 00:50–05:55 UTC. The first post-rollout scheduled publication is still upcoming at 07:57 UTC; no missing cycle is implied by the unchanged 18 September 19:57 edition.
+- No model, worker or website changes in this check. Continue gathering the required baseline before expanding the durable task-state rollout. Full-day, three-cycle, complete ordinary-case review, grounding and source-policy/full-body work remain unresolved.
