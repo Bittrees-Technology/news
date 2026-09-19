@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState, useRef } from "react";
+import {matchesArticleSearch,type SearchField} from "@/lib/article-search";
 import {ArticleFeedback} from "./article-feedback";
 import {articleTags,addedTopics,tagStyle} from "@/lib/tags";
 import {defaultReaderFilters,readerFiltersSchema,matchesReaderFilters,guestReaderFilters,selectReaderFilter,type ReaderFilters} from "@/lib/reader-filters";
@@ -41,6 +42,8 @@ export function Newspaper({
     ),
     [tab, setTab] = useState("all"),
     [countrySearch,setCountrySearch]=useState(""),
+    [search,setSearch]=useState(""),
+    [searchField,setSearchField]=useState<SearchField>("all"),
     [rankOrder,setRankOrder]=useState<string[]|null>(null),
     [rankRevision,setRankRevision]=useState(0),
     [filters, setFilters] = useState<ReaderFilters>(defaultReaderFilters),
@@ -192,11 +195,12 @@ export function Newspaper({
           (mode === "saved" || tab === "all" || (tab === "podcasts" ? i.kind === "podcast" : tab === "news" ? i.kind === "article" : !["article","podcast"].includes(i.kind))) &&
           (!rankOrder||rankOrder.includes(i.id)) &&
           matchesReaderFilters(articleTags(i),geography.get(i.id)!,filters) &&
+          matchesArticleSearch(i,search,searchField) &&
           (!hideRead || !state[i.id]?.is_read),
       ).sort((a,b)=>{
         const order=rankOrder||items.map(i=>i.id);return order.indexOf(a.id)-order.indexOf(b.id);
       }),
-    [items, tab, filters, hideRead, state, mode, geography,rankOrder,live,now],
+    [items, tab, filters, hideRead, state, mode, geography,rankOrder,live,now,search,searchField],
   );
   const topics = [...new Set([...items.flatMap(articleTags),...catalogTopics,...addedTopics,...filters.topics,...filters.excludedTopics])]
     .filter((t) => t !== "Portugal" && t !== "Europe")
@@ -347,6 +351,18 @@ export function Newspaper({
           </button>
         </div>
       </div>
+      <div className="article-search" role="search" aria-label="Search this newspaper" data-insights-ignore="true">
+        <label className="article-search-input">Search articles
+          <input type="search" placeholder="Search titles or summaries…" value={search} maxLength={200} onChange={e=>{setSearch(e.target.value);setCursor(-1);}} />
+        </label>
+        <label>Search in
+          <select value={searchField} onChange={e=>{setSearchField(e.target.value as SearchField);setCursor(-1);}}>
+            <option value="all">Title & summary</option><option value="title">Title only</option><option value="summary">Summary only</option>
+          </select>
+        </label>
+        {search&&<button type="button" onClick={()=>{setSearch("");setCursor(-1);}}>Clear search</button>}
+        {search.trim()&&<span className="muted article-search-status" role="status">{visible.length} {visible.length===1?'match':'matches'} in this view · Current filters still apply.</span>}
+      </div>
       <div className="reader-filters" data-insights-ignore="true">
         <span className="geography-note">Click a tag to focus on it; click it again to show all. {signed && <Link href="/account/topics">Manage blocked topics and places in your account</Link>}</span>
         <div className="topic-filters exclusion-tags">
@@ -399,7 +415,7 @@ export function Newspaper({
             {mode === "saved"
               ? "Use Save beside any story."
               : edition
-                ? "No stories match these filters in this edition. Try another topic or location, clear the filters with All, or show read stories."
+                ? "No stories match this search and filters. Try different words, clear the search, select All topics & places, or show read stories."
                 : "The newspaper will appear here when the first collection completes. Reading never requires an account."}
           </p>
         </div>

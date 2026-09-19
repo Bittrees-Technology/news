@@ -1015,3 +1015,9 @@ a.primary {
 .reader-blocks fieldset {border:0;padding:0;min-width:0;}
 .reader-blocks details {margin:12px 0;}
 .reader-blocks summary {cursor:pointer;}
+
+.article-search {display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin:12px 0;}
+.article-search label {display:grid;gap:4px;font-size:12px;}
+.article-search-input {flex:1 1 240px;}
+.article-search input,.article-search select {padding:7px 10px;font-size:13px;}
+.article-search-status {flex-basis:100%;font-size:12px;}
