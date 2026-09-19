@@ -55,12 +55,14 @@ class Supervisor:
                 request={**request,'model':name,'max_tokens':min(request.get('max_tokens',320),m['max_tokens'])}
                 req=urllib.request.Request(m['endpoint']+'/chat/completions',data=json.dumps(request).encode(),headers={'Content-Type':'application/json'})
                 with urllib.request.urlopen(req,timeout=900) as response:result=json.load(response)
-                self.last_used=time.monotonic()
-                result['news_metrics']={'model_id':name,'digest':m['sha256'],'load_seconds':round(loaded-start,3),'inference_seconds':round(self.last_used-loaded,3),'mode':mode}
+                finished=time.monotonic()
+                if m.get('managed'):self.last_used=finished
+                result['news_metrics']={'model_id':name,'digest':m['sha256'],'load_seconds':round(loaded-start,3),'inference_seconds':round(finished-loaded,3),'mode':mode}
                 self.event({'ok':True,'task':task,**result['news_metrics'],'tokens':result.get('usage',{}).get('completion_tokens',0)})
                 return result
         except Exception as e:
-            self.last_used=time.monotonic();self.event({'ok':False,'task':task,'model_id':name,'error':type(e).__name__});raise
+            if m.get('managed'):self.last_used=time.monotonic()
+            self.event({'ok':False,'task':task,'model_id':name,'error':type(e).__name__});raise
         finally:self.mutex.release()
     def event(self,value):
         self.state.mkdir(parents=True,exist_ok=True)

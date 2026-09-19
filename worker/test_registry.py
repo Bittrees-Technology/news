@@ -1,4 +1,4 @@
-import copy,json,pathlib,tempfile,unittest,hashlib
+import copy,json,pathlib,tempfile,unittest,hashlib,contextlib
 from unittest.mock import patch,MagicMock
 from model_registry import read_registry,artifact_key
 from model_supervisor import Supervisor
@@ -28,6 +28,18 @@ class RegistryTests(unittest.TestCase):
                 self.assertIs(launch.call_args.kwargs['stdout'],launch.call_args.kwargs['stderr'])
                 self.assertIn('--log-disable',launch.call_args.args[0])
                 s.unload()
+
+    def test_external_requests_do_not_extend_managed_model_residency(self):
+        with tempfile.TemporaryDirectory() as d:
+            s=Supervisor(None,pathlib.Path(d));s.last_used=10
+            registry={'models':{'baseline':{'status':'approved','managed':False,'endpoint':'http://local/v1','max_tokens':320,'sha256':'a'*64}}}
+            response=MagicMock();response.__enter__.return_value.read.return_value=b'{"usage":{"completion_tokens":1}}'
+            with patch('model_supervisor.read_registry',return_value=registry),patch.object(s,'prepare'),patch('model_supervisor.model_slot',return_value=contextlib.nullcontext()),patch('model_supervisor.urllib.request.urlopen',return_value=response):
+                s.run({'model':'baseline'},'production','briefing')
+                self.assertEqual(s.last_used,10)
+            with patch('model_supervisor.read_registry',return_value=registry),patch.object(s,'prepare',side_effect=RuntimeError('transport')),patch('model_supervisor.model_slot',return_value=contextlib.nullcontext()):
+                with self.assertRaises(RuntimeError):s.run({'model':'baseline'},'production','briefing')
+                self.assertEqual(s.last_used,10)
 
     def test_candidate_rejected_before_model_load(self):
         with tempfile.TemporaryDirectory() as d:
