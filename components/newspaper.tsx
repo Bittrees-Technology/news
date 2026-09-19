@@ -297,11 +297,6 @@ export function Newspaper({
               : description || "TBN · World, economy, technology & science."}
           </p>
         </div>
-        {mode === "public" && (
-          <div className="edition-time">
-            07:57 · 11:57 · 19:57<span>New editions, every day. UTC.</span>
-          </div>
-        )}
       </div>
       <div className="controls">
         <div className="tabs" aria-label="Content type">
