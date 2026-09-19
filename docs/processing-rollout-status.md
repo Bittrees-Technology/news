@@ -92,3 +92,9 @@ The user superseded the live-refresh requirement: an open newspaper must remain 
 - Seventy-four samples cover 00:50–06:55 UTC. First new scheduled publication remains due at 07:57 UTC; latest published edition is still the previous evening's edition, as expected.
 - Latest sampled queues: translations 892 done, 31 failed and none pending; summaries 353 archived, 723 pending, one working and ten in review. These aggregate counts reflect ongoing collection and processing; they are not benchmark quality rates. No retries or bulk regeneration were triggered.
 - No routing or deployment changes. Full-day/three-cycle gates, remaining ordinary-case evidence review, stronger grounding validation, durable task-state work and source-policy/full-body acquisition remain open.
+
+## 19 September, 07:57 UTC — first publication gate
+
+- First post-rollout edition scheduled for 07:57 UTC published at 07:57:27.779 UTC, a 27.779-second delay. This passes the proposed two-minute publication target: **one of three new scheduled cycles observed**. Upcoming checks are 11:57 and 19:57 UTC; the full-day window still cannot complete before 20 September 00:50 UTC.
+- Eighty-six five-minute samples span 00:50–07:55 UTC. Supervisor, telemetry, translation and story workers are active. Supervisor health reports no resident candidate; benchmark remains completed successfully with recorded quality failures and no promotion.
+- No model, worker or website changes were made for this check. Publication succeeded without waiting for the remaining optional summary backlog. Remaining gates and implementation work listed above stay open; this single successful edition does not complete the rollout.
