@@ -174,3 +174,9 @@ The user superseded the live-refresh requirement: an open newspaper must remain 
 - 234 samples span 00:50–20:15 UTC. The full-day observation gate remains open until at least 20 September 00:50 UTC; three passing editions alone do not complete the rollout.
 - Supervisor, telemetry, translation and story services are active. Supervisor reports no resident candidate. Benchmark remains completed with both tested configurations rejected for expanded use. No production routing, retry, delivery or archive changes were made.
 - Remaining work includes evaluating the full-day baseline, durable task-state/dependency scheduling, stronger evidence preparation and output grounding, source-policy-backed full-body acquisition, and any separately evaluated improved model/prompt configuration. Preserve reader-controlled refresh throughout.
+
+## 19 September, 21:17 UTC observation
+
+- 246 samples span 00:50–21:15 UTC. All three scheduled publication cycles still pass, with delays of 27.779s, 27.210s and 27.223s. Full-day baseline remains incomplete until 20 September 00:50 UTC.
+- Supervisor, model telemetry, translation and story workers are active; supervisor health is OK with no managed model resident. Isolated benchmark exit status remains successful; the recorded quality gate failures remain unchanged, with no promotion.
+- Repository was clean at inspection after the separately user-requested account-tab/role update (84df601). No processing model, pipeline, retry, delivery or archive changes in this observation. Remaining implementation and evidence gates are unchanged; preserve the baseline window before expanding task-state work.
