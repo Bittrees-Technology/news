@@ -1001,3 +1001,7 @@ a.primary {
 /* One continuous, score-ordered list with understated outlines. */
 .story,.story.lead {padding:16px;margin:10px 0;border:1px solid var(--rule);border-radius:8px;background:transparent;}
 .story.lead h2 {font-size:21px;}
+
+.reader-blocks fieldset {border:0;padding:0;min-width:0;}
+.reader-blocks details {margin:12px 0;}
+.reader-blocks summary {cursor:pointer;}

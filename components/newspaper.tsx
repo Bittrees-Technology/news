@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import {ArticleFeedback} from "./article-feedback";
 import {articleTags,addedTopics,tagStyle} from "@/lib/tags";
-import {defaultReaderFilters,readerFiltersSchema,matchesReaderFilters,exclusionFilters,type ReaderFilters} from "@/lib/reader-filters";
+import {defaultReaderFilters,readerFiltersSchema,matchesReaderFilters,guestReaderFilters,selectReaderFilter,type ReaderFilters} from "@/lib/reader-filters";
 import {recentUniqueStories} from "@/lib/recent-stories";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -58,8 +58,8 @@ export function Newspaper({
     if(signed){saveQueue.current=saveQueue.current.catch(()=>{}).then(async()=>{await call('reader-filters',next);setMessage('Filters saved to your account.');}).catch(e=>setMessage('Could not save filters: '+e.message));}
     else {try{localStorage.setItem('tbn-guest-filters',JSON.stringify(next));}catch{}}
   }
-  function toggleExcluded(key:'excludedTopics'|'excludedCountries'|'excludedRegions',value:string){
-    updateFilters({...exclusionFilters(filters),[key]:filters[key].includes(value)?filters[key].filter(t=>t!==value):[...filters[key],value]});
+  function selectFilter(key:'topics'|'countries'|'regions',value:string){
+    updateFilters(selectReaderFilter(filters,key,value));
   }
   const itemIds=items.map(i=>i.id).join(',');
   useEffect(()=>{
@@ -116,11 +116,11 @@ export function Newspaper({
         if(a.account){
           const [rows,f,v]=await Promise.all([call('reading'),call('reader-filters'),call('feedback')]);if(!active)return;
           setState(Object.fromEntries(rows.map((r:{item_id:string;is_read:boolean;saved:boolean})=>[r.item_id,r])));
-          setFilters(exclusionFilters(readerFiltersSchema.parse(f)));setVotes(v);
+          setFilters(readerFiltersSchema.parse(f));setVotes(v);
           if(mode==='saved'){const saved=await call('saved');if(active)setItems(saved);}
         }else{
           setState(JSON.parse(localStorage.getItem('bittrees-news-reading')||'{}'));
-          setFilters(exclusionFilters(readerFiltersSchema.parse(JSON.parse(localStorage.getItem('tbn-guest-filters')||'{}'))));
+          setFilters(guestReaderFilters(readerFiltersSchema.parse(JSON.parse(localStorage.getItem('tbn-guest-filters')||'{}'))));
           setVotes(JSON.parse(localStorage.getItem('tbn-guest-votes')||'{}'));
         }
       }catch(e){if(active)setMessage('Could not load your preferences. Please refresh to retry.');}
@@ -348,17 +348,24 @@ export function Newspaper({
         </div>
       </div>
       <div className="reader-filters" data-insights-ignore="true">
-        <span className="geography-note">{signed?'Saved to your account':'Saved on this device'} · Everything included unless crossed out. Click a tag to exclude or restore it.</span>
-        <div className="topic-filters exclusion-tags">{topics.map(t=><button key={t} style={tagStyle(t)} className={filters.excludedTopics.includes(t)?'excluded':''} aria-pressed={!filters.excludedTopics.includes(t)} aria-label={`${filters.excludedTopics.includes(t)?'Include':'Exclude'} ${t}`} onClick={()=>toggleExcluded('excludedTopics',t)}>{t}{filters.excludedTopics.includes(t)&&<span aria-hidden="true" className="tag-cross">×</span>}</button>)}</div>
-        <button onClick={()=>updateFilters({...defaultReaderFilters,hideRead,sort:filters.sort})}>Include everything</button>
+        <span className="geography-note">Click a tag to focus on it; click it again to show all. {signed && <Link href="/account/topics">Manage blocked topics and places in your account</Link>}</span>
+        <div className="topic-filters exclusion-tags">
+          <button aria-pressed={!filters.topics.length} onClick={()=>updateFilters({...filters,topics:[]})}>All topics</button>
+          {topics.map(t=><button key={t} style={tagStyle(t)} aria-pressed={filters.topics.includes(t)} onClick={()=>selectFilter('topics',t)}>{t}</button>)}
+        </div>
+        <button onClick={()=>updateFilters({...filters,topics:[],countries:[],regions:[]})}>All topics & places</button>
         {(['Countries','Regions'] as const).map(label=>{
-          const key=label==='Countries'?'excludedCountries':'excludedRegions';
+          const key=label==='Countries'?'countries':'regions';
           const options=label==='Countries'?countries.filter(c=>`${c.name} ${c.code}`.toLowerCase().includes(countrySearch.toLowerCase())).map(c=>({value:c.code,label:c.name})):regions.map(r=>({value:r,label:r}));
-          return <details key={label}><summary>{label} · {filters[key].length?`${filters[key].length} excluded`:'All included'}</summary>
+          return <details key={label}><summary>{label} · {filters[key].length?filters[key].join(', '):'All'}</summary>
             {label==='Countries'&&<input type="search" aria-label="Search countries" placeholder="Search countries…" value={countrySearch} onChange={e=>setCountrySearch(e.target.value)}/>}
-            <div className="filter-options exclusion-tags">{options.map(o=><button key={o.value} className={filters[key].includes(o.value)?'excluded':''} aria-pressed={!filters[key].includes(o.value)} aria-label={`${filters[key].includes(o.value)?'Include':'Exclude'} ${o.label}`} onClick={()=>toggleExcluded(key,o.value)}>{o.label}{filters[key].includes(o.value)&&<span aria-hidden="true" className="tag-cross">×</span>}</button>)}{!options.length&&<p>No countries found.</p>}</div>
+            <div className="filter-options topic-filters exclusion-tags">
+              <button aria-pressed={!filters[key].length} onClick={()=>updateFilters({...filters,[key]:[]})}>All {label.toLowerCase()}</button>
+              {options.map(o=><button key={o.value} aria-pressed={filters[key].includes(o.value)} onClick={()=>selectFilter(key,o.value)}>{o.label}</button>)}{!options.length&&<p>No countries found.</p>}
+            </div>
           </details>;
         })}
+        {signed&&(filters.excludedTopics.length+filters.excludedCountries.length+filters.excludedRegions.length>0)&&<span className="geography-note">Your account blocks still apply, including when viewing all topics and places.</span>}
       </div>
       {help && (
         <p className="notice">

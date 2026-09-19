@@ -9,3 +9,10 @@ export function matchesReaderFilters(tags:string[],geo:{countries:string[];regio
 export function interactionAdjustment(vote:number,saved:boolean,read:boolean,signed:boolean){return (vote*1+(saved?0.6:0)-(read?0.2:0))*(signed?5:1);}
 
 export function exclusionFilters(f:ReaderFilters):ReaderFilters{return {...f,topics:[],countries:[],regions:[]};}
+
+export function guestReaderFilters(f:ReaderFilters):ReaderFilters {
+ return {...f,excludedTopics:[],excludedCountries:[],excludedRegions:[]};
+}
+export function selectReaderFilter(f:ReaderFilters,key:'topics'|'countries'|'regions',value:string):ReaderFilters {
+ return {...f,[key]:f[key].length===1&&f[key][0]===value?[]:[value]};
+}

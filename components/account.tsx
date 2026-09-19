@@ -1,4 +1,5 @@
 "use client";
+import { ReaderExclusions } from "./reader-exclusions";
 import { Subscriptions } from "./subscriptions";
 import { StaffPanel } from "./staff-panel";
 import { Analytics } from "./analytics";
@@ -338,6 +339,7 @@ export function Account({
         <Analytics role={data.account?.role || "member"} />
       )}
       {section === "ai" && <AiConnection />}
+      {section === "topics" && <ReaderExclusions />}
       {(section === "topics" || section === "sources") && (
         <form
           onSubmit={(e) => {
