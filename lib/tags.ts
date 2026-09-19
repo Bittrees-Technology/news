@@ -12,7 +12,8 @@ export function articleTags(i:Pick<Item,'topic'|'title'|'excerpt'|'summary'|'tag
  return [...new Set([normalizeTopic(i.topic),...(i.tags||[]).map(normalizeTopic),...rules.filter(([,re])=>re.test(text)).map(([tag])=>tag)])].filter(Boolean);
 }
 export function tagStyle(tag:string){
- const fixed:Record<string,number>={Bitcoin:32,Crypto:270,Politics:205,DAOs:155,Tech:215,Science:175,Gaming:320};
- const hue=fixed[tag]??[...tag].reduce((h,c)=>(h*31+c.charCodeAt(0))%360,0);
- return {backgroundColor:`hsl(${hue} 52% 92%)`,color:`hsl(${hue} 65% 24%)`,borderColor:`hsl(${hue} 38% 68%)`};
+ const fixed:Record<string,number>={Bitcoin:32,Crypto:265,Blockchain:265,DAOs:160,Governance:160,Politics:210,World:210,Economy:32,Tech:220,AI:220,Security:220,Science:175,Quantum:175,Space:175,Health:150,Biotech:150,Climate:145,Energy:145,Nuclear:145,Gaming:315};
+ const palette=[32,145,175,210,265,315];
+ const hue=fixed[tag]??palette[[...tag].reduce((h,c)=>(h*31+c.charCodeAt(0))%360,0)%palette.length];
+ return {backgroundColor:`hsl(${hue} var(--tag-bg))`,color:`hsl(${hue} var(--tag-ink))`,borderColor:`hsl(${hue} var(--tag-border))`};
 }
