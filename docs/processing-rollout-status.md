@@ -167,3 +167,10 @@ The user superseded the live-refresh requirement: an open newspaper must remain 
 - 221 samples span 00:50–19:10 UTC. Production supervisor, telemetry, translation and story services remain active; supervisor is healthy with no candidate resident. Completed benchmark and failed promotion gates are unchanged.
 - Latest published edition remains the passing 11:57 cycle. The third publication is due at 19:57 UTC and is not late. Full-day observation remains due after 20 September 00:50 UTC.
 - No deployment, model, retry, delivery or artifact changes. Preserve the baseline observation window; proceed with the remaining task-state and grounding work after evaluating it. All outstanding implementation gates remain open.
+
+## 19 September, 20:15 UTC — three publication gates passed
+
+- The third post-rollout edition, scheduled for 19:57 UTC, published at 19:57:27.223 UTC (27.223 seconds after schedule). Public health confirms that publication. All three new scheduled cycles passed the two-minute target: 07:57 +27.779s, 11:57 +27.210s, 19:57 +27.223s.
+- 234 samples span 00:50–20:15 UTC. The full-day observation gate remains open until at least 20 September 00:50 UTC; three passing editions alone do not complete the rollout.
+- Supervisor, telemetry, translation and story services are active. Supervisor reports no resident candidate. Benchmark remains completed with both tested configurations rejected for expanded use. No production routing, retry, delivery or archive changes were made.
+- Remaining work includes evaluating the full-day baseline, durable task-state/dependency scheduling, stronger evidence preparation and output grounding, source-policy-backed full-body acquisition, and any separately evaluated improved model/prompt configuration. Preserve reader-controlled refresh throughout.
