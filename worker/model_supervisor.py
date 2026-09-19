@@ -28,7 +28,11 @@ class Supervisor:
         # Only spawn the pinned, locally configured executable; no shell command interpolation.
         port=int(m['endpoint'].split(':')[-1].split('/')[0])
         command=[r['executable'],'-m',m['path'],'--host','127.0.0.1','--port',str(port),'-c',str(m['context']),'-t','2','-np','1','--jinja']
-        self.process=subprocess.Popen(command,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
+        # Keep diagnostics inside the sandbox; opening /dev/null is intentionally denied.
+        # Truncate for every load and cap server output by disabling routine logs.
+        command+=['--log-disable']
+        with (self.state/'model-startup.log').open('w') as log:
+            self.process=subprocess.Popen(command,stdout=log,stderr=log,start_new_session=True)
         self.loaded=name
         deadline=time.monotonic()+120
         while time.monotonic()<deadline:
