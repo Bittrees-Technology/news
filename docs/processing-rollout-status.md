@@ -123,3 +123,9 @@ The user superseded the live-refresh requirement: an open newspaper must remain 
 - 135 samples span 00:50–12:00 UTC. Production processing services remain active, supervisor healthy, candidate unloaded and benchmark completed. No model promotion, retries, test delivery or pipeline change was triggered.
 - Reviewed three additional ordinary fixtures for both models. Fire summaries preserved the supplied facts, whereas both Polygon summaries invented missing mainnet prerequisites. The candidate health summary preserved attributed participation statuses; the baseline strengthened a signing deadline into an unqualified requirement. Notes are private on Acer.
 - Twenty-four cases per model are reviewed, with 18 ordinary cases per model remaining. Existing failed promotion decisions and outstanding grounding, durable task-state, source-policy/full-body and observation gates remain open.
+
+## 19 September, 13:04 UTC observation and evidence review
+
+- 147 samples cover 00:50–13:00 UTC. Four production services are active, supervisor healthy with no candidate resident, and benchmark remains completed. Latest edition is the passing 11:57 cycle; two of three publication gates remain passed.
+- Reviewed the next three ordinary fixtures for each model, checking the longer quantum fixture against the exact first 5,000 characters actually supplied to the benchmark. Candidate failures included a signing-ceremony location error, changed staffing categories and unqualified presentation of a source recommendation. Two baseline outputs were unparseable; the baseline construction-waste summary retained source attribution.
+- Private review records now cover 27 cases per model; 15 ordinary cases per model remain. No model promotion, production changes, test delivery or artifact publication occurred. Full-day observation and outstanding implementation gates remain open.
