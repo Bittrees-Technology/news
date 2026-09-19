@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 const base=process.env.TEST_ORIGIN||'https://news.bittrees.org';
-const checks=[['/',200],['/about',200],['/privacy',200],['/terms',200],['/archive',200],['/account',200],['/saved',200],['/unsubscribe',200],['/archive?id=missing-seo-check',404],['/no-such-seo-newspaper',404],['/favicon.ico',200],['/brand/tbn-mark.svg',200],['/brand/tbn-180.png',200],['/brand/social.png',200],['/robots.txt',200],['/sitemap.xml',200],['/manifest.webmanifest',200]];
+const checks=[['/',200],['/about',200],['/privacy',200],['/terms',200],['/archive',200],['/account',200],['/saved',200],['/unsubscribe',200],['/archive?id=missing-seo-check',404],['/no-such-seo-newspaper',404],['/favicon.ico',200],['/brand/tbn-mark.svg',200],['/brand/tbn-180.png',200],['/brand/social-v2.png',200],['/robots.txt',200],['/sitemap.xml',200],['/manifest.webmanifest',200]];
 for(const [path,status] of checks){
  const r=await fetch(base+path);assert.equal(r.status,status,path);const html=await r.text();
  if(['/','/about','/privacy','/terms','/archive'].includes(path)){
@@ -21,7 +21,7 @@ assert.match(home,/<a[^>]+href="\/archive"/);
 const schemas=[...home.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map(m=>JSON.parse(m[1]));
 assert.ok(schemas.some(s=>s['@type']==='CollectionPage'),'edition collection schema');
 assert.ok(schemas.some(s=>s['@graph']?.some(x=>x['@type']==='Organization')),'organization schema');
-for(const [path,size] of [['/brand/tbn-180.png',[180,180]],['/brand/tbn-192.png',[192,192]],['/brand/tbn-512.png',[512,512]],['/brand/social.png',[1200,630]]]){
+for(const [path,size] of [['/brand/tbn-180.png',[180,180]],['/brand/tbn-192.png',[192,192]],['/brand/tbn-512.png',[512,512]],['/brand/social-v2.png',[1200,630]]]){
  const r=await fetch(base+path);assert.equal(r.status,200);assert.match(r.headers.get('content-type'),/image\/png/);const b=Buffer.from(await r.arrayBuffer());assert.deepEqual([b.readUInt32BE(16),b.readUInt32BE(20)],size);console.log('Image dimensions OK',path);
 }
 const sitemap=await (await fetch(base+'/sitemap.xml')).text();
