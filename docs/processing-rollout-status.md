@@ -141,3 +141,9 @@ The user superseded the live-refresh requirement: an open newspaper must remain 
 - 172 samples cover 00:50–15:05 UTC. Production services remain active, supervisor healthy with no candidate resident, and benchmark completed. Latest published edition remains the passing 11:57 cycle; two of three publication gates are passed.
 - Reviewed another three fixtures per model. Neither model supplied a usable output for the safety-warning case (parse/transport failures). Both preserved the main forest/philosophy podcast topics. The candidate conflated sponsor promotions with the AI podcast conversation; that baseline attempt was unparseable. Failure notes distinguish missing outputs from observed factual errors.
 - Thirty-three cases per model are reviewed; nine ordinary cases per model remain. Records stay private. No routing, worker, website, delivery or archive changes were made. Full-day observation, final publication cycle and outstanding implementation work remain open.
+
+## 19 September, 16:08 UTC observation and evidence review
+
+- 184 samples span 00:50–16:05 UTC. Four production services are active; supervisor health is good and the candidate is unloaded. Benchmark is completed. Latest edition remains the passing 11:57 cycle, with two of three publication gates complete.
+- Reviewed three more fixtures per model. The candidate retained the TVL snapshot correctly, but the baseline invented a date-based claim that it was hypothetical. The baseline preserved the GDP observation correctly, while the candidate's limitations contradicted the supplied historical observation. Neither market-podcast attempt produced parseable output.
+- Thirty-six cases per model are reviewed; six ordinary cases per model remain. Review records stay private. No production routing, delivery, retries, website or archive changes. The final publication cycle, full-day observation and other implementation gates remain open.
