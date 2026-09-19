@@ -6,6 +6,7 @@ ExecStart=/usr/bin/python3 %h/.local/lib/bittrees-news/model_supervisor.py --reg
 Restart=on-failure
 RestartSec=10
 NoNewPrivileges=true
+PrivateUsers=yes
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only

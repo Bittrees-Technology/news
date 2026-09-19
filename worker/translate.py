@@ -70,7 +70,7 @@ while True:
             except Exception:pass
         time.sleep(10)
     except Exception as error:
-        logging.warning('Translation failed: %s',type(error).__name__)
+        logging.warning('Translation failed: %s status=%s',type(error).__name__,getattr(error,'code','local'))
         if job:
             try:api('result',{'key':job['key'],'lease':job['lease'],'language':'und','model':'Bittrees-hosted Qwen3.5 2B','error':True})
             except Exception:pass

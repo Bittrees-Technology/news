@@ -9,7 +9,7 @@
 - Independent model supervisor: loopback-only endpoint, managed-child lifecycle, a 3 GB available-memory reserve plus model allowance, health checks, five-minute idle unload, exclusive News inference, and no authority to stop the existing system model service.
 - Cache identity includes model digest, quantization, task, request, prompt and schema version. Disposable cache retention is 30 days / 5,000 entries.
 - Isolated benchmark runner and 42 frozen cases, including ten non-English cases, evidence revision and prompt injection. Raw fixtures and outputs are ignored by Git and excluded from Vercel uploads.
-- Separate bounded telemetry relay; supervisor/benchmark services cannot read the News credential file. Benchmark service network is restricted to localhost.
+- Separate bounded telemetry relay; supervisor/benchmark enforce Linux Landlock filesystem allowlists without access to the News credential file; the benchmark verifies that denial at startup. Benchmark service uses a Unix socket and permits only AF_UNIX sockets; it cannot open Internet sockets.
 
 ## Models
 
@@ -30,6 +30,12 @@ Registry: Acer `~/.config/bittrees-news/models.json` (no tokens). Supervisor por
 
 Benchmark fixtures/results: `~/.local/state/bittrees-news/benchmark/`. Results have `human_review: pending`; review them before any routing change. The benchmark resumes completed cases without repeating them. It is a one-shot service bounded to 24 hours, not a recurring publishing task.
 
-New service names: `bittrees-news-models`, `bittrees-news-model-report`, `bittrees-news-benchmark`. Production workers keep their previous routing until registry integration is activated. A saved copy of editor configuration permits routing rollback without changing source data or editions.
+New service names: `bittrees-news-models`, `bittrees-news-model-report`, `bittrees-news-benchmark`. Production workers were switched at an idle inference boundary at 01:02 UTC to the supervisor; approved model routing remains Qwen3.5 2B. The benchmark service is active and waits behind public translation/inference work. Its startup checks confirmed that Internet sockets and the News credential file are inaccessible. A saved copy of editor configuration permits routing rollback without changing source data or editions.
 
 Tests: TypeScript suite, Python registry/locking suite, database processing/collection integration checks, and live health/access checks. Follow-up checks must update this document with actual benchmark and cycle results; do not mark all phases complete from startup alone.
+
+## Continuation
+
+An hourly Codex follow-up, “Complete TBN processing rollout,” continues implementation and evaluation while honoring the full-day and three-cycle gates. It reports meaningful results only and must pause on completion or required user input. Initial measurement window began around 00:50 UTC on 19 September; do not claim a full-day baseline before 20 September.
+
+Web deployment: `b61b7fc` (processing dashboard, telemetry, public job envelopes), live at news.bittrees.org. API check confirmed unauthenticated processing access returns 401. Model telemetry has been received. Tests: 48 TypeScript, six Python, database collection and processing checks passed. No candidate output has been published.

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Local-only model lifecycle/proxy. No News, database, email or IPFS credentials."""
-import argparse,atexit,hashlib,json,os,pathlib,subprocess,threading,time,urllib.request,urllib.error
+import argparse,atexit,hashlib,json,os,pathlib,subprocess,threading,time,urllib.request,urllib.error,socketserver
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from model_registry import read_registry
 from model_runtime import model_slot,ModelBusy
@@ -73,6 +73,10 @@ class Supervisor:
 
 if __name__=='__main__':
     p=argparse.ArgumentParser();p.add_argument('--registry',required=True);p.add_argument('--state',required=True);p.add_argument('--port',type=int,default=8092);args=p.parse_args()
+    from filesystem_sandbox import restrict_files
+    registry=read_registry(args.registry)
+    pathlib.Path(args.state).mkdir(parents=True,exist_ok=True)
+    restrict_files(['/usr','/lib','/lib64','/proc',pathlib.Path(__file__).parent,args.registry,pathlib.Path(registry['executable']).parent]+[m['path'] for m in registry['models'].values()], [args.state])
     supervisor=Supervisor(args.registry,pathlib.Path(args.state));atexit.register(supervisor.unload)
     threading.Thread(target=supervisor.reap,daemon=True).start()
     class Handler(BaseHTTPRequestHandler):
@@ -89,4 +93,10 @@ if __name__=='__main__':
             try:self.reply(200,supervisor.run(json.loads(self.rfile.read(size)),self.headers.get('X-News-Mode','production'),self.headers.get('X-News-Task','briefing')))
             except ModelBusy:self.reply(503,{'error':'Model busy or insufficient memory'})
             except Exception as e:self.reply(502,{'error':type(e).__name__})
+    class UnixServer(socketserver.ThreadingMixIn,socketserver.UnixStreamServer):
+        daemon_threads=True
+    socket_path=pathlib.Path(args.state)/'model-gateway.sock'
+    socket_path.unlink(missing_ok=True)
+    unix_server=UnixServer(str(socket_path),Handler);socket_path.chmod(0o600)
+    threading.Thread(target=unix_server.serve_forever,daemon=True).start()
     ThreadingHTTPServer(('127.0.0.1',args.port),Handler).serve_forever()
