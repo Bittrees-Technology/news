@@ -116,3 +116,10 @@ The user superseded the live-refresh requirement: an open newspaper must remain 
 - 123 samples span 00:50–11:00 UTC. Production processing services remain active, supervisor healthy, candidate unloaded and benchmark completed. Latest published edition remains the passing 07:57 cycle; second cycle is due at 11:57 UTC.
 - Reviewed the next three ordinary cases for each model. Both soybean summaries added unsupported evidentiary or mechanistic framing; the baseline reversed the purpose of a climate lawsuit. The candidate climate summary and both sparse blog summaries preserved the tested source claims. Review notes are stored privately, with no artifact publication.
 - Twenty-one cases per model are reviewed; 21 ordinary cases per model remain. Failed model-promotion decisions stand. No production changes or bulk retries were made. The full-day/three-cycle gates and previously listed implementation work remain open.
+
+## 19 September, 12:04 UTC — second publication gate
+
+- The 11:57 edition published at 11:57:27.210 UTC, 27.210 seconds after schedule. **Two of three new scheduled cycles now pass** the two-minute target. Next publication gate is 19:57 UTC; full-day observation remains due no earlier than 20 September 00:50 UTC.
+- 135 samples span 00:50–12:00 UTC. Production processing services remain active, supervisor healthy, candidate unloaded and benchmark completed. No model promotion, retries, test delivery or pipeline change was triggered.
+- Reviewed three additional ordinary fixtures for both models. Fire summaries preserved the supplied facts, whereas both Polygon summaries invented missing mainnet prerequisites. The candidate health summary preserved attributed participation statuses; the baseline strengthened a signing deadline into an unqualified requirement. Notes are private on Acer.
+- Twenty-four cases per model are reviewed, with 18 ordinary cases per model remaining. Existing failed promotion decisions and outstanding grounding, durable task-state, source-policy/full-body and observation gates remain open.
