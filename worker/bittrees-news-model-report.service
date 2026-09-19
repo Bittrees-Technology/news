@@ -1,0 +1,15 @@
+[Unit]
+Description=Bittrees News bounded model health relay
+After=bittrees-news-models.service
+[Service]
+ExecStart=/usr/bin/python3 %h/.local/lib/bittrees-news/report_models.py
+Restart=on-failure
+RestartSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+UMask=0077
+MemoryMax=96M
+[Install]
+WantedBy=default.target

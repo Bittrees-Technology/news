@@ -1,3 +1,4 @@
+import {processingSnapshot,recordProcessingSample} from "./processing";
 import {collect} from "./collect";
 import {retryStory,claimStory,saveStory,saveStoryCid} from './story-documents';
 import {readerFiltersSchema} from './reader-filters';
@@ -162,7 +163,7 @@ export async function api(r: Request) {
     if (path.startsWith("jobs/")) {
       authorizeBearer(r, "CRON_SECRET");
       if (path === "jobs/personal") return json(await personalScheduler());
-      if (path === "jobs/collect") return json(await collect());
+      if (path === "jobs/collect") {const result=await collect();await recordProcessingSample();return json(result);}
       if (path === "jobs/prepare") return json(await prepare());
       if (path === "jobs/publish") return json(await publish());
       if (path === "jobs/deliver")
@@ -175,6 +176,11 @@ export async function api(r: Request) {
         .object({ keys: z.array(z.string().regex(/^[a-f0-9]{64}$/)).max(100) })
         .parse(await body(r));
       return json(await translationStatus(b.keys));
+    }
+    if(path==='editor/telemetry' && method==='POST'){
+      authorizeBearer(r,'EDITOR_SECRET');
+      const data=z.object({completed:z.number().int().min(0).max(100000),failed:z.number().int().min(0).max(100000),median_seconds:z.number().min(0).max(10000).nullable(),managed_model:z.string().max(100).nullable()}).parse(await body(r));
+      await pool().query("INSERT INTO worker_state(id,data) VALUES('news-models',$1) ON CONFLICT(id) DO UPDATE SET updated_at=now(),data=EXCLUDED.data",[JSON.stringify(data)]);return json({ok:true});
     }
     if (path === "editor/translation/claim" && method === "POST") {
       authorizeBearer(r, "EDITOR_SECRET");
@@ -359,6 +365,9 @@ export async function api(r: Request) {
       });
     }
     const a = await currentAccount(r);
+    if(path==='staff/processing' && method==='GET'){
+      requireScores(a!.role);return json({...await processingSnapshot(),sampleCount:(await pool().query('SELECT count(*)::int count FROM processing_samples')).rows[0].count});
+    }
     if (path === "analytics" && method === "GET") {
       const edition = await latestEdition();
       if (edition && canScores(a!.role))

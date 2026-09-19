@@ -31,7 +31,7 @@ while True:
   job=api('claim',{})
   if not job:time.sleep(45);continue
   document=job.get('document')
-  if not document:document=api('result',{'id':job['item_id'],'lease':job['lease'],'briefing':brief(job),'model':('Bittrees structured-data briefing' if job['kind']=='data' and job['source_id'] in ('world-bank-gdp','defillama-protocols') else 'Bittrees-hosted '+config['model'])})
+  if not document:document=api('result',{'id':job['item_id'],'lease':job['lease'],'briefing':brief(job),'model':('Bittrees structured-data briefing' if job['kind']=='data' and job['source_id'] in ('world-bank-gdp','defillama-protocols') else 'Bittrees-hosted '+config.get('last_model_used',config['model']))})
   cid=pin(document);api('pinned',{'id':job['item_id'],'lease':job['lease'],'cid':cid})
   logging.info('Public briefing archived %s %s',job['item_id'],cid)
  except Exception as e:

@@ -10,3 +10,6 @@ test-results/
 
 __pycache__/
 *.pyc
+
+docs/processing-benchmark-fixtures.json
+docs/processing-benchmark-results*.jsonl

@@ -6,6 +6,7 @@ import { sourceName } from "@/lib/catalog";
 import { factorNames, type Factor } from "@/lib/scoring";
 import type { Edition } from "@/lib/model";
 import type { SourceHealth } from "@/lib/source-health";
+import {ProcessingStatus} from "./processing-status";
 import { Rankings } from "./rankings";
 
 export function Analytics({ role }: { role: string }) {
@@ -31,6 +32,7 @@ export function Analytics({ role }: { role: string }) {
   }, []);
   return (
     <>
+      {scores&&<ProcessingStatus key={role}/>}
       {error && (
         <p className="notice" role="alert">
           {error}

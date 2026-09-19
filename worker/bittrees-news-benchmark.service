@@ -1,0 +1,19 @@
+[Unit]
+Description=Bittrees News isolated model comparison (no publication authority)
+After=bittrees-news-models.service
+[Service]
+ExecStart=/usr/bin/python3 %h/.local/lib/bittrees-news/benchmark.py --fixtures %h/.local/state/bittrees-news/benchmark/fixtures.json --output %h/.local/state/bittrees-news/benchmark/results.jsonl
+Restart=on-failure
+RestartSec=60
+RuntimeMaxSec=86400
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.local/state/bittrees-news/benchmark
+InaccessiblePaths=%h/.config/bittrees-news/editor.json
+IPAddressDeny=any
+IPAddressAllow=localhost
+UMask=0077
+MemoryMax=128M
+Nice=19

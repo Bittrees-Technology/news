@@ -1,0 +1,19 @@
+[Unit]
+Description=Bittrees News isolated model supervisor
+After=network-online.target
+[Service]
+ExecStart=/usr/bin/python3 %h/.local/lib/bittrees-news/model_supervisor.py --registry %h/.config/bittrees-news/models.json --state %h/.local/state/bittrees-news
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.local/state/bittrees-news
+InaccessiblePaths=%h/.config/bittrees-news/editor.json
+UMask=0077
+MemoryMax=2500M
+CPUQuota=180%
+Nice=15
+[Install]
+WantedBy=default.target

@@ -54,7 +54,7 @@ def translate(payload):
         raise ValueError('Source text was not translated')
     # Even mixed-language inputs need translated fields retained.
     if language=='en':language=next((p.lang.split('-')[0] for p in predictions if p.lang!='en'),'en')
-    return {'language':language,'title':title,'summary':summary,'_model':'Bittrees-hosted Argos pt-en 1.9' if language=='pt' and hasattr(local_translation,'engine') else 'Bittrees-hosted Qwen3.5 2B'}
+    return {'language':language,'title':title,'summary':summary,'_model':'Bittrees-hosted Argos pt-en 1.9' if language=='pt' and hasattr(local_translation,'engine') else 'Bittrees-hosted '+config.get('last_model_used',config['model'])}
 while True:
     job=None
     try:
