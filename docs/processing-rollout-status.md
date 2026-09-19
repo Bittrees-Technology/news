@@ -85,3 +85,10 @@ The user superseded the live-refresh requirement: an open newspaper must remain 
 - All four production processing services checked are active; supervisor health is good and no candidate is resident. The isolated benchmark remains completed successfully, with its previously recorded quality failures unchanged.
 - Sixty-two samples now span 00:50–05:55 UTC. The first post-rollout scheduled publication is still upcoming at 07:57 UTC; no missing cycle is implied by the unchanged 18 September 19:57 edition.
 - No model, worker or website changes in this check. Continue gathering the required baseline before expanding the durable task-state rollout. Full-day, three-cycle, complete ordinary-case review, grounding and source-policy/full-body work remain unresolved.
+
+## 19 September, 06:57 UTC observation
+
+- Production supervisor, telemetry, translation and story workers remain active. Supervisor reports no resident candidate. Completed benchmark status remains successful; quality gate remains failed for both tested configurations.
+- Seventy-four samples cover 00:50–06:55 UTC. First new scheduled publication remains due at 07:57 UTC; latest published edition is still the previous evening's edition, as expected.
+- Latest sampled queues: translations 892 done, 31 failed and none pending; summaries 353 archived, 723 pending, one working and ten in review. These aggregate counts reflect ongoing collection and processing; they are not benchmark quality rates. No retries or bulk regeneration were triggered.
+- No routing or deployment changes. Full-day/three-cycle gates, remaining ordinary-case evidence review, stronger grounding validation, durable task-state work and source-policy/full-body acquisition remain open.
