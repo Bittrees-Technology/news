@@ -1,3 +1,4 @@
+import {collect} from "./collect";
 import {retryStory,claimStory,saveStory,saveStoryCid} from './story-documents';
 import {readerFiltersSchema} from './reader-filters';
 import {
@@ -161,6 +162,7 @@ export async function api(r: Request) {
     if (path.startsWith("jobs/")) {
       authorizeBearer(r, "CRON_SECRET");
       if (path === "jobs/personal") return json(await personalScheduler());
+      if (path === "jobs/collect") return json(await collect());
       if (path === "jobs/prepare") return json(await prepare());
       if (path === "jobs/publish") return json(await publish());
       if (path === "jobs/deliver")

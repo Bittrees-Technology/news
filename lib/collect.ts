@@ -2,7 +2,9 @@ import {publicRanked} from "./ranking";
 import {articleTags,normalizeTopic} from "./tags";
 import Parser from "rss-parser";
 import { createHash } from "node:crypto";
-import { safeFetch } from "./safe-fetch";
+import {collectionMinutes,retryMinutes} from "./collection-policy";
+import {withTranslations} from "./translation";
+import { safeFetch,SourceFetchError } from "./safe-fetch";
 import { sources, type Source } from "./catalog";
 import { pool } from "./db";
 import type { Item } from "./model";
@@ -51,12 +53,15 @@ function item(
     owner_id: owner || null,
   };
 }
-export async function fetchSource(s: Source, owner?: string): Promise<Item[]> {
+export async function fetchSource(s:Source,owner?:string):Promise<Item[]>{return (await fetchSourceSnapshot(s,owner)).items || [];}
+export async function fetchSourceSnapshot(s: Source, owner?: string, previousHash?:string): Promise<{hash:string;items?:Item[]}> {
   // Catalogue feeds often include years of episodes. Keep custom endpoints on
   // the smaller limit and enforce a hard byte limit on every response.
   const catalogued =
     !owner && sources.some((entry) => entry.id === s.id && entry.url === s.url);
   const body = await safeFetch(s.url, catalogued ? 32_000_000 : 2_000_000);
+  const hash=createHash("sha256").update(body).digest("hex");
+  if(hash===previousHash)return {hash};
   const now = new Date().toISOString();
   const list: (Item | null)[] = [];
   if (s.kind === "hfpapers") {
@@ -133,14 +138,14 @@ export async function fetchSource(s: Source, owner?: string): Promise<Item[]> {
     const feed=await parser.parseString(body);
     for(const row of list){if(!row)continue;const e=feed.items.find(e=>e.link===row.url);const author=e?.creator || e?.['dc:creator'];row.authors=author?[clean(String(author),200)]:[];row.publication=clean(feed.title||s.name,200);}
   }
-  return list
+  return {hash,items:list
     .filter((i): i is Item => !!i)
     .filter(
       (i) =>
         new Date(i.published_at).getTime() >
           Date.now() - (s.type === "podcast" ? 30 : 14) * 86400000 ||
         s.type === "data",
-    );
+    )};
 }
 export async function storeItems(items: Item[]) {
   for (const i of items)
@@ -167,49 +172,37 @@ export async function prioritizePublicWork(){
  await pool().query("UPDATE story_documents s SET priority=x.score FROM jsonb_to_recordset($1::jsonb) AS x(id text,score numeric) WHERE s.item_id=x.id",[JSON.stringify(ranked.map(i=>({id:i.id,score:i.ranking.value})))]);
  return ranked;
 }
+export async function claimSource(ids:string[]){
+ return (await pool().query(`WITH candidate AS (
+    SELECT id FROM sources WHERE id=ANY($1::text[]) AND next_poll_at<=now() AND (collection_lease_until IS NULL OR collection_lease_until<now()) ORDER BY next_poll_at,id FOR UPDATE SKIP LOCKED LIMIT 1
+   ) UPDATE sources s SET collection_lease=gen_random_uuid(),collection_lease_until=now()+interval '10 minutes' FROM candidate c WHERE s.id=c.id RETURNING s.*`,[ids])).rows[0];
+}
 export async function collect() {
-  let ok = 0,
-    failed = 0,
-    index = 0;
-  const jobs = sources.map((s) => ({
-    s,
-    owner: undefined as string | undefined,
-  }));
-  await Promise.all(
-    Array.from({ length: 8 }, async () => {
-      while (index < jobs.length) {
-        const { s, owner } = jobs[index++];
-        try {
-          const items = await fetchSource(s, owner);
-          await storeItems(items);
-          if (owner)
-            await pool().query(
-              "UPDATE connections SET status='healthy',error=NULL,checked_at=now() WHERE id=$1",
-              [s.id.slice(8)],
-            );
-          else
-            await pool().query(
-              "INSERT INTO sources(id,status,checked_at,item_count) VALUES($1,'healthy',now(),$2) ON CONFLICT(id) DO UPDATE SET status='healthy',checked_at=now(),error=NULL,item_count=$2",
-              [s.id, items.length],
-            );
-          ok++;
-        } catch (e) {
-          const message = e instanceof Error ? e.message : "Source unavailable";
-          if (owner)
-            await pool().query(
-              "UPDATE connections SET status='unavailable',error=$2,checked_at=now() WHERE id=$1",
-              [s.id.slice(8), message.slice(0, 200)],
-            );
-          else
-            await pool().query(
-              "INSERT INTO sources(id,status,checked_at,error) VALUES($1,'unavailable',now(),$2) ON CONFLICT(id) DO UPDATE SET status='unavailable',checked_at=now(),error=$2",
-              [s.id, message.slice(0, 200)],
-            );
-          failed++;
-        }
-      }
-    }),
-  );
-  await prioritizePublicWork();
-  return { ok, failed };
+ const started=Date.now(),ids=sources.map(s=>s.id);
+ await pool().query('INSERT INTO sources(id) SELECT unnest($1::text[]) ON CONFLICT DO NOTHING',[ids]);
+ let ok=0,failed=0,unchanged=0,claimed=0,changed=false;
+ // A time and work budget keeps this job below the route's five-minute limit.
+ await Promise.all(Array.from({length:8},async()=>{
+  while(Date.now()-started<180000 && claimed<80){
+   claimed++;
+   const row=await claimSource(ids);
+   if(!row)return;
+   const source=sources.find(s=>s.id===row.id)!,minutes=collectionMinutes(source);
+   try{
+    const result=await fetchSourceSnapshot(source,undefined,row.body_hash);
+    if(result.items){await storeItems(result.items);changed=true;}else unchanged++;
+    await pool().query("UPDATE sources SET status='healthy',checked_at=now(),error=NULL,item_count=coalesce($3,item_count),body_hash=$4,failures=0,next_poll_at=to_timestamp(floor(extract(epoch from now())/300)*300)+$5*interval '1 minute',collection_lease=NULL,collection_lease_until=NULL WHERE id=$1 AND collection_lease=$2",[row.id,row.collection_lease,result.items?.length??null,result.hash,minutes]);
+    ok++;
+   }catch(e){
+    const message=e instanceof Error?e.message:'Source unavailable';
+    const delay=retryMinutes(minutes,row.failures+1,e instanceof SourceFetchError?e.status:undefined,e instanceof SourceFetchError?e.retryAfterSeconds:0);
+    await pool().query("UPDATE sources SET status='unavailable',checked_at=now(),error=$3,failures=failures+1,next_poll_at=now()+$4*interval '1 minute',collection_lease=NULL,collection_lease_until=NULL WHERE id=$1 AND collection_lease=$2",[row.id,row.collection_lease,message.slice(0,200),delay]);
+    failed++;
+   }
+  }
+ }));
+ if(changed)await withTranslations(await prioritizePublicWork());
+ const stats={ok,failed,unchanged,seconds:Math.round((Date.now()-started)/1000)};
+ await pool().query("INSERT INTO worker_state(id,data) VALUES('collection',$1) ON CONFLICT(id) DO UPDATE SET updated_at=now(),data=EXCLUDED.data",[JSON.stringify(stats)]);
+ return stats;
 }

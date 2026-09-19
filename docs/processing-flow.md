@@ -4,7 +4,7 @@ Standing editorial requirement: The Bittrees News serves a global audience. Its 
 
 ## Sequence and dependencies
 
-1. Existing UTC prepare jobs collect source feeds/data at 07:45, 11:45 and 19:45. Public content enters storage. Changed title/excerpt invalidates its old extractive summary; changed title/source evidence invalidates generated documents and pin references. Unchanged evidence retains generated work. Historical IPFS objects remain immutable.
+1. A five-minute UTC collection job claims due sources: news and fast data every 15 minutes, podcasts/GitHub/research/Reddit hourly, World Bank daily. Edition preparation at 07:45, 11:45 and 19:45 reads stored content independently. Public content enters storage. Changed title/excerpt invalidates its old extractive summary; changed title/source evidence invalidates generated documents and pin references. Unchanged evidence retains generated work. Historical IPFS objects remain immutable.
 2. Global ranking assigns work priority; current-day public items precede older backlog. Completed documents awaiting pinning go first because they require no inference. Private content is never submitted to the public workers.
 3. Edition preparation selects grounded source sentences deterministically in ranked order (up to 24), reusing valid source excerpts. It makes **zero model calls** and therefore no longer waits for long-form generation. Server validation still requires an exact source span. Existing publication times remain 07:57, 11:57 and 19:57 UTC; late prepared editions publish on result acceptance.
 4. Translation runs language detection first, uses installed Portuguese-to-English translation when available, and otherwise calls local Qwen. Already completed content-keyed translations are reused.
@@ -22,3 +22,9 @@ Deploy schema and web API before replacing/restarting the three News workers; ol
 Worker logs record task type, successful inference duration, completion-token count, cache hits, and error types; prompts and credentials are not logged. Observe actual sustained completion rates before changing hardware or model quality settings. A valid JSON response does not prove factual correctness.
 
 Initial observation (2026-09-19): 381 translations pending, 4 failed, 1 working; 955 briefing records, 56 generated and pinned. Live model smoke test: valid constrained JSON, 19 generated tokens, 36.72 seconds including inference; identical cached request 0.0003 seconds. This small test demonstrates cache reuse, not end-to-end briefing throughput.
+
+## Continuous collection
+
+Source claims are atomic and expire after ten minutes. At most eight source requests run concurrently, with up to 80 claims and a three-minute admission budget per invocation. Due sources left over are picked up next time. Identical response hashes skip parsing, writes and downstream enqueueing. Changed records retain content-version invalidation; ranked public translations are queued independently of page visits. Failures use exponential backoff up to six hours (never shorter than the normal cadence), 401/403 wait a day, and Retry-After can extend the delay up to seven days. The collector still downloads bodies to compare hashes; conditional ETag/Last-Modified requests remain a future bandwidth improvement.
+
+Daily/weekly/monthly delivery frequency is unchanged. Refresh targets depend on provider availability and job execution; collection is polling, not a real-time push service. The public homepage checks content revisions every minute while visible; RSS caches for five minutes.

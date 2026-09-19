@@ -2,6 +2,10 @@
   "framework": "nextjs",
   "crons": [
     {
+      "path": "/api/jobs/collect",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/jobs/prepare",
       "schedule": "45 7,11,19 * * *"
     },

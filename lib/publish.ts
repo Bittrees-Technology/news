@@ -1,7 +1,7 @@
 import { withTranslations } from "./translation";
 import { publicRanked } from "./ranking";
 import { pool, tx } from "./db";
-import { collect } from "./collect";
+import { sourceHealth } from "./source-health";
 import { edit, diverse } from "./editor";
 import type { Edition, Item } from "./model";
 export function slotFor(now = new Date()) {
@@ -26,7 +26,8 @@ export async function prepare(now = new Date()) {
   );
   if (!claimed.rowCount) return { skipped: true };
   try {
-    const stats = await collect();
+    const health = await sourceHealth();
+    const stats = {ok:health.healthy,failed:health.unavailable};
     const rows = (
       await pool().query(
         "SELECT * FROM items WHERE owner_id IS NULL AND (published_at>now()-interval '72 hours' OR kind='podcast' AND published_at>now()-interval '7 days') ORDER BY published_at DESC LIMIT 500",

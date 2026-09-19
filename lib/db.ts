@@ -37,6 +37,12 @@ CREATE TABLE IF NOT EXISTS sessions(hash text PRIMARY KEY,account_id uuid NOT NU
 CREATE TABLE IF NOT EXISTS challenges(id uuid PRIMARY KEY,kind text NOT NULL,value text NOT NULL,secret_hash text NOT NULL,browser_hash text NOT NULL,account_id uuid REFERENCES accounts ON DELETE CASCADE,purpose text NOT NULL,payload text,expires_at timestamptz NOT NULL,attempts int NOT NULL DEFAULT 0,consumed boolean NOT NULL DEFAULT false);
 CREATE TABLE IF NOT EXISTS rate_limits(key text PRIMARY KEY,hits int NOT NULL,resets_at timestamptz NOT NULL);
 CREATE TABLE IF NOT EXISTS sources(id text PRIMARY KEY,status text NOT NULL DEFAULT 'unchecked',checked_at timestamptz,error text,item_count int NOT NULL DEFAULT 0);
+ALTER TABLE sources ADD COLUMN IF NOT EXISTS next_poll_at timestamptz NOT NULL DEFAULT now();
+ALTER TABLE sources ADD COLUMN IF NOT EXISTS collection_lease uuid;
+ALTER TABLE sources ADD COLUMN IF NOT EXISTS collection_lease_until timestamptz;
+ALTER TABLE sources ADD COLUMN IF NOT EXISTS failures int NOT NULL DEFAULT 0;
+ALTER TABLE sources ADD COLUMN IF NOT EXISTS body_hash text;
+CREATE INDEX IF NOT EXISTS sources_due ON sources(next_poll_at);
 CREATE TABLE IF NOT EXISTS items(id text PRIMARY KEY,source_id text NOT NULL,topic text NOT NULL,kind text NOT NULL,title text NOT NULL,url text NOT NULL,excerpt text NOT NULL,summary text,summary_kind text NOT NULL DEFAULT 'excerpt',published_at timestamptz NOT NULL,fetched_at timestamptz NOT NULL DEFAULT now(),owner_id uuid REFERENCES accounts ON DELETE CASCADE);
 ALTER TABLE items ADD COLUMN IF NOT EXISTS tags text[] NOT NULL DEFAULT '{}';
 ALTER TABLE items ADD COLUMN IF NOT EXISTS authors text[] NOT NULL DEFAULT '{}';

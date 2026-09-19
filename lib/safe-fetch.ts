@@ -22,6 +22,9 @@ export function publicAddress(ip: string) {
     (a === 198 && (b === 18 || b === 19))
   );
 }
+export class SourceFetchError extends Error {
+ constructor(public status:number,public retryAfterSeconds=0){super(`Source returned HTTP ${status}`);}
+}
 export async function safeFetch(
   url: string,
   maxBytes = 2_000_000,
@@ -71,7 +74,9 @@ export async function safeFetch(
       }
       if (!r.ok) {
         await r.body?.cancel();
-        throw Error(`Source returned HTTP ${r.status}`);
+        const retry=r.headers.get('retry-after');
+        const seconds=retry ? (/^\d+$/.test(retry)?Number(retry):Math.max(0,(Date.parse(retry)-Date.now())/1000)) : 0;
+        throw new SourceFetchError(r.status,Number.isFinite(seconds)?seconds:0);
       }
       if (Number(r.headers.get("content-length")) > maxBytes) {
         await r.body?.cancel();
