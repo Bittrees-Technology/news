@@ -147,3 +147,9 @@ The user superseded the live-refresh requirement: an open newspaper must remain 
 - 184 samples span 00:50–16:05 UTC. Four production services are active; supervisor health is good and the candidate is unloaded. Benchmark is completed. Latest edition remains the passing 11:57 cycle, with two of three publication gates complete.
 - Reviewed three more fixtures per model. The candidate retained the TVL snapshot correctly, but the baseline invented a date-based claim that it was hypothetical. The baseline preserved the GDP observation correctly, while the candidate's limitations contradicted the supplied historical observation. Neither market-podcast attempt produced parseable output.
 - Thirty-six cases per model are reviewed; six ordinary cases per model remain. Review records stay private. No production routing, delivery, retries, website or archive changes. The final publication cycle, full-day observation and other implementation gates remain open.
+
+## 19 September, 17:11 UTC observation and evidence review
+
+- 197 samples cover 00:50–17:10 UTC. Four production services remain active; supervisor is healthy with no managed model resident. Benchmark is completed. Latest edition remains the passing 11:57 cycle; final publication check remains due at 19:57.
+- Reviewed three further fixtures per model. The candidate retained the sparse fusion headline's intended goal; the baseline strengthened it into a result. The baseline megaproject podcast summary preserved supplied facts; the candidate response was unparseable. The mRNA summaries added an unsupported partnership or invented a prior manufacturing duration. These are source-comparison findings, not independent verification of the source's scientific claims.
+- Thirty-nine cases per model are reviewed; three ordinary cases per model remain. Notes stay private. No routing, delivery, retry or public artifact changes. Full-day observation and other implementation gates remain open.
