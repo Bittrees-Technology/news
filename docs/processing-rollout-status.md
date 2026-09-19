@@ -18,7 +18,7 @@ Production remains Qwen3.5 2B Q4_K_M, treated as externally managed. Candidate: 
 ## Gates still open
 
 - Full-day baseline and three scheduled publication cycles after this rollout.
-- Completion of the paired 42-case evaluation and factual/attribution review. Schema validity and number matching alone cannot approve a model.
+- Paired 42-case evaluation and Codex source-evidence review are complete; both tested configurations failed. An improved task/prompt/validation configuration needs a new isolated evaluation before any promotion. Schema validity and number matching alone cannot approve a model.
 - Broader validation before a small production canary; no automatic candidate promotion.
 - Unified persistent task-state migration, dependency heartbeat support and fair aging/deadline scheduling beyond the current priority/lease implementation.
 - Complete permitted source-body acquisition and its source-by-source policy review. Existing generated pages remain labeled Summary and link to the full source article.
@@ -153,3 +153,11 @@ The user superseded the live-refresh requirement: an open newspaper must remain 
 - 197 samples cover 00:50–17:10 UTC. Four production services remain active; supervisor is healthy with no managed model resident. Benchmark is completed. Latest edition remains the passing 11:57 cycle; final publication check remains due at 19:57.
 - Reviewed three further fixtures per model. The candidate retained the sparse fusion headline's intended goal; the baseline strengthened it into a result. The baseline megaproject podcast summary preserved supplied facts; the candidate response was unparseable. The mRNA summaries added an unsupported partnership or invented a prior manufacturing duration. These are source-comparison findings, not independent verification of the source's scientific claims.
 - Thirty-nine cases per model are reviewed; three ordinary cases per model remain. Notes stay private. No routing, delivery, retry or public artifact changes. Full-day observation and other implementation gates remain open.
+
+
+## 19 September, 18:12 UTC — paired review complete
+
+- All 42 cases per model have now been compared against supplied evidence (84 attempt reviews). Candidate: 14 pass, 28 fail, including three unparseable attempts. Baseline: 11 pass, 31 fail, including five parsing and three transport failures. Failed cases include incorrect output language, factual/attribution errors, unsupported qualifications or limitations, and unusable outputs. These are Codex reviews of the frozen benchmark configuration, not independent human review, verified publisher accuracy or production error rates.
+- Final cases showed source-host attribution errors, podcast sponsors assigned to a spaceport, inaccurate limitations and planned software integration presented as available. Raw evidence, outputs and review notes remain private on Acer; no benchmark artifacts were published.
+- Both tested configurations fail the proposed promotion gate. Candidate remains isolated and unloaded; existing production routing stays unchanged. Do not start a broader canary from these results. Future work should first change evidence preparation/output validation and evaluate that version separately, preserving this failed run.
+- 209 samples span 00:50–18:10 UTC. Four production services are active; supervisor is healthy, benchmark completed. Latest edition remains the passing 11:57 cycle. The 19:57 publication and full-day observation remain pending, alongside durable task states, fair scheduling, stronger grounding and source-policy-backed full-body acquisition.
