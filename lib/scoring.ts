@@ -4,9 +4,9 @@ import type { Item, Preferences } from "./model";
 export const factorNames = {
   freshness: "Freshness",
   relevance: "Global / interest relevance",
-  source: "Source consistency",
-  grounding: "Evidence support",
-  completeness: "Content completeness",
+  source: "Feed availability + feedback",
+  grounding: "Excerpt match (heuristic)",
+  completeness: "Metadata completeness",
 };
 export type Factor = keyof typeof factorNames;
 const weight = z.number().min(0).max(100);

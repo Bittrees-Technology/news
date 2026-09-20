@@ -120,11 +120,11 @@ export function Rankings({ showHistory = true }: { showHistory?: boolean }) {
           <summary>What the scores measure</summary>
           <p>
             Freshness uses a 48-hour half-life. Interest match counts your
-            interest terms found in the title and excerpt. Source consistency is
+            interest terms found in the title and excerpt. Feed availability is
             its successful collection percentage over the last 30 days (50 for
-            an unobserved source). Evidence support rewards summaries matching
+            an unobserved source), with a bounded reader-feedback adjustment. Excerpt match rewards summaries matching
             source passages; it does not verify the publisher’s claims.
-            Completeness checks the title, link, timestamp and excerpt length.
+            Metadata completeness checks the title, link, timestamp and excerpt length.
           </p>
         </details>
         <h3>Choose eligible articles</h3>

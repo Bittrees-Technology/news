@@ -122,8 +122,7 @@ export function Analytics({ role }: { role: string }) {
                 {scores && i.ranking && (
                   <>
                     <p>
-                      Article score {i.ranking.value.toFixed(1)} / 100 · Source
-                      consistency {i.ranking.sourceScore.toFixed(0)} / 100
+                      Article score {i.ranking.value.toFixed(1)} / 100 · Feed availability + feedback {i.ranking.sourceScore.toFixed(0)} / 100
                     </p>
                     <ul>
                       {Object.entries(i.ranking.factors).map(([key, value]) => (

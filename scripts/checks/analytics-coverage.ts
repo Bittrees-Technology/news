@@ -8,6 +8,7 @@ try{
  await c.query('CREATE TEMP TABLE items(id text,source_id text,kind text,owner_id text,published_at timestamptz) ON COMMIT DROP');
  await c.query('CREATE TEMP TABLE story_documents(item_id text,document jsonb,cid text) ON COMMIT DROP');
  await c.query('CREATE TEMP TABLE article_feedback(item_id text,account_id text,updated_at timestamptz) ON COMMIT DROP');
+ await c.query('CREATE TEMP TABLE source_observations(source_id text,observed_at timestamptz,status text) ON COMMIT DROP');
  await c.query('CREATE TEMP TABLE deliveries(status text,created_at timestamptz) ON COMMIT DROP');
  let r=await analyticsAudit();assert.equal(r.recent.topSourceShare,null);assert.equal(r.coverage.total,0);
  await c.query("INSERT INTO items VALUES('public','source-a','article',NULL,now()),('private','secret-source','article','owner',now()),('old','source-b','podcast',NULL,now()-interval '2 days'),('future','source-c','data',NULL,now()+interval '1 day')");

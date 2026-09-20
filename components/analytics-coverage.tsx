@@ -12,6 +12,7 @@ export function AnalyticsCoverage(){
  <h3>Intake in the last 24 hours</h3><p>{data.recent.total} items from {data.recent.activeSources} sources. Largest source share: {data.recent.topSourceShare===null?'No recent items':`${(data.recent.topSourceShare*100).toFixed(1)}%`}.</p>
  <p>Measured by publication date. Intake volume is not reader popularity or front-page exposure.</p>
  <ul>{data.recent.sources.map(s=><li key={s.source_id}>{sourceName(s.source_id)}: {s.items}</li>)}</ul>
+ <details><summary>Feed availability — 30-day samples</summary><p>This measures collection success, not editorial reliability. Editorial reliability is not yet rated. Excerpt matching and metadata completeness are automated heuristics, not fact checks.</p><ul>{data.availability.map(s=><li key={s.source_id}>{sourceName(s.source_id)}: {s.availability}% · {s.samples} checks</li>)}</ul></details>
  <h3>Reader feedback</h3><p>{data.feedback.votes} votes from {data.feedback.voters} signed-in readers in 30 days. Small samples should not be treated as broad consensus.</p>
  <h3>Delivery in the last 7 days</h3><ul>{data.deliveries.statuses.map(s=><li key={s.status}>{s.status}: {s.count}</li>)}</ul><p>“Sent” records provider acceptance; it does not confirm inbox receipt.</p>
  </>}</section>
