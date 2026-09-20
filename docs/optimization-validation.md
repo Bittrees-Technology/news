@@ -76,3 +76,20 @@ Additional evidence:
 | Full factual assessment of legacy failed outputs | Unavailable where output was not retained; batches classified unclassified |
 
 This is an implementation and current-validation report, not a declaration that all observation-dependent acceptance gates are complete. Continue the existing follow-up and issue a final completion report only when evidence supports those gates or explicitly document an unresolved external dependency. Do not promote shadow rankings or models merely because the observation period elapsed.
+
+### Commit and deployment record
+
+| Step | Main-branch commit |
+|---|---|
+| 1 Signals | 656e4c3 |
+| 2 Data dates | bfabae4 |
+| 3 Collection observations | 49df7bd |
+| 4 Diversity shadow | 93da674; latest-edition-only correction in 76aa1ae |
+| 5 Engagement | 76aa1ae |
+| 6 Timings | d13c012; workers 1fa1272 |
+| 7 Fairness | 36d0b93; corrected regression isolation in 262f756 |
+| 8 Conditional collection | 262f756 |
+| 9 Quality review | cb78a5f |
+| 10 Delivery/SMTP | 24b13ca; verified-body parsing fix in 27aa6c1 |
+
+Every listed website increment was deployed to the production alias after its passing build. Step 7's initial health check failed during the temporary-table incident, then recovered after cleanup; this is not represented as an uninterrupted healthy rollout. Production collector validation subsequently fetched BBC World successfully (18,901 body bytes, one recorded check). Delivery-event analytics are restricted to provider IDs belonging to News deliveries, excluding unrelated provider-account mail. The existing hourly follow-up now covers source review, seven-day shadow evaluation and the outstanding acceptance checks; no duplicate automation was created.

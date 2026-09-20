@@ -11,7 +11,7 @@ export async function analyticsAudit() {
   pool().query("SELECT count(*)::int editions,min(recorded_at) started_at,max(recorded_at) latest_at FROM diversity_shadows"),
   engagementMetrics(),
   pool().query("SELECT sum(transferred_bytes)::float bytes,sum(conditional_hits)::int not_modified,sum(completed_checks)::int checks,sum(collected_items)::int parsed_items FROM sources"),
-  pool().query("SELECT status,count(*)::int count FROM (SELECT DISTINCT ON (provider_id) status FROM delivery_events WHERE occurred_at>now()-interval '7 days' ORDER BY provider_id,occurred_at DESC,received_at DESC) last_events GROUP BY status"),
+  pool().query("SELECT status,count(*)::int count FROM (SELECT DISTINCT ON (provider_id) status FROM delivery_events WHERE provider_id IN (SELECT provider_id FROM deliveries WHERE provider_id IS NOT NULL) AND occurred_at>now()-interval '7 days' ORDER BY provider_id,occurred_at DESC,received_at DESC) last_events GROUP BY status"),
   pool().query("SELECT updated_at,data->'smtp_local' local,data->'smtp_public_route' public_route FROM worker_state WHERE id='news-models'")
  ]);
  const total=recent.rows.reduce((n,r)=>n+r.items,0);
