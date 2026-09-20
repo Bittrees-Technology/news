@@ -18,7 +18,7 @@ export async function sourceScores(accountId?: string) {
     )
   ).rows;
   await pool().query(
-    "INSERT INTO source_observations(source_id,observed_at,status) SELECT id,checked_at,status FROM sources WHERE checked_at IS NOT NULL UNION ALL SELECT 'private:'||id::text,checked_at,status FROM connections WHERE account_id=$1 AND checked_at IS NOT NULL ON CONFLICT DO NOTHING",
+    "INSERT INTO source_observations(source_id,observed_at,status) SELECT 'private:'||id::text,checked_at,status FROM connections WHERE account_id=$1 AND checked_at IS NOT NULL ON CONFLICT DO NOTHING",
     [accountId || null],
   );
   const history = (

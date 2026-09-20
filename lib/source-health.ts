@@ -1,9 +1,12 @@
+import {collectionMinutes,isOverdue} from "./collection-policy";
 import { pool } from "./db";
 import { sources } from "./catalog";
 export type SourceHealth = {
   healthy: number;
   unavailable: number;
   unchecked: number;
+  oldestCheckAt?: string | null;
+  overdue?: string[];
   checkedAt: string | null;
   issues: { name: string; homepage: string; reason: string }[];
 };
@@ -22,7 +25,7 @@ export function sourceIssue(error: string | null) {
 export async function sourceHealth(): Promise<SourceHealth> {
   const rows = (
     await pool().query(
-      "SELECT id,status,error,checked_at FROM sources WHERE id=ANY($1::text[])",
+      "SELECT id,status,error,checked_at,next_poll_at FROM sources WHERE id=ANY($1::text[])",
       [sources.map((s) => s.id)],
     )
   ).rows;
@@ -30,6 +33,8 @@ export async function sourceHealth(): Promise<SourceHealth> {
     r.checked_at ? [new Date(r.checked_at).getTime()] : [],
   );
   return {
+    oldestCheckAt: dates.length ? new Date(Math.min(...dates)).toISOString() : null,
+    overdue: rows.filter(r=>isOverdue(r.next_poll_at,collectionMinutes(sources.find(s=>s.id===r.id)!))).map(r=>sources.find(s=>s.id===r.id)!.name),
     healthy: rows.filter((r) => r.status === "healthy").length,
     unavailable: rows.filter((r) => r.status === "unavailable").length,
     unchecked:

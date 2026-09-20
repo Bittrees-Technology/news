@@ -87,6 +87,8 @@ export function Analytics({ role }: { role: string }) {
                 </ul>
               </details>
             )}
+            {!!data.health.overdue?.length && <p role="alert">Overdue collection: {data.health.overdue.join(", ")}. Expected polling and retry backoff are taken into account.</p>}
+            {data.health.oldestCheckAt && <p>Oldest source check: {new Date(data.health.oldestCheckAt).toLocaleString()}</p>}
             <Link href="/account/sources">Manage sources and feeds</Link>
           </section>
           <section className="panel">

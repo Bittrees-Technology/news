@@ -193,12 +193,12 @@ export async function collect() {
    try{
     const result=await fetchSourceSnapshot(source,undefined,row.body_hash);
     if(result.items){await storeItems(result.items);changed=true;}else unchanged++;
-    await pool().query("UPDATE sources SET status='healthy',checked_at=now(),error=NULL,item_count=coalesce($3,item_count),body_hash=$4,failures=0,next_poll_at=to_timestamp(floor(extract(epoch from now())/300)*300)+$5*interval '1 minute',collection_lease=NULL,collection_lease_until=NULL WHERE id=$1 AND collection_lease=$2",[row.id,row.collection_lease,result.items?.length??null,result.hash,minutes]);
+    await pool().query("WITH completed AS (UPDATE sources SET status='healthy',checked_at=now(),error=NULL,item_count=coalesce($3,item_count),body_hash=$4,failures=0,next_poll_at=to_timestamp(floor(extract(epoch from now())/300)*300)+$5*interval '1 minute',collection_lease=NULL,collection_lease_until=NULL WHERE id=$1 AND collection_lease=$2 RETURNING id,checked_at,status) INSERT INTO source_observations(source_id,observed_at,status) SELECT id,checked_at,status FROM completed ON CONFLICT DO NOTHING",[row.id,row.collection_lease,result.items?.length??null,result.hash,minutes]);
     ok++;
    }catch(e){
     const message=e instanceof Error?e.message:'Source unavailable';
     const delay=retryMinutes(minutes,row.failures+1,e instanceof SourceFetchError?e.status:undefined,e instanceof SourceFetchError?e.retryAfterSeconds:0);
-    await pool().query("UPDATE sources SET status='unavailable',checked_at=now(),error=$3,failures=failures+1,next_poll_at=now()+$4*interval '1 minute',collection_lease=NULL,collection_lease_until=NULL WHERE id=$1 AND collection_lease=$2",[row.id,row.collection_lease,message.slice(0,200),delay]);
+    await pool().query("WITH completed AS (UPDATE sources SET status='unavailable',checked_at=now(),error=$3,failures=failures+1,next_poll_at=now()+$4*interval '1 minute',collection_lease=NULL,collection_lease_until=NULL WHERE id=$1 AND collection_lease=$2 RETURNING id,checked_at,status) INSERT INTO source_observations(source_id,observed_at,status) SELECT id,checked_at,status FROM completed ON CONFLICT DO NOTHING",[row.id,row.collection_lease,message.slice(0,200),delay]);
     failed++;
    }
   }

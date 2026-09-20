@@ -13,3 +13,11 @@ test('failures back off and respect publisher retry-after without hammering dail
  assert.equal(retryMinutes(15,10),360);assert.equal(retryMinutes(15,1,403),1440);
  assert.equal(retryMinutes(15,1,429,7200),120);assert.equal(retryMinutes(1440,1),1440);
 });
+
+import {isOverdue} from '../lib/collection-policy';
+test('overdue checks respect next scheduled poll and backoff',()=>{
+ const now=Date.parse('2026-09-20T12:00:00Z');
+ assert.equal(isOverdue('2026-09-20T11:40:00Z',15,now),true);
+ assert.equal(isOverdue('2026-09-20T11:50:00Z',15,now),false);
+ assert.equal(isOverdue('2026-09-21T00:00:00Z',15,now),false);
+});
