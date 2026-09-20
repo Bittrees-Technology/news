@@ -1,4 +1,4 @@
-import {recordClaim} from "./job-ledger";
+import {recordClaim,recordOutcome} from "./job-ledger";
 import {publicJob} from "./job-contract";
 import { createHash } from "node:crypto";
 import { isSourcePassage } from "./grounding";
@@ -128,9 +128,9 @@ export async function claimTranslation() {return tx(async d=>{
  });}
 export async function saveTranslation(
   b: z.infer<typeof translationResultSchema>,
-) {
+) {return tx(async d=>{
   const active = (
-    await pool().query(
+    await d.query(
       "SELECT payload FROM translations WHERE key=$1 AND lease=$2 AND status='working' AND claimed_at>now()-interval '40 minutes'",
       [b.key, b.lease],
     )
@@ -138,15 +138,16 @@ export async function saveTranslation(
   if (!active)
     throw new HttpError(409, "Translation lease is no longer active");
   if(b.deferred){
-    const r=await pool().query("UPDATE translations SET status='pending',attempts=greatest(0,attempts-1),lease=NULL,claimed_at=NULL,available_at=now()+interval '30 seconds' WHERE key=$1 AND lease=$2 AND status='working' AND claimed_at>now()-interval '40 minutes' RETURNING key",[b.key,b.lease]);
-    if(!r.rowCount)throw new HttpError(409,'Translation lease is no longer active');return {ok:true};
+    const r=await d.query("UPDATE translations SET status='pending',attempts=greatest(0,attempts-1),lease=NULL,claimed_at=NULL,available_at=now()+interval '30 seconds' WHERE key=$1 AND lease=$2 AND status='working' AND claimed_at>now()-interval '40 minutes' RETURNING key",[b.key,b.lease]);
+    if(!r.rowCount)throw new HttpError(409,'Translation lease is no longer active');await recordOutcome(d,b.lease,'deferred');return {ok:true};
   }
   const result = b.error ? null : translatedResult(b, active.payload);
-  const r = await pool().query(
-    `UPDATE translations SET status=CASE WHEN $3::boolean THEN CASE WHEN attempts>=3 THEN 'failed' ELSE 'pending' END ELSE 'done' END,result=$4,completed_at=now() WHERE key=$1 AND lease=$2 AND status='working' AND claimed_at>now()-interval '40 minutes' RETURNING key`,
+  const r = await d.query(
+    `UPDATE translations SET status=CASE WHEN $3::boolean THEN CASE WHEN attempts>=3 THEN 'failed' ELSE 'pending' END ELSE 'done' END,result=$4,completed_at=now() WHERE key=$1 AND lease=$2 AND status='working' AND claimed_at>now()-interval '40 minutes' RETURNING key,status`,
     [b.key, b.lease, !!b.error, result ? JSON.stringify(result) : null],
   );
   if (!r.rowCount)
     throw new HttpError(409, "Translation lease is no longer active");
+  await recordOutcome(d,b.lease,b.error?(r.rows[0].status==='failed'?'review':'retry'):'translated');
   return { ok: true };
-}
+ });}

@@ -10,7 +10,7 @@ export async function processingSnapshot(){
   pool().query("SELECT updated_at,data FROM worker_state WHERE id='collection'"),
   pool().query("SELECT id,updated_at,data FROM worker_state WHERE id='news-models'")
  ]);
- return {eligibleQueues:await queueHealth(),stages:await stageMetrics(),at:new Date().toISOString(),translations:translations.rows,stories:stories.rows,editions:editions.rows,collection:collection.rows[0]||null,workers:workers.rows};
+ return {outcomes:(await pool().query("SELECT c.task,e.event,count(*)::int count FROM public_job_events e JOIN public_job_claims c USING(lease) WHERE e.recorded_at>now()-interval '7 days' GROUP BY c.task,e.event ORDER BY c.task,e.event")).rows,eligibleQueues:await queueHealth(),stages:await stageMetrics(),at:new Date().toISOString(),translations:translations.rows,stories:stories.rows,editions:editions.rows,collection:collection.rows[0]||null,workers:workers.rows};
 }
 export async function recordProcessingSample(){
  await pool().query("DELETE FROM reader_events WHERE bucket<(now() AT TIME ZONE 'UTC')::date-29");

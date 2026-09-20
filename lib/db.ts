@@ -26,6 +26,7 @@ export async function tx<T>(fn: (db: PoolClient) => Promise<T>) {
 export const schema = `
 CREATE TABLE IF NOT EXISTS public_job_claims(lease uuid PRIMARY KEY,task text NOT NULL CHECK(task IN ('briefing','translation')),artifact_id text NOT NULL,content_revision text NOT NULL,phase text NOT NULL CHECK(phase IN ('generation','archive')),deadline timestamptz NOT NULL,envelope jsonb NOT NULL,claimed_at timestamptz NOT NULL DEFAULT now());
 CREATE INDEX IF NOT EXISTS public_job_claims_artifact ON public_job_claims(task,artifact_id,claimed_at);
+CREATE TABLE IF NOT EXISTS public_job_events(lease uuid NOT NULL REFERENCES public_job_claims(lease) ON DELETE CASCADE,event text NOT NULL CHECK(event IN ('generated','archived','translated','deferred','retry','review')),recorded_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(lease,event));
 CREATE TABLE IF NOT EXISTS delivery_events(event_id text PRIMARY KEY,provider_id text NOT NULL,event_type text NOT NULL,status text NOT NULL,occurred_at timestamptz NOT NULL,received_at timestamptz NOT NULL DEFAULT now());
 CREATE INDEX IF NOT EXISTS delivery_events_provider ON delivery_events(provider_id,occurred_at);
 CREATE TABLE IF NOT EXISTS quality_reviews(task text,artifact_id text,actor uuid,category text NOT NULL,note text NOT NULL,reviewed_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(task,artifact_id));

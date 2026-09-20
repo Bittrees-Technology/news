@@ -103,3 +103,7 @@ Added explicit eligible backlog age/current-day counts to processing analytics. 
 Production now records 137 HTTP 304 responses from 424 successful checks; 210,876,300 body bytes transferred. This verifies conditional-response operation, not a baseline-adjusted savings percentage. The eligible briefing backlog declined to 334; translations have no eligible backlog. No real signed delivery event or new publication cycle has occurred yet.
 
 Durable claim ledger added as the next processing increment: envelope/revision/phase/deadline is committed atomically with each public worker lease. Real PostgreSQL fixture checks preserve the every-tenth fairness rule and force ledger failure to verify both claim paths roll back. This does not yet implement the full dependency/state-transition framework or satisfy the seven-day acceptance gate.
+
+### 20 September 04:23 UTC follow-up
+
+Durable claim ledger is receiving production claims (64 briefing, nine translation at inspection). Added atomic outcome events and admin transition counts, with idempotent archive replay and conflicting-CID rejection. PostgreSQL rollback/lease tests pass; no test email or model/ranking promotion. Eligible briefing backlog is 284; feed counters now include 319 HTTP 304s of 797 successful checks. These continuing counters are not a controlled savings estimate. Seven-day, source-expansion and real provider-event gates remain open.

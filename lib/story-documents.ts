@@ -1,4 +1,4 @@
-import {recordClaim} from "./job-ledger";
+import {recordClaim,recordOutcome} from "./job-ledger";
 import {sourceEvidence} from "./source-evidence";
 import {publicJob} from "./job-contract";
 import {z} from 'zod';
@@ -14,19 +14,19 @@ export async function claimStory(){return tx(async d=>{
  const job=await recordClaim(d,publicJob('briefing',row.item_id,[row.title,row.source_context||row.excerpt],claim.lease,row.priority),row.document?'archive':'generation');
  return {...row,queue_wait_ms:row.enqueued_at?Math.max(0,Date.now()-new Date(row.enqueued_at).getTime()):null,lease:claim.lease,job};
  });}
-export async function retryStory(input:unknown){
+export async function retryStory(input:unknown){return tx(async d=>{
  const b=z.object({id:z.string().regex(/^[a-f0-9]{64}$/),lease:z.uuid(),busy:z.boolean().default(false),error:z.string().max(100)}).parse(input);
- const r=await pool().query("UPDATE story_documents SET claimed_at=NULL,lease=NULL,attempts=greatest(0,attempts-CASE WHEN $3 THEN 1 ELSE 0 END),available_at=now()+CASE WHEN $3 THEN interval '30 seconds' ELSE interval '5 minutes'*attempts END,error=$4 WHERE item_id=$1 AND lease=$2 AND cid IS NULL AND claimed_at>now()-interval '30 minutes' RETURNING item_id",[b.id,b.lease,b.busy,b.error]);
- if(!r.rowCount)throw new HttpError(409,'Briefing lease is no longer active');return {ok:true};
-}
-export async function saveStory(input:unknown){
+ const r=await d.query("UPDATE story_documents SET claimed_at=NULL,lease=NULL,attempts=greatest(0,attempts-CASE WHEN $3 THEN 1 ELSE 0 END),available_at=now()+CASE WHEN $3 THEN interval '30 seconds' ELSE interval '5 minutes'*attempts END,error=$4 WHERE item_id=$1 AND lease=$2 AND cid IS NULL AND claimed_at>now()-interval '30 minutes' RETURNING item_id,attempts",[b.id,b.lease,b.busy,b.error]);
+ if(!r.rowCount)throw new HttpError(409,'Briefing lease is no longer active');await recordOutcome(d,b.lease,b.busy?'deferred':r.rows[0].attempts>=3?'review':'retry');return {ok:true};
+ });}
+export async function saveStory(input:unknown){return tx(async d=>{
  const b=z.object({id:z.string().regex(/^[a-f0-9]{64}$/),lease:z.uuid(),briefing:briefingSchema,model:z.string().max(100)}).parse(input);
- const i=(await pool().query('SELECT * FROM items WHERE id=$1 AND owner_id IS NULL',[b.id])).rows[0];
+ const i=(await d.query('SELECT * FROM items WHERE id=$1 AND owner_id IS NULL',[b.id])).rows[0];
  if(!i)throw new HttpError(404,'Public story not found');
  const payload={version:1,evidence:sourceEvidence(i),id:i.id,title:i.title,kind:i.kind,source:{url:i.url,authors:i.authors,publication:i.publication||sourceName(i.source_id),publishedAt:i.published_at},briefing:b.briefing,model:b.model,generatedAt:new Date().toISOString(),url:`https://news.bittrees.org/story/${i.id}`,notice:'Bittrees briefing generated from publisher-provided feed evidence. Not the original full article; consult the linked source.'};
- const r=await pool().query('UPDATE story_documents SET document=$2,generated_at=now(),error=NULL WHERE item_id=$1 AND lease=$3 AND claimed_at>now()-interval \'30 minutes\' RETURNING item_id',[b.id,JSON.stringify(payload),b.lease]);if(!r.rowCount)throw new HttpError(409,'Briefing lease is no longer active');return payload;
-}
-export async function saveStoryCid(input:unknown){const b=z.object({id:z.string().regex(/^[a-f0-9]{64}$/),lease:z.uuid(),cid:z.string().regex(/^b[a-z2-7]{30,120}$/)}).parse(input);const r=await pool().query('UPDATE story_documents s SET cid=$2,pinned_at=now(),error=NULL FROM items i WHERE s.item_id=$1 AND i.id=s.item_id AND i.owner_id IS NULL AND s.document IS NOT NULL AND s.lease=$3 AND s.claimed_at>now()-interval \'30 minutes\' RETURNING s.item_id',[b.id,b.cid,b.lease]);if(!r.rowCount)throw new HttpError(404,'Public briefing not found');return {ok:true};}
+ const r=await d.query('UPDATE story_documents SET document=$2,generated_at=now(),error=NULL WHERE item_id=$1 AND lease=$3 AND claimed_at>now()-interval \'30 minutes\' RETURNING item_id',[b.id,JSON.stringify(payload),b.lease]);if(!r.rowCount)throw new HttpError(409,'Briefing lease is no longer active');await recordOutcome(d,b.lease,'generated');return payload;
+ });}
+export async function saveStoryCid(input:unknown){return tx(async d=>{const b=z.object({id:z.string().regex(/^[a-f0-9]{64}$/),lease:z.uuid(),cid:z.string().regex(/^b[a-z2-7]{30,120}$/)}).parse(input);const r=await d.query('UPDATE story_documents s SET cid=$2,pinned_at=now(),error=NULL FROM items i WHERE s.item_id=$1 AND i.id=s.item_id AND i.owner_id IS NULL AND s.document IS NOT NULL AND (s.cid IS NULL OR s.cid=$2) AND s.lease=$3 AND s.claimed_at>now()-interval \'30 minutes\' RETURNING s.item_id',[b.id,b.cid,b.lease]);if(!r.rowCount)throw new HttpError(404,'Public briefing not found');await recordOutcome(d,b.lease,'archived');return {ok:true};});}
 
 export async function withBriefings<T extends {id:string;owner_id?:string|null}>(items:T[]){
  const rows=(await pool().query("SELECT s.item_id,s.document FROM story_documents s JOIN items i ON i.id=s.item_id WHERE s.item_id=ANY($1::text[]) AND i.owner_id IS NULL AND s.document IS NOT NULL",[items.map(i=>i.id)])).rows;
