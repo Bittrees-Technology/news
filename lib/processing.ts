@@ -1,3 +1,4 @@
+import {queueHealth} from "./queue-health";
 import {stageMetrics} from "./stage-metrics";
 import {recordDiversityShadow} from "./shadow-record";
 import {pool} from './db';
@@ -9,7 +10,7 @@ export async function processingSnapshot(){
   pool().query("SELECT updated_at,data FROM worker_state WHERE id='collection'"),
   pool().query("SELECT id,updated_at,data FROM worker_state WHERE id='news-models'")
  ]);
- return {stages:await stageMetrics(),at:new Date().toISOString(),translations:translations.rows,stories:stories.rows,editions:editions.rows,collection:collection.rows[0]||null,workers:workers.rows};
+ return {eligibleQueues:await queueHealth(),stages:await stageMetrics(),at:new Date().toISOString(),translations:translations.rows,stories:stories.rows,editions:editions.rows,collection:collection.rows[0]||null,workers:workers.rows};
 }
 export async function recordProcessingSample(){
  await pool().query("DELETE FROM reader_events WHERE bucket<(now() AT TIME ZONE 'UTC')::date-29");

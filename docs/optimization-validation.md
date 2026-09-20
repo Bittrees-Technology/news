@@ -93,3 +93,7 @@ This is an implementation and current-validation report, not a declaration that 
 | 10 Delivery/SMTP | 24b13ca; verified-body parsing fix in 27aa6c1 |
 
 Every listed website increment was deployed to the production alias after its passing build. Step 7's initial health check failed during the temporary-table incident, then recovered after cleanup; this is not represented as an uninterrupted healthy rollout. Production collector validation subsequently fetched BBC World successfully (18,901 body bytes, one recorded check). Delivery-event analytics are restricted to provider IDs belonging to News deliveries, excluding unrelated provider-account mail. The existing hourly follow-up now covers source review, seven-day shadow evaluation and the outstanding acceptance checks; no duplicate automation was created.
+
+### 20 September 02:21 UTC follow-up
+
+Added explicit eligible backlog age/current-day counts to processing analytics. Eligibility follows the claim rules, excludes active leases/backoff/exhausted jobs, and does not substitute publication dates for unknown historical enqueue times. Initial production timing samples now cover both worker types. Latest collection: 57 successes, zero failures, 44 unchanged bodies; cumulative instrumented checks 58, body bytes 22,191,612 and no production 304s yet. SMTP probes pass; real provider events, the 24-hour source assessment and seven-day comparison remain pending.
