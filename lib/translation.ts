@@ -128,19 +128,19 @@ export async function saveTranslation(
 ) {
   const active = (
     await pool().query(
-      "SELECT payload FROM translations WHERE key=$1 AND lease=$2 AND status='working'",
+      "SELECT payload FROM translations WHERE key=$1 AND lease=$2 AND status='working' AND claimed_at>now()-interval '40 minutes'",
       [b.key, b.lease],
     )
   ).rows[0];
   if (!active)
     throw new HttpError(409, "Translation lease is no longer active");
   if(b.deferred){
-    const r=await pool().query("UPDATE translations SET status='pending',attempts=greatest(0,attempts-1),lease=NULL,claimed_at=NULL,available_at=now()+interval '30 seconds' WHERE key=$1 AND lease=$2 AND status='working' RETURNING key",[b.key,b.lease]);
+    const r=await pool().query("UPDATE translations SET status='pending',attempts=greatest(0,attempts-1),lease=NULL,claimed_at=NULL,available_at=now()+interval '30 seconds' WHERE key=$1 AND lease=$2 AND status='working' AND claimed_at>now()-interval '40 minutes' RETURNING key",[b.key,b.lease]);
     if(!r.rowCount)throw new HttpError(409,'Translation lease is no longer active');return {ok:true};
   }
   const result = b.error ? null : translatedResult(b, active.payload);
   const r = await pool().query(
-    `UPDATE translations SET status=CASE WHEN $3::boolean THEN CASE WHEN attempts>=3 THEN 'failed' ELSE 'pending' END ELSE 'done' END,result=$4,completed_at=now() WHERE key=$1 AND lease=$2 AND status='working' RETURNING key`,
+    `UPDATE translations SET status=CASE WHEN $3::boolean THEN CASE WHEN attempts>=3 THEN 'failed' ELSE 'pending' END ELSE 'done' END,result=$4,completed_at=now() WHERE key=$1 AND lease=$2 AND status='working' AND claimed_at>now()-interval '40 minutes' RETURNING key`,
     [b.key, b.lease, !!b.error, result ? JSON.stringify(result) : null],
   );
   if (!r.rowCount)
