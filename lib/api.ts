@@ -1,3 +1,4 @@
+import {recordEngagement} from "./engagement";
 import {analyticsAudit} from "./analytics-audit";
 import {processingSnapshot,recordProcessingSample} from "./processing";
 import {collect} from "./collect";
@@ -382,6 +383,7 @@ export async function api(r: Request) {
       });
     }
     if (method !== "GET") checkOrigin(r);
+    if(path === "engagement" && method === "POST"){await rateLimit("engagement:"+a!.id,600);return json(await recordEngagement(a!.id,await body(r)));}
     if (path === "subscriptions" && method === "GET")
       return json(await deliverySettings(a!.id));
     if (path === "subscriptions" && method === "POST")

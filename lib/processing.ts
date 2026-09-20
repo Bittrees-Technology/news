@@ -11,6 +11,7 @@ export async function processingSnapshot(){
  return {at:new Date().toISOString(),translations:translations.rows,stories:stories.rows,editions:editions.rows,collection:collection.rows[0]||null,workers:workers.rows};
 }
 export async function recordProcessingSample(){
+ await pool().query("DELETE FROM reader_events WHERE bucket<(now() AT TIME ZONE 'UTC')::date-29");
  await recordDiversityShadow();
  const snapshot=await processingSnapshot();
  await pool().query("INSERT INTO processing_samples(bucket,data) VALUES(to_timestamp(floor(extract(epoch FROM now())/300)*300),$1) ON CONFLICT(bucket) DO UPDATE SET data=EXCLUDED.data",[JSON.stringify(snapshot)]);

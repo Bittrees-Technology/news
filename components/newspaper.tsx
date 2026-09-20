@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState, useRef } from "react";
 import {matchesArticleSearch,type SearchField} from "@/lib/article-search";
+import {ArticleEngagement} from "./article-engagement";
 import {ArticleFeedback} from "./article-feedback";
 import {articleTags,addedTopics,tagStyle} from "@/lib/tags";
 import {defaultReaderFilters,readerFiltersSchema,matchesReaderFilters,guestReaderFilters,selectReaderFilter,type ReaderFilters} from "@/lib/reader-filters";
@@ -355,6 +356,7 @@ export function Newspaper({
               }}
               className={`story ${n < 3 ? "lead" : ""} ${state[i.id]?.is_read ? "read" : ""} ${cursor === n ? "cursor" : ""}`}
             >
+              <ArticleEngagement id={i.id} signed={signed}/>
               <div className="story-meta">
                 {articleTags(i).map(tag=><span className="topic colored-tag" style={tagStyle(tag)} key={tag}>{tag}</span>)}
                 <span>{sourceName(i.source_id)}</span>
@@ -368,6 +370,7 @@ export function Newspaper({
               </div>
               <h2>
                 <a
+                  data-source-link="true"
                   href={i.url}
                   target="_blank"
                   rel="noopener noreferrer"

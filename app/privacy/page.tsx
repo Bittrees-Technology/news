@@ -4,6 +4,7 @@ export default function Page() {
   return (
     <article className="prose">
       <h1>Privacy</h1>
+      <h2>Signed-in engagement</h2><p>While signed in, we count a public article view after at least half its card is visible for one second, and clicks to its source. Records contain your account ID, article ID, event type and UTC day, with one event of each type per article per day. They expire after 30 days and are removed when your account is deleted. Administrators see aggregate counts; these events do not currently change rankings. We do not collect these events for signed-out visitors.</p>
       <h2>Article feedback</h2>
       <p>Guest votes and reading filters stay in this browser. When signed in, filters and read/save actions are stored with your account. Signed-in interactions carry more weight in personalized ranking; guest activity does not contribute to shared source scores.</p>
       <p>Thumbs-up and thumbs-down feedback is collected only while signed in. We store your account ID, article ID, vote and timestamps to improve article selection and source ratings. Votes are linked to your account, not anonymous. Click your selected thumb again to delete a vote; deleting your account removes its votes. Ranking uses votes from the last 90 days.</p>
