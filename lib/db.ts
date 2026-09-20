@@ -24,6 +24,7 @@ export async function tx<T>(fn: (db: PoolClient) => Promise<T>) {
   }
 }
 export const schema = `
+CREATE TABLE IF NOT EXISTS diversity_shadows(edition_id text PRIMARY KEY,recorded_at timestamptz NOT NULL DEFAULT now(),data jsonb NOT NULL);
 CREATE TABLE IF NOT EXISTS translations(key text PRIMARY KEY,payload jsonb NOT NULL,status text NOT NULL DEFAULT 'pending',attempts int NOT NULL DEFAULT 0,lease uuid,claimed_at timestamptz,result jsonb,created_at timestamptz NOT NULL DEFAULT now(),completed_at timestamptz);
 CREATE INDEX IF NOT EXISTS translations_pending ON translations(status,created_at);
 CREATE TABLE IF NOT EXISTS editor_jobs(id text PRIMARY KEY,publish_at timestamptz NOT NULL,status text NOT NULL DEFAULT 'pending',payload jsonb NOT NULL,claimed_at timestamptz,result jsonb,error text);

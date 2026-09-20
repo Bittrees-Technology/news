@@ -1,3 +1,4 @@
+import {recordDiversityShadow} from "./shadow-record";
 import {pool} from './db';
 export async function processingSnapshot(){
  const [translations,stories,editions,collection,workers]=await Promise.all([
@@ -10,6 +11,7 @@ export async function processingSnapshot(){
  return {at:new Date().toISOString(),translations:translations.rows,stories:stories.rows,editions:editions.rows,collection:collection.rows[0]||null,workers:workers.rows};
 }
 export async function recordProcessingSample(){
+ await recordDiversityShadow();
  const snapshot=await processingSnapshot();
  await pool().query("INSERT INTO processing_samples(bucket,data) VALUES(to_timestamp(floor(extract(epoch FROM now())/300)*300),$1) ON CONFLICT(bucket) DO UPDATE SET data=EXCLUDED.data",[JSON.stringify(snapshot)]);
  await pool().query("DELETE FROM processing_samples WHERE bucket<now()-interval '30 days'");
