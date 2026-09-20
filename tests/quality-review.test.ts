@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {qualityReviewSchema} from '../lib/quality-review';
+test('quality review requires bounded findings and cannot smuggle a retry or promotion',()=>{const b={task:'translation',id:'a'.repeat(64),category:'language',note:'Output is not in the target language.'};assert.equal(qualityReviewSchema.safeParse(b).success,true);assert.equal(qualityReviewSchema.safeParse({...b,retry:true}).success,false);assert.equal(qualityReviewSchema.safeParse({...b,note:'bad'}).success,false);});

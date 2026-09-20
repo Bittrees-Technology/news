@@ -24,6 +24,7 @@ export async function tx<T>(fn: (db: PoolClient) => Promise<T>) {
   }
 }
 export const schema = `
+CREATE TABLE IF NOT EXISTS quality_reviews(task text,artifact_id text,actor uuid,category text NOT NULL,note text NOT NULL,reviewed_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(task,artifact_id));
 CREATE TABLE IF NOT EXISTS processing_stages(task text,artifact_id text,lease uuid,stage text,milliseconds double precision NOT NULL,recorded_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(task,artifact_id,lease,stage));
 CREATE INDEX IF NOT EXISTS processing_stages_recent ON processing_stages(recorded_at);
 CREATE TABLE IF NOT EXISTS diversity_shadows(edition_id text PRIMARY KEY,recorded_at timestamptz NOT NULL DEFAULT now(),data jsonb NOT NULL);

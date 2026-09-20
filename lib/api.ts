@@ -1,3 +1,4 @@
+import {qualityQueue,saveQualityReview} from "./quality-review";
 import {recordStage} from "./stage-metrics";
 import {recordEngagement} from "./engagement";
 import {analyticsAudit} from "./analytics-audit";
@@ -386,6 +387,7 @@ export async function api(r: Request) {
     }
     if (method !== "GET") checkOrigin(r);
     if(path === "engagement" && method === "POST"){await rateLimit("engagement:"+a!.id,600);return json(await recordEngagement(a!.id,await body(r)));}
+    if(path === "staff/quality"){requireScores(a!.role);if(method === "GET")return json(await qualityQueue());if(method === "POST")return json(await saveQualityReview(a!.id,await body(r)));}
     if (path === "subscriptions" && method === "GET")
       return json(await deliverySettings(a!.id));
     if (path === "subscriptions" && method === "POST")

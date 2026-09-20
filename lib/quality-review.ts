@@ -1,0 +1,10 @@
+import {pool} from './db';import {z} from 'zod';import {HttpError} from './model';
+export const qualityReviewSchema=z.object({task:z.enum(['briefing','translation']),id:z.string().regex(/^[a-f0-9]{64}$/),category:z.enum(['transport','invalid_output','language','unsupported_claim','attribution','insufficient_evidence']),note:z.string().min(15).max(2000)}).strict();
+export async function qualityQueue(){
+ const [briefings,translations]=await Promise.all([
+ pool().query("SELECT 'briefing' task,s.item_id id,i.title,left(coalesce(i.source_context,i.excerpt),6000) evidence,s.document output,s.error FROM story_documents s JOIN items i ON i.id=s.item_id WHERE i.owner_id IS NULL AND s.attempts>=3 AND s.cid IS NULL AND NOT EXISTS(SELECT 1 FROM quality_reviews q WHERE q.task='briefing' AND q.artifact_id=s.item_id) ORDER BY s.available_at LIMIT 5"),
+ pool().query("SELECT 'translation' task,t.key id,t.payload->>'title' title,left(t.payload->>'summary',6000) evidence,t.result output,'Unclassified failed attempt; inspect evidence before judging quality' error FROM translations t WHERE status='failed' AND NOT EXISTS(SELECT 1 FROM quality_reviews q WHERE q.task='translation' AND q.artifact_id=t.key) ORDER BY t.created_at LIMIT 5")]);return [...briefings.rows,...translations.rows];}
+export async function saveQualityReview(actor:string,input:unknown){const b=qualityReviewSchema.parse(input);
+ const exists=b.task==='briefing'?await pool().query('SELECT 1 FROM story_documents s JOIN items i ON i.id=s.item_id WHERE s.item_id=$1 AND i.owner_id IS NULL AND s.attempts>=3 AND s.cid IS NULL',[b.id]):await pool().query("SELECT 1 FROM translations WHERE key=$1 AND status='failed'",[b.id]);
+ if(!exists.rowCount)throw new HttpError(404,'Failed public job not found');
+ await pool().query('INSERT INTO quality_reviews(task,artifact_id,actor,category,note) VALUES($1,$2,$3,$4,$5) ON CONFLICT(task,artifact_id) DO UPDATE SET actor=$3,category=$4,note=$5,reviewed_at=now()',[b.task,b.id,actor,b.category,b.note]);return {ok:true};}
