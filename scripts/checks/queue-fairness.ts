@@ -4,6 +4,7 @@ const p=new Pool({connectionString:process.env.DATABASE_URL}),c=await p.connect(
 try{
  await c.query('BEGIN');
  await c.query("CREATE TEMP TABLE public_job_claims(lease uuid PRIMARY KEY,task text,artifact_id text,content_revision text,phase text,deadline timestamptz,envelope jsonb,claimed_at timestamptz DEFAULT now())");
+ await c.query('CREATE TEMP TABLE public_job_events(lease uuid,event text,PRIMARY KEY(lease,event))');
  await c.query('CREATE TEMP TABLE worker_state(id text PRIMARY KEY,data jsonb,updated_at timestamptz DEFAULT now())');
  await c.query('CREATE TEMP TABLE items(id text PRIMARY KEY,title text,url text,kind text,source_id text,published_at timestamptz,authors text[],publication text,source_context text,excerpt text,owner_id uuid,fetched_at timestamptz)');
  await c.query('CREATE TEMP TABLE story_documents(item_id text PRIMARY KEY,cid text,document jsonb,attempts int DEFAULT 0,available_at timestamptz DEFAULT now(),claimed_at timestamptz,lease uuid,priority numeric,enqueued_at timestamptz)');

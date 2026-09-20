@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS public_job_claims(lease uuid PRIMARY KEY,task text NO
 CREATE INDEX IF NOT EXISTS public_job_claims_artifact ON public_job_claims(task,artifact_id,claimed_at);
 CREATE TABLE IF NOT EXISTS public_job_events(lease uuid NOT NULL REFERENCES public_job_claims(lease) ON DELETE CASCADE,event text NOT NULL CHECK(event IN ('generated','archived','translated','deferred','retry','review')),recorded_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(lease,event));
 ALTER TABLE public_job_events DROP CONSTRAINT IF EXISTS public_job_events_event_check;
-ALTER TABLE public_job_events ADD CONSTRAINT public_job_events_event_check CHECK(event IN ('generated','archived','translated','deferred','retry','review','deadline_unreported'));
+ALTER TABLE public_job_events ADD CONSTRAINT public_job_events_event_check CHECK(event IN ('generated','archived','translated','deferred','retry','review','deadline_unreported','superseded'));
 CREATE INDEX IF NOT EXISTS public_job_claims_deadline ON public_job_claims(deadline);
 CREATE TABLE IF NOT EXISTS delivery_events(event_id text PRIMARY KEY,provider_id text NOT NULL,event_type text NOT NULL,status text NOT NULL,occurred_at timestamptz NOT NULL,received_at timestamptz NOT NULL DEFAULT now());
 CREATE INDEX IF NOT EXISTS delivery_events_provider ON delivery_events(provider_id,occurred_at);
