@@ -38,7 +38,18 @@ try {
  await saveTranslation({key:id,lease,error:'test'} as any);
  assert.equal((await client.query('SELECT cid FROM story_documents')).rows[0].cid,cid);
  assert.equal((await client.query('SELECT status FROM translations')).rows[0].status,'pending');
+ assert.equal((await client.query('SELECT available_at=now()+interval \'5 minutes\' AS delayed FROM translations')).rows[0].delayed,true);
+ await client.query("UPDATE translations SET status='working',attempts=2,claimed_at=now()");
+ await saveTranslation({key:id,lease,error:'test'} as any);
+ assert.equal((await client.query('SELECT available_at=now()+interval \'10 minutes\' AS delayed FROM translations')).rows[0].delayed,true);
  assert.deepEqual((await client.query('SELECT event FROM public_job_events ORDER BY event')).rows.map(r=>r.event),['archived','generated','retry']);
+ await client.query("UPDATE translations SET status='working',attempts=3,claimed_at=now()");
+ await saveTranslation({key:id,lease,error:'test'} as any);
+ assert.equal((await client.query('SELECT status FROM translations')).rows[0].status,'failed');
+ await client.query("UPDATE translations SET status='working',attempts=2,claimed_at=now()");
+ await saveTranslation({key:id,lease,deferred:true} as any);
+ const deferred=(await client.query("SELECT status,attempts,available_at=now()+interval '30 seconds' AS delayed FROM translations")).rows[0];
+ assert.deepEqual(deferred,{status:'pending',attempts:1,delayed:true});
  await client.query('DELETE FROM public_job_events');
  await client.query('ALTER TABLE public_job_events ADD CONSTRAINT reject_events CHECK(false)');
  await client.query("UPDATE translations SET status='working',attempts=1,claimed_at=now()");

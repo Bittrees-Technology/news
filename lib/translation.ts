@@ -143,7 +143,7 @@ export async function saveTranslation(
   }
   const result = b.error ? null : translatedResult(b, active.payload);
   const r = await d.query(
-    `UPDATE translations SET status=CASE WHEN $3::boolean THEN CASE WHEN attempts>=3 THEN 'failed' ELSE 'pending' END ELSE 'done' END,result=$4,completed_at=now() WHERE key=$1 AND lease=$2 AND status='working' AND claimed_at>now()-interval '40 minutes' RETURNING key,status`,
+    `UPDATE translations SET status=CASE WHEN $3::boolean THEN CASE WHEN attempts>=3 THEN 'failed' ELSE 'pending' END ELSE 'done' END,result=$4,completed_at=now(),available_at=CASE WHEN $3::boolean THEN now()+interval '5 minutes'*attempts ELSE available_at END WHERE key=$1 AND lease=$2 AND status='working' AND claimed_at>now()-interval '40 minutes' RETURNING key,status`,
     [b.key, b.lease, !!b.error, result ? JSON.stringify(result) : null],
   );
   if (!r.rowCount)

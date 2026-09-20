@@ -8,13 +8,16 @@ try{
  await c.query('CREATE TEMP TABLE items(id text PRIMARY KEY,title text,url text,kind text,source_id text,published_at timestamptz,authors text[],publication text,source_context text,excerpt text,owner_id uuid,fetched_at timestamptz)');
  await c.query('CREATE TEMP TABLE story_documents(item_id text PRIMARY KEY,cid text,document jsonb,attempts int DEFAULT 0,available_at timestamptz DEFAULT now(),claimed_at timestamptz,lease uuid,priority numeric,enqueued_at timestamptz)');
  await c.query('CREATE TEMP TABLE translations(key text PRIMARY KEY,status text,attempts int DEFAULT 0,available_at timestamptz DEFAULT now(),claimed_at timestamptz,lease uuid,priority numeric,created_at timestamptz,item_published_at timestamptz,payload jsonb)');
- for(let n=0;n<12;n++){
+ for(let n=0;n<13;n++){
  const id=n.toString(16).padStart(64,'0'),old=n===0;
  await c.query("INSERT INTO items VALUES($1,'Test title','https://example.org','article','test',now()-$2*interval '1 day','{}','Test','Test evidence','Test evidence',NULL,now()-$2*interval '1 day')",[id,old?10:0]);
  await c.query("INSERT INTO story_documents(item_id,priority,enqueued_at) VALUES($1,$2,now()-$3*interval '1 day')",[id,old?0:90,old?10:0]);
  await c.query("INSERT INTO translations(key,status,priority,created_at,item_published_at,payload) VALUES($1,'pending',$2,now()-$3*interval '1 day',now()-$3*interval '1 day','{}')",[id,old?0:90,old?10:0]);
  }
- for(let n=1;n<=10;n++){const s=await claimStory(),t=await claimTranslation();assert.equal(s.item_id==='0'.repeat(64),n===10);assert.equal(t.key==='0'.repeat(64),n===10);}
+ const backedOff=(12).toString(16).padStart(64,'0');
+ await c.query("UPDATE translations SET priority=999,available_at=now()+interval '10 minutes' WHERE key=$1",[backedOff]);
+ await c.query("UPDATE story_documents SET priority=999,available_at=now()+interval '10 minutes' WHERE item_id=$1",[backedOff]);
+ for(let n=1;n<=10;n++){const s=await claimStory(),t=await claimTranslation();assert.notEqual(s.item_id,backedOff);assert.notEqual(t.key,backedOff);assert.equal(s.item_id==='0'.repeat(64),n===10);assert.equal(t.key==='0'.repeat(64),n===10);}
  assert.equal((await c.query('SELECT count(*)::int n FROM public_job_claims')).rows[0].n,20);
  await c.query('DELETE FROM public_job_claims');
  await c.query("ALTER TABLE public_job_claims ADD CONSTRAINT reject_claims CHECK(false)");
