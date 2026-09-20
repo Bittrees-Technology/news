@@ -1,3 +1,4 @@
+import {analyticsAudit} from "./analytics-audit";
 import {processingSnapshot,recordProcessingSample} from "./processing";
 import {collect} from "./collect";
 import {retryStory,claimStory,saveStory,saveStoryCid} from './story-documents';
@@ -367,6 +368,7 @@ export async function api(r: Request) {
       });
     }
     const a = await currentAccount(r);
+    if(path==='staff/analytics' && method==='GET'){requireScores(a!.role);return json(await analyticsAudit());}
     if(path==='staff/processing' && method==='GET'){
       requireScores(a!.role);return json({...await processingSnapshot(),sampleCount:(await pool().query('SELECT count(*)::int count FROM processing_samples')).rows[0].count});
     }

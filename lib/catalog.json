@@ -397,7 +397,7 @@
   },
   {
     "id": "physics-world-quantum",
-    "name": "Physics World — Quantum",
+    "name": "Physics World \u2014 Quantum",
     "url": "https://physicsworld.com/c/quantum/feed/",
     "homepage": "https://physicsworld.com/quantum/",
     "topic": "Quantum",
@@ -415,7 +415,7 @@
   },
   {
     "id": "power-magazine-fusion",
-    "name": "POWER Magazine — Fusion",
+    "name": "POWER Magazine \u2014 Fusion",
     "url": "https://www.powermag.com/tag/fusion/feed/",
     "homepage": "https://www.powermag.com/tag/fusion/",
     "topic": "Fusion",
@@ -1045,7 +1045,7 @@
   },
   {
     "id": "p-blico",
-    "name": "Público",
+    "name": "P\u00fablico",
     "url": "https://feeds.feedburner.com/PublicoRSS",
     "homepage": "https://feeds.feedburner.com",
     "topic": "Portugal",
@@ -1118,7 +1118,7 @@
   {
     "id": "world-bank-gdp",
     "name": "World Bank GDP growth",
-    "url": "https://api.worldbank.org/v2/country/PRT;USA;EMU/indicator/NY.GDP.MKTP.KD.ZG?format=json&per_page=15&mrnev=2",
+    "url": "https://api.worldbank.org/v2/country/WLD;EAS;SAS;SSF;LCN;MEA;ECS;PRT;USA;EMU/indicator/NY.GDP.MKTP.KD.ZG?format=json&per_page=50&mrnev=2",
     "homepage": "https://data.worldbank.org/indicator/NY.GDP.MKTP.KD.ZG",
     "topic": "Economy",
     "kind": "worldbank",
@@ -1141,5 +1141,113 @@
     "topic": "Blockchain",
     "kind": "defillama",
     "type": "data"
+  },
+  {
+    "id": "africanews",
+    "name": "Africanews",
+    "url": "https://www.africanews.com/feed/rss",
+    "homepage": "https://www.africanews.com/",
+    "topic": "World",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "dw-world",
+    "name": "DW World",
+    "url": "https://rss.dw.com/rdf/rss-en-world",
+    "homepage": "https://www.dw.com/en/",
+    "topic": "World",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "france24",
+    "name": "France 24 English",
+    "url": "https://www.france24.com/en/rss",
+    "homepage": "https://www.france24.com/",
+    "topic": "World",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "dialogue-earth",
+    "name": "Dialogue Earth",
+    "url": "https://dialogue.earth/en/feed/",
+    "homepage": "https://dialogue.earth/",
+    "topic": "Climate",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "mongabay",
+    "name": "Mongabay",
+    "url": "https://news.mongabay.com/feed/",
+    "homepage": "https://news.mongabay.com/",
+    "topic": "Climate",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "rnz-pacific",
+    "name": "RNZ Pacific",
+    "url": "https://www.rnz.co.nz/rss/pacific.xml",
+    "homepage": "https://www.rnz.co.nz/",
+    "topic": "World",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "global-voices",
+    "name": "Global Voices",
+    "url": "https://globalvoices.org/feed/",
+    "homepage": "https://globalvoices.org/",
+    "topic": "World",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "fed-press",
+    "name": "Federal Reserve Press Releases",
+    "url": "https://www.federalreserve.gov/feeds/press_all.xml",
+    "homepage": "https://www.federalreserve.gov/",
+    "topic": "Economy",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "bis-statistics",
+    "name": "BIS Statistics Releases",
+    "url": "https://data.bis.org/feed.xml",
+    "homepage": "https://data.bis.org/",
+    "topic": "Economy",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "cna-asia",
+    "name": "CNA Asia",
+    "url": "https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml&category=6511",
+    "homepage": "https://www.channelnewsasia.com/",
+    "topic": "World",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "rest-of-world",
+    "name": "Rest of World",
+    "url": "https://restofworld.org/feed/",
+    "homepage": "https://restofworld.org/",
+    "topic": "Tech",
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "bitcoin-optech",
+    "name": "Bitcoin Optech",
+    "url": "https://bitcoinops.org/feed.xml",
+    "homepage": "https://bitcoinops.org/",
+    "topic": "Bitcoin",
+    "kind": "rss",
+    "type": "article"
   }
 ]
