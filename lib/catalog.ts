@@ -1,6 +1,7 @@
 import {addedTopics,normalizeTopic} from "./tags";
 import raw from "./catalog.json";
 export type Source = {
+  pollMinutes?: number;
   id: string;
   name: string;
   url: string;

@@ -7,6 +7,7 @@ try{
  await c.query('BEGIN');
  await c.query('CREATE TEMP TABLE diversity_shadows(edition_id text,recorded_at timestamptz,data jsonb) ON COMMIT DROP');
  await c.query('CREATE TEMP TABLE reader_events(account_id text,item_id text,event_type text,bucket date) ON COMMIT DROP');
+ await c.query('CREATE TEMP TABLE sources(transferred_bytes bigint,conditional_hits int,completed_checks int,collected_items int) ON COMMIT DROP');
  await c.query('CREATE TEMP TABLE items(id text,source_id text,kind text,owner_id text,published_at timestamptz) ON COMMIT DROP');
  await c.query('CREATE TEMP TABLE story_documents(item_id text,document jsonb,cid text) ON COMMIT DROP');
  await c.query('CREATE TEMP TABLE article_feedback(item_id text,account_id text,updated_at timestamptz) ON COMMIT DROP');

@@ -1212,7 +1212,8 @@
     "homepage": "https://www.federalreserve.gov/",
     "topic": "Economy",
     "kind": "rss",
-    "type": "article"
+    "type": "article",
+    "pollMinutes": 60
   },
   {
     "id": "bis-statistics",
@@ -1221,7 +1222,8 @@
     "homepage": "https://data.bis.org/",
     "topic": "Economy",
     "kind": "rss",
-    "type": "article"
+    "type": "article",
+    "pollMinutes": 60
   },
   {
     "id": "cna-asia",
@@ -1248,6 +1250,7 @@
     "homepage": "https://bitcoinops.org/",
     "topic": "Bitcoin",
     "kind": "rss",
-    "type": "article"
+    "type": "article",
+    "pollMinutes": 60
   }
 ]

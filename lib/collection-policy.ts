@@ -1,5 +1,6 @@
 import type {Source} from './catalog';
-export function collectionMinutes(source:Pick<Source,'type'|'kind'>){
+export function collectionMinutes(source:Pick<Source,'type'|'kind'|'pollMinutes'>){
+ if(source.pollMinutes)return Math.max(15,Math.min(1440,source.pollMinutes));
  if(source.kind==='worldbank')return 1440;
  if(source.type==='podcast'||['github','hfpapers','reddit'].includes(source.kind))return 60;
  return 15;

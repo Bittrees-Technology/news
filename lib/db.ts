@@ -40,6 +40,12 @@ CREATE TABLE IF NOT EXISTS sessions(hash text PRIMARY KEY,account_id uuid NOT NU
 CREATE TABLE IF NOT EXISTS challenges(id uuid PRIMARY KEY,kind text NOT NULL,value text NOT NULL,secret_hash text NOT NULL,browser_hash text NOT NULL,account_id uuid REFERENCES accounts ON DELETE CASCADE,purpose text NOT NULL,payload text,expires_at timestamptz NOT NULL,attempts int NOT NULL DEFAULT 0,consumed boolean NOT NULL DEFAULT false);
 CREATE TABLE IF NOT EXISTS rate_limits(key text PRIMARY KEY,hits int NOT NULL,resets_at timestamptz NOT NULL);
 CREATE TABLE IF NOT EXISTS sources(id text PRIMARY KEY,status text NOT NULL DEFAULT 'unchecked',checked_at timestamptz,error text,item_count int NOT NULL DEFAULT 0);
+ALTER TABLE sources ADD COLUMN IF NOT EXISTS etag text;
+ALTER TABLE sources ADD COLUMN IF NOT EXISTS last_modified text;
+ALTER TABLE sources ADD COLUMN IF NOT EXISTS transferred_bytes bigint NOT NULL DEFAULT 0;
+ALTER TABLE sources ADD COLUMN IF NOT EXISTS conditional_hits int NOT NULL DEFAULT 0;
+ALTER TABLE sources ADD COLUMN IF NOT EXISTS completed_checks int NOT NULL DEFAULT 0;
+ALTER TABLE sources ADD COLUMN IF NOT EXISTS collected_items int NOT NULL DEFAULT 0;
 ALTER TABLE sources ADD COLUMN IF NOT EXISTS next_poll_at timestamptz NOT NULL DEFAULT now();
 ALTER TABLE sources ADD COLUMN IF NOT EXISTS collection_lease uuid;
 ALTER TABLE sources ADD COLUMN IF NOT EXISTS collection_lease_until timestamptz;

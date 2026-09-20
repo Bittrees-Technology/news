@@ -25,10 +25,13 @@ export function publicAddress(ip: string) {
 export class SourceFetchError extends Error {
  constructor(public status:number,public retryAfterSeconds=0){super(`Source returned HTTP ${status}`);}
 }
-export async function safeFetch(
+export type FetchValidators={etag?:string|null;lastModified?:string|null};
+export async function safeFetch(url:string,maxBytes=2_000_000):Promise<string>{return (await safeFetchResponse(url,maxBytes)).body;}
+export async function safeFetchResponse(
   url: string,
   maxBytes = 2_000_000,
-): Promise<string> {
+  validators:FetchValidators={},
+): Promise<{body:string;etag:string|null;lastModified:string|null;bytes:number;notModified:boolean}> {
   let current = url;
   for (let step = 0; step < 4; step++) {
     const u = new URL(current);
@@ -60,11 +63,14 @@ export async function safeFetch(
         dispatcher: agent,
         signal: AbortSignal.timeout(15000),
         headers: {
+          ...(current===url && validators.etag ? {"If-None-Match":validators.etag} : {}),
+          ...(current===url && validators.lastModified ? {"If-Modified-Since":validators.lastModified} : {}),
           "User-Agent": "BittreesNews/1.0 (+https://news.bittrees.org)",
           Accept:
             "application/rss+xml, application/atom+xml, application/json, text/xml;q=0.9, */*;q=0.5",
         },
       });
+      if(r.status===304){await r.body?.cancel();if(!validators.etag&&!validators.lastModified)throw Error("Unexpected unvalidated 304 response");return {body:"",etag:r.headers.get("etag")||validators.etag||null,lastModified:r.headers.get("last-modified")||validators.lastModified||null,bytes:0,notModified:true};}
       if (r.status >= 300 && r.status < 400) {
         const next = r.headers.get("location");
         await r.body?.cancel();
@@ -89,7 +95,7 @@ export async function safeFetch(
         if (size > maxBytes) throw Error("Source response is too large");
         chunks.push(chunk);
       }
-      return Buffer.concat(chunks).toString("utf8");
+      return {body:Buffer.concat(chunks).toString("utf8"),etag:r.headers.get("etag"),lastModified:r.headers.get("last-modified"),bytes:size,notModified:false};
     } finally {
       await agent.close();
     }

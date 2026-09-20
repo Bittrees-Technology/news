@@ -5,7 +5,7 @@ import Parser from "rss-parser";
 import { createHash } from "node:crypto";
 import {collectionMinutes,retryMinutes} from "./collection-policy";
 import {withTranslations} from "./translation";
-import { safeFetch,SourceFetchError } from "./safe-fetch";
+import { safeFetchResponse,type FetchValidators,SourceFetchError } from "./safe-fetch";
 import { sources, type Source } from "./catalog";
 import { pool } from "./db";
 import type { Item } from "./model";
@@ -56,14 +56,16 @@ function item(
 }
 function withObservation(i:Item|null,dates:ReturnType<typeof annualObservation>):Item|null{return i?{...i,...dates}:null;}
 export async function fetchSource(s:Source,owner?:string):Promise<Item[]>{return (await fetchSourceSnapshot(s,owner)).items || [];}
-export async function fetchSourceSnapshot(s: Source, owner?: string, previousHash?:string): Promise<{hash:string;items?:Item[]}> {
+export async function fetchSourceSnapshot(s: Source, owner?: string, previousHash?:string,validators:FetchValidators={}): Promise<{hash:string;items?:Item[];etag:string|null;lastModified:string|null;bytes:number;notModified:boolean}> {
   // Catalogue feeds often include years of episodes. Keep custom endpoints on
   // the smaller limit and enforce a hard byte limit on every response.
   const catalogued =
     !owner && sources.some((entry) => entry.id === s.id && entry.url === s.url);
-  const body = await safeFetch(s.url, catalogued ? 32_000_000 : 2_000_000);
+  const response = await safeFetchResponse(s.url, catalogued ? 32_000_000 : 2_000_000,previousHash?validators:{});
+  if(response.notModified && previousHash)return {...response,hash:previousHash};
+  const {body}=response;
   const hash=createHash("sha256").update(body).digest("hex");
-  if(hash===previousHash)return {hash};
+  if(hash===previousHash)return {...response,hash};
   const now = new Date().toISOString();
   const list: (Item | null)[] = [];
   if (s.kind === "hfpapers") {
@@ -140,7 +142,7 @@ export async function fetchSourceSnapshot(s: Source, owner?: string, previousHas
     const feed=await parser.parseString(body);
     for(const row of list){if(!row)continue;const e=feed.items.find(e=>e.link===row.url);const author=e?.creator || e?.['dc:creator'];row.authors=author?[clean(String(author),200)]:[];row.publication=clean(feed.title||s.name,200);}
   }
-  return {hash,items:list
+  return {...response,hash,items:list
     .filter((i): i is Item => !!i)
     .filter(
       (i) =>
@@ -191,9 +193,9 @@ export async function collect() {
    if(!row)return;
    const source=sources.find(s=>s.id===row.id)!,minutes=collectionMinutes(source);
    try{
-    const result=await fetchSourceSnapshot(source,undefined,row.body_hash);
+    const result=await fetchSourceSnapshot(source,undefined,row.body_hash,{etag:row.etag,lastModified:row.last_modified});
     if(result.items){await storeItems(result.items);changed=true;}else unchanged++;
-    await pool().query("WITH completed AS (UPDATE sources SET status='healthy',checked_at=now(),error=NULL,item_count=coalesce($3,item_count),body_hash=$4,failures=0,next_poll_at=to_timestamp(floor(extract(epoch from now())/300)*300)+$5*interval '1 minute',collection_lease=NULL,collection_lease_until=NULL WHERE id=$1 AND collection_lease=$2 RETURNING id,checked_at,status) INSERT INTO source_observations(source_id,observed_at,status) SELECT id,checked_at,status FROM completed ON CONFLICT DO NOTHING",[row.id,row.collection_lease,result.items?.length??null,result.hash,minutes]);
+    await pool().query("WITH completed AS (UPDATE sources SET status='healthy',checked_at=now(),error=NULL,item_count=coalesce($3,item_count),body_hash=$4,etag=$6,last_modified=$7,transferred_bytes=transferred_bytes+$8,conditional_hits=conditional_hits+CASE WHEN $9 THEN 1 ELSE 0 END,completed_checks=completed_checks+1,collected_items=collected_items+coalesce($3,0),failures=0,next_poll_at=to_timestamp(floor(extract(epoch from now())/300)*300)+$5*interval '1 minute',collection_lease=NULL,collection_lease_until=NULL WHERE id=$1 AND collection_lease=$2 RETURNING id,checked_at,status) INSERT INTO source_observations(source_id,observed_at,status) SELECT id,checked_at,status FROM completed ON CONFLICT DO NOTHING",[row.id,row.collection_lease,result.items?.length??null,result.hash,minutes,result.etag,result.lastModified,result.bytes,result.notModified]);
     ok++;
    }catch(e){
     const message=e instanceof Error?e.message:'Source unavailable';
