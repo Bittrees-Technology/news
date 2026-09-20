@@ -192,3 +192,9 @@ The user superseded the live-refresh requirement: an open newspaper must remain 
 - 270 five-minute samples span 00:50–23:15 UTC. Three publication gates remain passed (+27.779s, +27.210s, +27.223s). The 24-hour baseline is still pending until 20 September 00:50 UTC, irrespective of the local calendar date.
 - All four processing services are active. Supervisor is healthy with no managed model resident. Benchmark exit remains successful, with unchanged reviewed quality failures and no candidate promotion.
 - Repository was clean before this update. No pipeline, model, retry, delivery or archive changes. Remaining durable task/dependency, fairness, grounding and source-policy/full-body work stays open pending baseline evaluation.
+
+## 20 September, 00:18 UTC observation
+
+- 282 five-minute samples span 19 September 00:50 through 20 September 00:15 UTC (23h25m). Three publication gates remain passed at +27.779s, +27.210s and +27.223s. The full-day observation gate has not yet elapsed; evaluate after 00:50 UTC.
+- All four production processing services remain active. Supervisor health is OK with no managed model resident. Benchmark exit remains successful but reviewed quality failures still preclude promotion.
+- Repository was clean. No processing, model, retry, delivery or archive changes. Durable task/dependency scheduling, fairness, stronger grounding and permitted full-body acquisition remain unfinished; unchanged operational results do not satisfy those implementation gates.
