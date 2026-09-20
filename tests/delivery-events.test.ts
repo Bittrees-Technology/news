@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {deliveryState} from '../lib/delivery-events';
+test('provider event mapping separates acceptance delivery and deferral without tracking opens',()=>{assert.equal(deliveryState('email.sent'),'accepted');assert.equal(deliveryState('email.delivered'),'delivered');assert.equal(deliveryState('email.delivery_delayed'),'deferred');assert.equal(deliveryState('email.bounced'),'bounced');assert.equal(deliveryState('email.opened'),null);assert.equal(deliveryState('email.clicked'),null);});
