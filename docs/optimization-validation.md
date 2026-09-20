@@ -107,3 +107,4 @@ Durable claim ledger added as the next processing increment: envelope/revision/p
 ### 20 September 04:23 UTC follow-up
 
 Durable claim ledger is receiving production claims (64 briefing, nine translation at inspection). Added atomic outcome events and admin transition counts, with idempotent archive replay and conflicting-CID rejection. PostgreSQL rollback/lease tests pass; no test email or model/ranking promotion. Eligible briefing backlog is 284; feed counters now include 319 HTTP 304s of 797 successful checks. These continuing counters are not a controlled savings estimate. Seven-day, source-expansion and real provider-event gates remain open.
+- Result-replay hardening preserves the first saved briefing and prevents generation responses from changing an already archived document. Database regression verifies unchanged replay content, a single generated/archive outcome and rejection of conflicting CID/post-archive writes.
