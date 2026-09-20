@@ -4,6 +4,7 @@ import json, os, time, pathlib, urllib.request, logging, fcntl
 from langdetect import detect_langs, DetectorFactory
 from stage_metrics import report
 from model_runtime import completion, ModelBusy
+from translation_failure import failure_category
 DetectorFactory.seed = 0
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
 config=json.loads(pathlib.Path(os.environ.get('NEWS_EDITOR_CONFIG',str(pathlib.Path.home()/'.config/bittrees-news/editor.json'))).read_text())
@@ -63,12 +64,15 @@ def translate(payload):
     return {'language':language,'title':title,'summary':summary,'_model':'Bittrees-hosted Argos pt-en 1.9' if language=='pt' and hasattr(local_translation,'engine') else 'Bittrees-hosted '+config.get('last_model_used',config['model'])}
 while True:
     job=None
+    phase='claim'
     try:
         job=api('claim',{})
         if not job:time.sleep(15);continue
+        phase='translate'
         timings={'queue':job.get('queue_wait_ms'),'generation':0}
         start=time.monotonic();result=translate(job['payload']);timings['validation']=max(0,(time.monotonic()-start)*1000-timings['generation'])
         model=result.pop('_model','Bittrees-hosted language detection')
+        phase='persist'
         api('result',{**result,'key':job['key'],'lease':job['lease'],'model':model})
         report(config,job,'translation',timings)
         logging.info('Translated public story %s (%s)',job['key'][:10],result.get('language'))
@@ -78,7 +82,7 @@ while True:
             except Exception:pass
         time.sleep(10)
     except Exception as error:
-        logging.warning('Translation failed: %s status=%s',type(error).__name__,getattr(error,'code','local'))
+        logging.warning('Translation failed: category=%s phase=%s type=%s status=%s',failure_category(error,phase),phase,type(error).__name__,getattr(error,'code','local'))
         if job:
             try:api('result',{'key':job['key'],'lease':job['lease'],'language':'und','model':'Bittrees-hosted Qwen3.5 2B','error':True})
             except Exception:pass
