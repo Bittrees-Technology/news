@@ -97,3 +97,9 @@ Every listed website increment was deployed to the production alias after its pa
 ### 20 September 02:21 UTC follow-up
 
 Added explicit eligible backlog age/current-day counts to processing analytics. Eligibility follows the claim rules, excludes active leases/backoff/exhausted jobs, and does not substitute publication dates for unknown historical enqueue times. Initial production timing samples now cover both worker types. Latest collection: 57 successes, zero failures, 44 unchanged bodies; cumulative instrumented checks 58, body bytes 22,191,612 and no production 304s yet. SMTP probes pass; real provider events, the 24-hour source assessment and seven-day comparison remain pending.
+
+### 20 September 03:22 UTC follow-up
+
+Production now records 137 HTTP 304 responses from 424 successful checks; 210,876,300 body bytes transferred. This verifies conditional-response operation, not a baseline-adjusted savings percentage. The eligible briefing backlog declined to 334; translations have no eligible backlog. No real signed delivery event or new publication cycle has occurred yet.
+
+Durable claim ledger added as the next processing increment: envelope/revision/phase/deadline is committed atomically with each public worker lease. Real PostgreSQL fixture checks preserve the every-tenth fairness rule and force ledger failure to verify both claim paths roll back. This does not yet implement the full dependency/state-transition framework or satisfy the seven-day acceptance gate.

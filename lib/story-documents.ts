@@ -1,3 +1,4 @@
+import {recordClaim} from "./job-ledger";
 import {sourceEvidence} from "./source-evidence";
 import {publicJob} from "./job-contract";
 import {z} from 'zod';
@@ -10,7 +11,8 @@ export async function claimStory(){return tx(async d=>{
  const row=(await d.query("SELECT s.*,i.title,i.url,i.kind,i.source_id,i.published_at,i.authors,i.publication,i.source_context,i.excerpt FROM story_documents s JOIN items i ON i.id=s.item_id WHERE i.owner_id IS NULL AND s.cid IS NULL AND s.attempts<3 AND s.available_at<=now() AND (s.claimed_at IS NULL OR s.claimed_at<now()-interval '30 minutes') ORDER BY (s.document IS NOT NULL) DESC,CASE WHEN $1 THEN coalesce(s.enqueued_at,i.fetched_at) END ASC NULLS LAST,(i.published_at>=now()-interval '24 hours') DESC,s.priority DESC,i.published_at DESC FOR UPDATE OF s SKIP LOCKED LIMIT 1",[Number(turn)%10===0])).rows[0];
  if(!row)return null;
  const claim=(await d.query('UPDATE story_documents SET claimed_at=now(),lease=gen_random_uuid(),attempts=attempts+1 WHERE item_id=$1 RETURNING lease',[row.item_id])).rows[0];
- return {...row,queue_wait_ms:row.enqueued_at?Math.max(0,Date.now()-new Date(row.enqueued_at).getTime()):null,lease:claim.lease,job:publicJob('briefing',row.item_id,[row.title,row.source_context||row.excerpt],claim.lease,row.priority)};
+ const job=await recordClaim(d,publicJob('briefing',row.item_id,[row.title,row.source_context||row.excerpt],claim.lease,row.priority),row.document?'archive':'generation');
+ return {...row,queue_wait_ms:row.enqueued_at?Math.max(0,Date.now()-new Date(row.enqueued_at).getTime()):null,lease:claim.lease,job};
  });}
 export async function retryStory(input:unknown){
  const b=z.object({id:z.string().regex(/^[a-f0-9]{64}$/),lease:z.uuid(),busy:z.boolean().default(false),error:z.string().max(100)}).parse(input);

@@ -16,6 +16,7 @@ export async function recordProcessingSample(){
  await pool().query("DELETE FROM reader_events WHERE bucket<(now() AT TIME ZONE 'UTC')::date-29");
  await pool().query("DELETE FROM processing_stages WHERE recorded_at<now()-interval '30 days'");
  await pool().query("DELETE FROM delivery_events WHERE received_at<now()-interval '90 days'");
+ await pool().query("DELETE FROM public_job_claims WHERE claimed_at<now()-interval '30 days' AND deadline<now()");
  await recordDiversityShadow();
  const snapshot=await processingSnapshot();
  await pool().query("INSERT INTO processing_samples(bucket,data) VALUES(to_timestamp(floor(extract(epoch FROM now())/300)*300),$1) ON CONFLICT(bucket) DO UPDATE SET data=EXCLUDED.data",[JSON.stringify(snapshot)]);
