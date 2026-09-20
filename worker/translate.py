@@ -2,6 +2,7 @@
 """Outbound-only translation of public news text using the Bittrees local model."""
 import json, os, time, pathlib, urllib.request, logging, fcntl
 from langdetect import detect_langs, DetectorFactory
+from stage_metrics import report
 from model_runtime import completion, ModelBusy
 DetectorFactory.seed = 0
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
@@ -24,6 +25,11 @@ def local_translation(text, language):
     return local_translation.tokenizer.decode(result.hypotheses[0]).replace("▁"," ").strip()
 
 def translate_text(text, language):
+    start=time.monotonic()
+    try:return _translate_text(text,language)
+    finally:timings["generation"]=timings.get("generation",0)+(time.monotonic()-start)*1000
+
+def _translate_text(text, language):
     if not text.strip():return ''
     local=local_translation(text,language)
     if local is not None:return local
@@ -60,9 +66,11 @@ while True:
     try:
         job=api('claim',{})
         if not job:time.sleep(15);continue
-        result=translate(job['payload'])
+        timings={'queue':job.get('queue_wait_ms'),'generation':0}
+        start=time.monotonic();result=translate(job['payload']);timings['validation']=max(0,(time.monotonic()-start)*1000-timings['generation'])
         model=result.pop('_model','Bittrees-hosted language detection')
         api('result',{**result,'key':job['key'],'lease':job['lease'],'model':model})
+        report(config,job,'translation',timings)
         logging.info('Translated public story %s (%s)',job['key'][:10],result.get('language'))
     except ModelBusy:
         if job:

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Public briefings and local IPFS pinning; no private source or database access."""
 import json,os,time,pathlib,urllib.request,logging,fcntl
+from stage_metrics import report
 from model_runtime import completion, ModelBusy
 logging.basicConfig(level=logging.INFO,format='%(asctime)s %(message)s')
 config=json.loads((pathlib.Path.home()/'.config/bittrees-news/editor.json').read_text())
@@ -10,6 +11,8 @@ def api(path,data):
  req=urllib.request.Request(config['site']+'/api/editor/story/'+path,data=json.dumps(data).encode(),headers={'Authorization':'Bearer '+config['token'],'Content-Type':'application/json'})
  with urllib.request.urlopen(req,timeout=90) as r:return json.load(r)
 def brief(j):
+ global timings
+ start=time.monotonic()
  if j['kind']=='data' and j['source_id'] in ('world-bank-gdp','defillama-protocols'):
   return {'overview':j['excerpt']+' This briefing describes a source-reported observation, rather than a prediction. Use the original dataset to examine definitions, historical series and revisions.', 'points':[j['title'],'The original source link identifies the dataset or protocol behind this observation.'],'limitations':'Values represent the reported period or retrieval snapshot. They may be revised and are not directly comparable without checking the source methodology.'}
  evidence=(j.get('source_context') or j.get('excerpt') or j['title'])[:6000]
@@ -17,8 +20,12 @@ def brief(j):
  data={'model':config['model'],'temperature':0.1,'max_tokens':320,'chat_template_kwargs':{'enable_thinking':False},'messages':[{'role':'system','content':system},{'role':'user','content':json.dumps({'title':j['title'],'published':j['published_at'],'kind':j['kind'],'evidence':evidence})}]}
  data['response_format']={'type':'json_schema','json_schema':{'name':'briefing','strict':True,'schema':{'type':'object','properties':{'overview':{'type':'string'},'points':{'type':'array','items':{'type':'string'},'minItems':2,'maxItems':2},'limitations':{'type':'string'}},'required':['overview','points','limitations'],'additionalProperties':False}}}
  out=completion(config,state,data,'briefing')['choices'][0]['message']['content']
+ timings['generation']=(time.monotonic()-start)*1000
+ start=time.monotonic()
  out=out.split('</think>')[-1].strip().removeprefix('```json').removeprefix('```').removesuffix('```').strip()
- return json.loads(out)
+ result=json.loads(out)
+ timings['validation']=(time.monotonic()-start)*1000
+ return result
 def pin(document):
  boundary='tbn-public-briefing-upload'
  content=json.dumps(document,ensure_ascii=False,sort_keys=True).encode()
@@ -30,9 +37,12 @@ while True:
  try:
   job=api('claim',{})
   if not job:time.sleep(45);continue
+  timings={'queue':job.get('queue_wait_ms')}
   document=job.get('document')
   if not document:document=api('result',{'id':job['item_id'],'lease':job['lease'],'briefing':brief(job),'model':('Bittrees structured-data briefing' if job['kind']=='data' and job['source_id'] in ('world-bank-gdp','defillama-protocols') else 'Bittrees-hosted '+config.get('last_model_used',config['model']))})
-  cid=pin(document);api('pinned',{'id':job['item_id'],'lease':job['lease'],'cid':cid})
+  start=time.monotonic();cid=pin(document);timings['archive']=(time.monotonic()-start)*1000
+  start=time.monotonic();api('pinned',{'id':job['item_id'],'lease':job['lease'],'cid':cid});timings['persist']=(time.monotonic()-start)*1000
+  report(config,job,'briefing',timings)
   logging.info('Public briefing archived %s %s',job['item_id'],cid)
  except Exception as e:
   logging.warning('Briefing worker retry: %s status=%s',type(e).__name__,getattr(e,'code','local'))
