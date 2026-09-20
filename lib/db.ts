@@ -24,6 +24,8 @@ export async function tx<T>(fn: (db: PoolClient) => Promise<T>) {
   }
 }
 export const schema = `
+CREATE TABLE IF NOT EXISTS processing_stages(task text,artifact_id text,lease uuid,stage text,milliseconds double precision NOT NULL,recorded_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(task,artifact_id,lease,stage));
+CREATE INDEX IF NOT EXISTS processing_stages_recent ON processing_stages(recorded_at);
 CREATE TABLE IF NOT EXISTS diversity_shadows(edition_id text PRIMARY KEY,recorded_at timestamptz NOT NULL DEFAULT now(),data jsonb NOT NULL);
 CREATE TABLE IF NOT EXISTS translations(key text PRIMARY KEY,payload jsonb NOT NULL,status text NOT NULL DEFAULT 'pending',attempts int NOT NULL DEFAULT 0,lease uuid,claimed_at timestamptz,result jsonb,created_at timestamptz NOT NULL DEFAULT now(),completed_at timestamptz);
 CREATE INDEX IF NOT EXISTS translations_pending ON translations(status,created_at);
@@ -56,6 +58,8 @@ ALTER TABLE items ADD COLUMN IF NOT EXISTS source_context text;
 CREATE TABLE IF NOT EXISTS reader_events(account_id uuid NOT NULL REFERENCES accounts ON DELETE CASCADE,item_id text NOT NULL REFERENCES items ON DELETE CASCADE,event_type text NOT NULL CHECK(event_type IN ('impression','source_click')),bucket date NOT NULL DEFAULT (now() AT TIME ZONE 'UTC')::date,PRIMARY KEY(account_id,item_id,event_type,bucket));
 CREATE INDEX IF NOT EXISTS reader_events_bucket ON reader_events(bucket);
 CREATE TABLE IF NOT EXISTS story_documents(item_id text PRIMARY KEY REFERENCES items ON DELETE CASCADE,document jsonb,cid text,generated_at timestamptz,pinned_at timestamptz,claimed_at timestamptz,error text);
+ALTER TABLE story_documents ADD COLUMN IF NOT EXISTS enqueued_at timestamptz;
+ALTER TABLE story_documents ALTER COLUMN enqueued_at SET DEFAULT now();
 ALTER TABLE story_documents ADD COLUMN IF NOT EXISTS lease uuid;
 ALTER TABLE story_documents ADD COLUMN IF NOT EXISTS attempts int NOT NULL DEFAULT 0;
 ALTER TABLE story_documents ADD COLUMN IF NOT EXISTS available_at timestamptz NOT NULL DEFAULT now();

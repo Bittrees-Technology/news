@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {randomUUID} from 'node:crypto';import {stageMetricSchema} from '../lib/stage-metrics';
+test('stage metrics reject text, invalid stage, duration and authority payloads',()=>{const b={task:'briefing',id:'a'.repeat(64),lease:randomUUID(),stage:'generation',milliseconds:5};assert.equal(stageMetricSchema.safeParse(b).success,true);for(const change of [{milliseconds:-1},{milliseconds:Infinity},{stage:'prompt'},{scope:'private'}])assert.equal(stageMetricSchema.safeParse({...b,...change}).success,false);});

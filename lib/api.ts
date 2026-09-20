@@ -1,3 +1,4 @@
+import {recordStage} from "./stage-metrics";
 import {recordEngagement} from "./engagement";
 import {analyticsAudit} from "./analytics-audit";
 import {processingSnapshot,recordProcessingSample} from "./processing";
@@ -186,6 +187,7 @@ export async function api(r: Request) {
       const data=z.object({completed:z.number().int().min(0).max(100000),failed:z.number().int().min(0).max(100000),median_seconds:z.number().min(0).max(10000).nullable(),managed_model:z.string().max(100).nullable()}).parse(await body(r));
       await pool().query("INSERT INTO worker_state(id,data) VALUES('news-models',$1) ON CONFLICT(id) DO UPDATE SET updated_at=now(),data=EXCLUDED.data",[JSON.stringify(data)]);return json({ok:true});
     }
+    if(path === "editor/metrics" && method === "POST"){authorizeBearer(r,"EDITOR_SECRET");return json(await recordStage(await body(r)));}
     if (path === "editor/translation/claim" && method === "POST") {
       authorizeBearer(r, "EDITOR_SECRET");
       return json(await claimTranslation());

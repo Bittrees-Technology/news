@@ -1,0 +1,7 @@
+import {z} from 'zod';import {pool} from './db';import {HttpError} from './model';
+export const stageMetricSchema=z.object({task:z.enum(['briefing','translation']),id:z.string().regex(/^[a-f0-9]{64}$/),lease:z.uuid(),stage:z.enum(['queue','generation','validation','archive','persist']),milliseconds:z.number().finite().min(0).max(86400000)}).strict();
+export async function recordStage(input:unknown){const b=stageMetricSchema.parse(input);
+ const table=b.task==='briefing'?'story_documents':'translations',key=b.task==='briefing'?'item_id':'key';
+ const r=await pool().query(`INSERT INTO processing_stages(task,artifact_id,lease,stage,milliseconds) SELECT $1,$2,$3,$4,$5 FROM ${table} WHERE ${key}=$2 AND lease=$3 AND claimed_at>now()-interval '40 minutes' ON CONFLICT DO NOTHING RETURNING stage`,[b.task,b.id,b.lease,b.stage,b.milliseconds]);
+ if(!r.rowCount && !(await pool().query('SELECT 1 FROM processing_stages WHERE task=$1 AND artifact_id=$2 AND lease=$3 AND stage=$4',[b.task,b.id,b.lease,b.stage])).rowCount)throw new HttpError(409,'Timing lease unavailable');return {ok:true};}
+export async function stageMetrics(){return (await pool().query("SELECT task,stage,count(*)::int samples,round(percentile_cont(0.5) WITHIN GROUP(ORDER BY milliseconds)::numeric)::float median_ms,round(percentile_cont(0.95) WITHIN GROUP(ORDER BY milliseconds)::numeric)::float p95_ms FROM processing_stages WHERE recorded_at>now()-interval '7 days' GROUP BY task,stage ORDER BY task,stage")).rows;}
