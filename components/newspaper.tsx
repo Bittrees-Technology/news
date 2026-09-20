@@ -359,7 +359,7 @@ export function Newspaper({
                 {articleTags(i).map(tag=><span className="topic colored-tag" style={tagStyle(tag)} key={tag}>{tag}</span>)}
                 <span>{sourceName(i.source_id)}</span>
                 <span>
-                  {new Date(i.published_at).toLocaleDateString("en-GB", {
+                  {i.observation_period ? `Observation: ${i.observation_period} · Release date unknown` : new Date(i.published_at).toLocaleDateString("en-GB", {
                     month: "short",
                     day: "numeric",
                     timeZone: "UTC",

@@ -1,3 +1,4 @@
+import {annualObservation} from "./data-dates";
 import {publicRanked} from "./ranking";
 import {articleTags,normalizeTopic} from "./tags";
 import Parser from "rss-parser";
@@ -53,6 +54,7 @@ function item(
     owner_id: owner || null,
   };
 }
+function withObservation(i:Item|null,dates:ReturnType<typeof annualObservation>):Item|null{return i?{...i,...dates}:null;}
 export async function fetchSource(s:Source,owner?:string):Promise<Item[]>{return (await fetchSourceSnapshot(s,owner)).items || [];}
 export async function fetchSourceSnapshot(s: Source, owner?: string, previousHash?:string): Promise<{hash:string;items?:Item[]}> {
   // Catalogue feeds often include years of episodes. Keep custom endpoints on
@@ -81,14 +83,14 @@ export async function fetchSourceSnapshot(s: Source, owner?: string, previousHas
     for (const d of JSON.parse(body)[1] || [])
       if (d.value !== null)
         list.push(
-          item(
+          withObservation(item(
             s,
             `${d.country.value}: GDP growth ${Number(d.value).toFixed(1)}% (${d.date})`,
             `https://data.worldbank.org/indicator/${d.indicator.id}?locations=${d.countryiso3code}&date=${d.date}`,
-            `World Bank annual GDP growth observation for ${d.date}: ${Number(d.value).toFixed(2)} percent. Historical observation, retrieved ${now.slice(0, 10)}.`,
+            `World Bank annual GDP growth observation for ${d.date}: ${Number(d.value).toFixed(2)} percent. Historical annual observation; release date not supplied.`,
             now,
             owner,
-          ),
+          ), annualObservation(String(d.date),now)),
         );
   } else if (s.kind === "github") {
     for (const d of JSON.parse(body).slice(0, 5))
@@ -150,7 +152,7 @@ export async function fetchSourceSnapshot(s: Source, owner?: string, previousHas
 export async function storeItems(items: Item[]) {
   for (const i of items)
     await pool().query(
-      `INSERT INTO items(id,source_id,topic,kind,title,url,excerpt,published_at,owner_id,tags,authors,publication,source_context) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) ON CONFLICT(id) DO UPDATE SET fetched_at=CASE WHEN (items.title,items.excerpt,items.source_context) IS DISTINCT FROM (EXCLUDED.title,EXCLUDED.excerpt,EXCLUDED.source_context) THEN now() ELSE items.fetched_at END,summary=CASE WHEN (items.title,items.excerpt) IS DISTINCT FROM (EXCLUDED.title,EXCLUDED.excerpt) THEN NULL ELSE items.summary END,excerpt=EXCLUDED.excerpt,title=EXCLUDED.title,tags=EXCLUDED.tags,topic=EXCLUDED.topic,authors=EXCLUDED.authors,publication=EXCLUDED.publication,source_context=EXCLUDED.source_context`,
+      `INSERT INTO items(id,source_id,topic,kind,title,url,excerpt,published_at,owner_id,tags,authors,publication,source_context,observation_period,released_at,retrieved_at,date_basis) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) ON CONFLICT(id) DO UPDATE SET observation_period=EXCLUDED.observation_period,released_at=EXCLUDED.released_at,retrieved_at=EXCLUDED.retrieved_at,date_basis=EXCLUDED.date_basis,published_at=CASE WHEN EXCLUDED.date_basis='observation' THEN EXCLUDED.published_at ELSE items.published_at END,fetched_at=CASE WHEN (items.title,items.excerpt,items.source_context) IS DISTINCT FROM (EXCLUDED.title,EXCLUDED.excerpt,EXCLUDED.source_context) THEN now() ELSE items.fetched_at END,summary=CASE WHEN (items.title,items.excerpt) IS DISTINCT FROM (EXCLUDED.title,EXCLUDED.excerpt) THEN NULL ELSE items.summary END,excerpt=EXCLUDED.excerpt,title=EXCLUDED.title,tags=EXCLUDED.tags,topic=EXCLUDED.topic,authors=EXCLUDED.authors,publication=EXCLUDED.publication,source_context=EXCLUDED.source_context`,
       [
         i.id,
         i.source_id,
@@ -161,7 +163,7 @@ export async function storeItems(items: Item[]) {
         i.excerpt,
         i.published_at,
         i.owner_id,
-        articleTags(i),i.authors||[],i.publication||null,i.source_context||i.excerpt,
+        articleTags(i),i.authors||[],i.publication||null,i.source_context||i.excerpt,i.observation_period||null,i.released_at||null,i.retrieved_at||null,i.date_basis||'publication',
       ],
     );
   await pool().query(`INSERT INTO story_documents(item_id,content_key) SELECT id,md5(title||'|'||coalesce(source_context,excerpt)) FROM items WHERE id=ANY($1::text[]) AND owner_id IS NULL ON CONFLICT(item_id) DO UPDATE SET content_key=EXCLUDED.content_key,document=CASE WHEN story_documents.content_key IS NULL THEN story_documents.document ELSE NULL END,cid=CASE WHEN story_documents.content_key IS NULL THEN story_documents.cid ELSE NULL END,generated_at=CASE WHEN story_documents.content_key IS NULL THEN story_documents.generated_at ELSE NULL END,pinned_at=CASE WHEN story_documents.content_key IS NULL THEN story_documents.pinned_at ELSE NULL END,claimed_at=NULL,lease=NULL,attempts=0,available_at=now(),error=NULL WHERE story_documents.content_key IS DISTINCT FROM EXCLUDED.content_key`,[items.map(i=>i.id)]);

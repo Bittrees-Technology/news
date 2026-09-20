@@ -25,6 +25,10 @@ export type Item = {
   original_title?: string;
   user_edited?: boolean;
   summary_kind: string;
+  observation_period?: string | null;
+  released_at?: string | null;
+  retrieved_at?: string | null;
+  date_basis?: string;
   published_at: string;
   owner_id?: string | null;
   translation_key?: string;

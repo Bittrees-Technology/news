@@ -71,7 +71,7 @@ export function scoreArticle(
   const evidence = clean(i.excerpt),
     summary = clean(i.summary || "");
   const factors = {
-    freshness: Number.isFinite(age) ? 100 * Math.pow(0.5, age / 48) : 0,
+    freshness: i.date_basis === "observation" && !i.released_at ? 0 : Number.isFinite(age) ? 100 * Math.pow(0.5, age / 48) : 0,
     relevance: terms.length
       ? (100 *
           terms.filter((t) => clean(i.title + " " + i.excerpt).includes(t))
