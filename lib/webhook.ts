@@ -10,14 +10,12 @@ export async function emailEvent(r: Request) {
   if (text.length > 100000) throw new HttpError(413, "Payload too large");
   let event: { type: string; data: { email_id?: string; to?: string[] } };
   try {
-    event = new Webhook(process.env.RESEND_WEBHOOK_SECRET).verify(text, {
+    new Webhook(process.env.RESEND_WEBHOOK_SECRET).verify(text, {
       "svix-id": r.headers.get("svix-id") || "",
       "svix-timestamp": r.headers.get("svix-timestamp") || "",
       "svix-signature": r.headers.get("svix-signature") || "",
-    }) as unknown as {
-      type: string;
-      data: { email_id?: string; to?: string[] };
-    };
+    });
+    event = JSON.parse(text);
   } catch {
     throw new HttpError(401, "Invalid webhook signature");
   }

@@ -1,5 +1,5 @@
 import {z} from 'zod';import {pool} from './db';import {HttpError} from './model';
-export const stageMetricSchema=z.object({task:z.enum(['briefing','translation']),id:z.string().regex(/^[a-f0-9]{64}$/),lease:z.uuid(),stage:z.enum(['queue','generation','validation','archive','persist']),milliseconds:z.number().finite().min(0).max(86400000)}).strict();
+export const stageMetricSchema=z.object({task:z.enum(['briefing','translation']),id:z.string().regex(/^[a-f0-9]{64}$/),lease:z.uuid(),stage:z.enum(['queue','generation','validation','archive','persist']),milliseconds:z.number().finite().min(0).max(90*86400000)}).strict();
 export async function recordStage(input:unknown){const b=stageMetricSchema.parse(input);
  const table=b.task==='briefing'?'story_documents':'translations',key=b.task==='briefing'?'item_id':'key';
  const r=await pool().query(`INSERT INTO processing_stages(task,artifact_id,lease,stage,milliseconds) SELECT $1,$2,$3,$4,$5 FROM ${table} WHERE ${key}=$2 AND lease=$3 AND claimed_at>now()-interval '40 minutes' ON CONFLICT DO NOTHING RETURNING stage`,[b.task,b.id,b.lease,b.stage,b.milliseconds]);

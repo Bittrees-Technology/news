@@ -1,5 +1,5 @@
 import {pool} from './db';import {z} from 'zod';import {HttpError} from './model';
-export const qualityReviewSchema=z.object({task:z.enum(['briefing','translation']),id:z.string().regex(/^[a-f0-9]{64}$/),category:z.enum(['transport','invalid_output','language','unsupported_claim','attribution','insufficient_evidence']),note:z.string().min(15).max(2000)}).strict();
+export const qualityReviewSchema=z.object({task:z.enum(['briefing','translation']),id:z.string().regex(/^[a-f0-9]{64}$/),category:z.enum(['unclassified','transport','invalid_output','language','unsupported_claim','attribution','insufficient_evidence']),note:z.string().min(15).max(2000)}).strict();
 export async function qualityQueue(){
  const [briefings,translations]=await Promise.all([
  pool().query("SELECT 'briefing' task,s.item_id id,i.title,left(coalesce(i.source_context,i.excerpt),6000) evidence,s.document output,s.error FROM story_documents s JOIN items i ON i.id=s.item_id WHERE i.owner_id IS NULL AND s.attempts>=3 AND s.cid IS NULL AND NOT EXISTS(SELECT 1 FROM quality_reviews q WHERE q.task='briefing' AND q.artifact_id=s.item_id) ORDER BY s.available_at LIMIT 5"),

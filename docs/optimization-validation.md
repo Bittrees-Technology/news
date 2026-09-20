@@ -49,3 +49,30 @@ Admins now have batches of at most five failed public briefings and five failed 
 Signed Svix events now persist idempotently by event ID, recording provider ID/type/status/time without recipients or message content. Latest provider-time events distinguish acceptance, delivery to recipient server, deferral, bounce, complaint, failure and suppression. Replay does not repeatedly revise destinations; bounce/complaint suppression remains transactional. No email opens/clicks are collected. Events expire after 90 days. Model telemetry relay also probes local/public-address SMTP greeting without sending DATA; admin analytics marks telemetry stale after 15 minutes and clearly distinguishes host-origin probes from external WAN/inbox confirmation. Provider signing secret is configured, but real event receipt/dashboard registration still needs validation with the next normal delivery; send-only API permissions cannot administer webhooks. No test email was sent.
 
 Provider event meanings checked against Resend's official webhook reference: https://github.com/resend/resend-skills/blob/main/skills/resend/references/webhooks.md . “Delivered” means recipient mail-server acceptance, not that the user read the message.
+
+## Final verification and remaining acceptance gates
+
+All ten implementation increments were committed/pushed to main and deployed individually; worker changes have their own commit and targeted service deployment. Unit suite: 64 passing. Production build passes. PostgreSQL regression checks cover lease expiry, queue fairness, public-only analytics/empty states, signed webhook authenticity/replay/suppression, and fixture cleanup. Fixed the installed Svix API compatibility issue discovered by the signed-event regression: verify signature first, then parse the authenticated body; `verify` does not return the parsed event in this installed version.
+
+Additional evidence:
+- Seven briefing jobs reported generation, validation, archive and persistence timings; new enqueue timestamps supplied queue timing for two. Worker services and supervisor active; no candidate model promotion.
+- 83 collection observations recorded within a 15-minute sample after direct-write activation.
+- Conditional Federal Reserve feed test: 14,853 body bytes on first local request, zero bytes and HTTP 304 on the next, same content hash. That endpoint returned HTTP 404 from production; production availability is recorded separately and not bypassed.
+- Corrected six legacy World Bank rows to historical observation dates. Published immutable edition/IPFS snapshots were not rewritten.
+- Inspected a bounded batch of five failed briefings and five translations; no failed output was retained. Stored reviewer-attributed notes with `unclassified` category and no impersonated human actor. No factual quality verdict, retry or promotion follows from missing output.
+- SMTP telemetry confirms local and public-address route greetings from Acer, with no message DATA. Real external delivery remains a separate check.
+- No test emails, guest tracking, bulk regeneration or live article reshuffling were introduced.
+
+| Acceptance item | Status |
+|---|---|
+| Ten scoped implementation increments | Deployed, with incident/correction documented above |
+| Unit/build/database regression checks | Passed; production health rechecked after correction |
+| Seven-day ranking diversity comparison | Pending until at least 27 September 2026 02:05 UTC, based on actual first shadow record |
+| Expanded-source 24-hour contribution/failure review | Pending until 21 September 2026 approximately 02:00 UTC |
+| Meaningful engagement-rate assessment | Pending sufficient signed-in samples; no artificial activity generated |
+| Sustained throughput/bandwidth improvement | Pending post-deployment time series; an individual 304 is not an overall savings claim |
+| Cold-load timing separated from inference | Partial: generation includes model/cache/load time; candidate remains unloaded |
+| Real provider webhook receipt | Pending: signing receiver implemented/configured; provider registration and real normal-delivery receipt not yet proven |
+| Full factual assessment of legacy failed outputs | Unavailable where output was not retained; batches classified unclassified |
+
+This is an implementation and current-validation report, not a declaration that all observation-dependent acceptance gates are complete. Continue the existing follow-up and issue a final completion report only when evidence supports those gates or explicitly document an unresolved external dependency. Do not promote shadow rankings or models merely because the observation period elapsed.
