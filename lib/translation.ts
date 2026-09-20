@@ -118,8 +118,8 @@ export async function claimTranslation() {
   await pool().query(
     "UPDATE translations SET status='failed' WHERE status='working' AND attempts>=3 AND claimed_at<now()-interval '40 minutes'",
   );
-  const r = await pool().query(`WITH candidate AS (
-    SELECT key FROM translations WHERE (status='pending' OR status='working' AND claimed_at<now()-interval '40 minutes') AND attempts<3 AND available_at<=now() ORDER BY (coalesce(item_published_at,created_at)>=now()-interval '24 hours') DESC,priority DESC,created_at DESC FOR UPDATE SKIP LOCKED LIMIT 1
+  const r = await pool().query(`WITH turn AS (INSERT INTO worker_state(id,data) VALUES('scheduler-translation','{"claims":1}') ON CONFLICT(id) DO UPDATE SET data=jsonb_build_object('claims',coalesce((worker_state.data->>'claims')::bigint,0)+1),updated_at=now() RETURNING (data->>'claims')::bigint AS n), candidate AS (
+    SELECT key FROM translations WHERE (status='pending' OR status='working' AND claimed_at<now()-interval '40 minutes') AND attempts<3 AND available_at<=now() ORDER BY CASE WHEN (SELECT n%10=0 FROM turn) THEN created_at END ASC NULLS LAST,(coalesce(item_published_at,created_at)>=now()-interval '24 hours') DESC,priority DESC,created_at DESC FOR UPDATE SKIP LOCKED LIMIT 1
   ) UPDATE translations t SET status='working',claimed_at=now(),lease=gen_random_uuid(),attempts=attempts+1 FROM candidate c WHERE t.key=c.key RETURNING t.key,t.lease,t.payload,t.priority,t.created_at`);
   const row=r.rows[0];return row?{...row,queue_wait_ms:Math.max(0,Date.now()-new Date(row.created_at).getTime()),job:publicJob('translation',row.key,row.payload,row.lease,row.priority)}:null;
 }
