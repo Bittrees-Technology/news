@@ -2,6 +2,7 @@ import {queueHealth} from "./queue-health";
 import {stageMetrics} from "./stage-metrics";
 import {recordDiversityShadow} from "./shadow-record";
 import {pool} from './db';
+import {reconcileUnreportedClaims} from './job-ledger';
 export async function processingSnapshot(){
  const [translations,stories,editions,collection,workers]=await Promise.all([
   pool().query("SELECT status,count(*)::int count,round(extract(epoch FROM now()-min(created_at))/60)::int oldest_minutes FROM translations GROUP BY status"),
@@ -17,6 +18,7 @@ export async function recordProcessingSample(){
  await pool().query("DELETE FROM processing_stages WHERE recorded_at<now()-interval '30 days'");
  await pool().query("DELETE FROM delivery_events WHERE received_at<now()-interval '90 days'");
  await pool().query("DELETE FROM public_job_claims WHERE claimed_at<now()-interval '30 days' AND deadline<now()");
+ await reconcileUnreportedClaims(pool());
  await recordDiversityShadow();
  const snapshot=await processingSnapshot();
  await pool().query("INSERT INTO processing_samples(bucket,data) VALUES(to_timestamp(floor(extract(epoch FROM now())/300)*300),$1) ON CONFLICT(bucket) DO UPDATE SET data=EXCLUDED.data",[JSON.stringify(snapshot)]);

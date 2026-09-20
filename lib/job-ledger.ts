@@ -14,3 +14,16 @@ export async function recordOutcome(db:Pick<PoolClient,'query'>,lease:string,eve
  // inventing a historical claim. New leases always have a matching claim.
  await db.query(`INSERT INTO public_job_events(lease,event) SELECT lease,$2 FROM public_job_claims WHERE lease=$1 ON CONFLICT(lease,event) DO NOTHING`,[lease,event]);
 }
+
+// An observation of missing telemetry, not a processing failure. In-flight
+// transactions can commit later; their real outcomes must remain admissible.
+// Do not infer failure for claims created before outcome tracking was deployed.
+export async function reconcileUnreportedClaims(db:Pick<PoolClient,'query'>){
+ const result=await db.query(`INSERT INTO public_job_events(lease,event)
+ SELECT c.lease,'deadline_unreported' FROM public_job_claims c
+ WHERE c.deadline<now()-interval '5 minutes'
+ AND NOT EXISTS(SELECT 1 FROM public_job_events e WHERE e.lease=c.lease)
+ ORDER BY c.deadline,c.lease LIMIT 100
+ ON CONFLICT(lease,event) DO NOTHING RETURNING lease`);
+ return result.rowCount??0;
+}
