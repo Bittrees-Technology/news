@@ -2,7 +2,7 @@
 
 Review window: **20 September 02:00–21 September 02:00 UTC**, assessed around 02:45 UTC. Public records only.
 
-The twelve additions supplied **56 of 457 retained public articles dated within the window (12.3%)**. They currently hold 202 records including older feed entries. All twelve are currently healthy; 935/937 recorded collection observations in the fixed window were healthy. Availability measures collection success, not factual reliability.
+The twelve additions supplied **56 of 457 retained public items dated within the window (12.3%)**. They currently hold 202 records including older feed entries. All twelve are currently healthy; 935/937 recorded collection observations in the fixed window were healthy. Availability measures collection success, not factual reliability.
 
 | Source | Healthy checks / observations | Articles dated in window | Archived briefings at review |
 |---|---:|---:|---:|
@@ -25,7 +25,7 @@ The twelve additions supplied **56 of 457 retained public articles dated within 
 - Federal Reserve availability was 21/23 observations (91.3%); the two production failures were previously observed HTTP 404s. It is currently healthy. Keep its hourly cadence and normal backoff; no proxy, restriction bypass or alternative publisher endpoint was introduced.
 - Five additions had no article dated in this single-day window. Their feeds were reachable and retained older entries. That is not evidence that periodic research/newsletter feeds should be removed.
 - France 24 contributed 30/56 added-source articles. Added sources improve available publisher coverage, but this count does not establish distinct event coverage or top-three diversity. The seven-day shadow remains unpromoted.
-- Observador, Público and ECO account for 198/457 articles (43.3%) in this window, versus 219/417 (52.5%) in the earlier audit snapshot. Different dates and publication volumes prevent attributing this difference solely to expansion. The largest individual source remains Observador: 111/457 (24.3%).
+- Observador, Público and ECO account for 198/457 items (43.3%) in this window, versus 219/417 (52.5%) in the earlier audit snapshot. Different dates and publication volumes prevent attributing this difference solely to expansion. The largest individual source remains Observador: 111/457 (24.3%).
 
 ## Optimization recommendations
 
