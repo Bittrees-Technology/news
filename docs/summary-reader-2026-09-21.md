@@ -23,3 +23,9 @@ Validation: 72 unit tests and production build passed. A rollback-only database 
 Following the reader's correction, both the initial page and all scrolling batches now require a generated briefing document. Newer source posts with pending/missing documents no longer appear as preparation cards. Completed briefings remain newest-first by source publication time, across every public source kind; existing read-state exclusions still apply. IPFS pinning is not required to read an already completed briefing. This supersedes the preceding inclusion of pending entries.
 
 Validation: 72 tests and production build passed. Updated rollback-only pagination fixture verifies that newer null/missing documents cannot displace the newest completed briefing, while multi-page ordering, source-kind coverage and private/future exclusions remain correct.
+
+## One-at-a-time correction — September 22
+
+The reader shows a single completed, unread briefing. The upper-right **Mark as read →** control saves read status before advancing; failed writes retain the briefing. Next skips without marking read. Older batches load as the remaining unread buffer falls below three, with no total pagination cap; failures require an explicit retry. Refresh is the only way to fetch a new snapshot. The transition honors reduced-motion preferences. Guest and account reading synchronization is unchanged.
+
+Validation: production build and all 72 unit tests passed; rollback-only pagination fixtures passed for multiple pages, completed-only selection, ties and private/future exclusion. Browser visual testing remains blocked by the browser policy-verification service; no visual or interaction test is claimed.
