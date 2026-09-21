@@ -17,3 +17,9 @@ The reader now displays a continuous chronological list, fetching older posts in
 Pagination only reads stored source data and completed translation records. It does not fetch publishers, enqueue translation work, increase collection frequency or change ranking. A Load more/Retry fallback supplements automatic scrolling. No private source inclusion or source-catalog expansion is implied by all public sources.
 
 Validation: 72 unit tests and production build passed. A rollback-only database fixture validated multiple pages with tied timestamps, unique IDs, all three source kinds, multiple sources, pending/generated posts, selected starts, and private/future exclusion. All fixture tables were created within one transaction and rolled back before destroying the connection. Visual browser verification remains unavailable due to the previously reported administrator-policy check.
+
+## Completed briefings only
+
+Following the reader's correction, both the initial page and all scrolling batches now require a generated briefing document. Newer source posts with pending/missing documents no longer appear as preparation cards. Completed briefings remain newest-first by source publication time, across every public source kind; existing read-state exclusions still apply. IPFS pinning is not required to read an already completed briefing. This supersedes the preceding inclusion of pending entries.
+
+Validation: 72 tests and production build passed. Updated rollback-only pagination fixture verifies that newer null/missing documents cannot displace the newest completed briefing, while multi-page ordering, source-kind coverage and private/future exclusions remain correct.
