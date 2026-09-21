@@ -68,7 +68,7 @@ Additional evidence:
 | Ten scoped implementation increments | Deployed, with incident/correction documented above |
 | Unit/build/database regression checks | Passed; production health rechecked after correction |
 | Seven-day ranking diversity comparison | Pending until at least 27 September 2026 02:05 UTC, based on actual first shadow record |
-| Expanded-source 24-hour contribution/failure review | Pending until 21 September 2026 approximately 02:00 UTC |
+| Expanded-source 24-hour contribution/failure review | Completed 21 September ~02:45 UTC; see source-review-2026-09-21.md |
 | Meaningful engagement-rate assessment | Pending sufficient signed-in samples; no artificial activity generated |
 | Sustained throughput/bandwidth improvement | Pending post-deployment time series; an individual 304 is not an overall savings claim |
 | Cold-load timing separated from inference | Partial: generation includes model/cache/load time; candidate remains unloaded |
@@ -270,3 +270,9 @@ Latest collection: 53 successes, two failures, 44 unchanged bodies in 11 seconds
 At 01:40, neither public queue has eligible waiting work. Four News services active; supervisor healthy and candidate unloaded. Eight supersessions and 78 missing-report observations unchanged; translation review transitions total 27. New diagnostic labels are now exercised naturally: the bounded log inspection since deployment contains 12 failures, all `language_check` during translation. This identifies the immediate rejection condition (insufficient English confidence), not whether the rejected text was factually wrong or the language detector produced false positives. No validation threshold is weakened, output regenerated, or cached content removed on that evidence alone.
 
 SMTP telemetry fresh at 01:40, both host-origin probes passing. Latest collection: 52 successes, one failure, 47 unchanged bodies in 18 seconds. Conditional totals: 4,438 HTTP 304s / 9,084 successes, 2,251,928,637 body bytes; no controlled savings claim. Current errors include In the Pipeline and Lex Fridman timeouts plus existing Endpoints/IMF HTTP 403 restrictions; retain backoff. Public health confirms the passing evening edition. Four shadow editions, zero signed provider events; prior Resend sign-in request remains pending. The 24-hour expanded-source review is still premature until after 02:00 UTC and is due at the next hourly check. No runtime changes/deployment; website `deb3280`, diagnostic worker `94ad389`. All remaining implementation and acceptance gates stay open.
+
+### 21 September 02:44 UTC — expanded-source review completed
+
+Completed the required fixed 24-hour contribution/failure review (20 September 02:00–21 September 02:00 UTC). See [source-review-2026-09-21.md](source-review-2026-09-21.md) for the table, method and recommendations. The twelve additions account for 56/457 window-dated public records (12.3%), with 54 archived briefings and two in review. All twelve currently healthy; Federal Reserve had two failed observations out of 23 and recovered. Retain the source set/cadences, preserve restrictions and backoff, and do not change ranking weights from one day's sample.
+
+The source-assessment acceptance item is complete; the seven-day comparison and overall rollout are not. At 02:40, four briefings wait up to five minutes and one newly queued translation waits under a minute. Four News services active; supervisor healthy, candidate unloaded; SMTP probes fresh and passing. No signed delivery events, four shadow editions. Existing provider sign-in request and other implementation/quality gates remain open. No runtime deployment: website `deb3280`, worker `94ad389`.
