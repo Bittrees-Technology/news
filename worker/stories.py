@@ -3,6 +3,7 @@
 import json,os,time,pathlib,urllib.request,logging,fcntl
 from stage_metrics import report
 from worker_cadence import briefing_delay
+from briefing_failure import failure_category
 from model_runtime import completion, ModelBusy
 logging.basicConfig(level=logging.INFO,format='%(asctime)s %(message)s')
 config=json.loads((pathlib.Path.home()/'.config/bittrees-news/editor.json').read_text())
@@ -34,20 +35,22 @@ def pin(document):
  req=urllib.request.Request('http://127.0.0.1:5001/api/v0/add?pin=true&cid-version=1&raw-leaves=false',data=body,headers={'Content-Type':'multipart/form-data; boundary='+boundary})
  with urllib.request.urlopen(req,timeout=90) as r:return json.loads(r.read())['Hash']
 while True:
- job=None;completed=False
+ job=None;completed=False;phase="claim"
  try:
   job=api('claim',{})
   if not job:time.sleep(45);continue
   timings={'queue':job.get('queue_wait_ms')}
   document=job.get('document')
-  if not document:document=api('result',{'id':job['item_id'],'lease':job['lease'],'briefing':brief(job),'model':('Bittrees structured-data briefing' if job['kind']=='data' and job['source_id'] in ('world-bank-gdp','defillama-protocols') else 'Bittrees-hosted '+config.get('last_model_used',config['model']))})
-  start=time.monotonic();cid=pin(document);timings['archive']=(time.monotonic()-start)*1000
-  start=time.monotonic();api('pinned',{'id':job['item_id'],'lease':job['lease'],'cid':cid});timings['persist']=(time.monotonic()-start)*1000
+  if not document:
+   phase='generate';briefing=brief(job)
+   phase='persist';document=api('result',{'id':job['item_id'],'lease':job['lease'],'briefing':briefing,'model':('Bittrees structured-data briefing' if job['kind']=='data' and job['source_id'] in ('world-bank-gdp','defillama-protocols') else 'Bittrees-hosted '+config.get('last_model_used',config['model']))})
+  phase='archive';start=time.monotonic();cid=pin(document);timings['archive']=(time.monotonic()-start)*1000
+  phase='pinned';start=time.monotonic();api('pinned',{'id':job['item_id'],'lease':job['lease'],'cid':cid});timings['persist']=(time.monotonic()-start)*1000
   report(config,job,'briefing',timings)
   logging.info('Public briefing archived %s %s',job['item_id'],cid)
   completed=True
  except Exception as e:
-  logging.warning('Briefing worker retry: %s status=%s',type(e).__name__,getattr(e,'code','local'))
+  logging.warning('Briefing worker retry: category=%s phase=%s type=%s status=%s',failure_category(e,phase),phase,type(e).__name__,getattr(e,'code','local'))
   if job:
    try:api('retry',{'id':job['item_id'],'lease':job['lease'],'busy':isinstance(e,ModelBusy),'error':type(e).__name__})
    except Exception:pass
