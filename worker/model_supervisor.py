@@ -62,7 +62,7 @@ class Supervisor:
                 return result
         except Exception as e:
             if m.get('managed'):self.last_used=time.monotonic()
-            self.event({'ok':False,'task':task,'model_id':name,'error':type(e).__name__});raise
+            self.event({'ok':None if isinstance(e,ModelBusy) else False,'task':task,'model_id':name,'mode':mode,'outcome':'deferred' if isinstance(e,ModelBusy) else 'failed','error':type(e).__name__});raise
         finally:self.mutex.release()
     def event(self,value):
         self.state.mkdir(parents=True,exist_ok=True)

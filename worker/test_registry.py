@@ -2,6 +2,8 @@ import copy,json,pathlib,tempfile,unittest,hashlib,contextlib
 from unittest.mock import patch,MagicMock
 from model_registry import read_registry,artifact_key
 from model_supervisor import Supervisor
+from model_runtime import ModelBusy
+from telemetry_summary import summarize_events
 
 class RegistryTests(unittest.TestCase):
     def test_cache_identity_changes_with_model_prompt_or_schema(self):
@@ -40,6 +42,24 @@ class RegistryTests(unittest.TestCase):
             with patch('model_supervisor.read_registry',return_value=registry),patch.object(s,'prepare',side_effect=RuntimeError('transport')),patch('model_supervisor.model_slot',return_value=contextlib.nullcontext()):
                 with self.assertRaises(RuntimeError):s.run({'model':'baseline'},'production','briefing')
                 self.assertEqual(s.last_used,10)
+
+    def test_failure_cohorts_and_capacity_deferrals(self):
+        with tempfile.TemporaryDirectory() as d:
+            s=Supervisor(None,pathlib.Path(d))
+            registry={'models':{'baseline':{'status':'approved','managed':False}}}
+            for mode,error in [('production',RuntimeError('private diagnostic')),('benchmark',RuntimeError('private diagnostic')),('production',ModelBusy())]:
+                with patch('model_supervisor.read_registry',return_value=registry),patch.object(s,'prepare',side_effect=error),patch('model_supervisor.model_slot',return_value=contextlib.nullcontext()):
+                    with self.assertRaises(type(error)):s.run({'model':'baseline'},mode,'briefing')
+            raw=(pathlib.Path(d)/'model-events.jsonl').read_text()
+            self.assertNotIn('private diagnostic',raw)
+            rows=[json.loads(line) for line in raw.splitlines()]
+            self.assertEqual([r['mode'] for r in rows],['production','benchmark','production'])
+            self.assertEqual(rows[-1]['outcome'],'deferred')
+            self.assertIsNone(rows[-1]['ok'])
+            summary=summarize_events(rows)
+            self.assertEqual(summary['failed'],1)
+            self.assertEqual(summary['benchmark_samples'],1)
+            self.assertEqual(summary['unknown_samples'],0)
 
     def test_candidate_rejected_before_model_load(self):
         with tempfile.TemporaryDirectory() as d:
