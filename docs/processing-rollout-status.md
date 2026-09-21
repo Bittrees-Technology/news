@@ -474,3 +474,10 @@ The 11:57 edition published at 11:57:27.826 UTC, within the two-minute target; p
 At 12:45, 43 briefings are eligible (26 current-day, all enqueue times known, oldest wait 85 minutes), and one new translation waits under a minute. Briefing queue age has increased during this collection period, while scheduled publication remained on time. Four News services active, supervisor healthy, candidate unloaded. Nine supersessions and 78 missing-report observations unchanged. SMTP report fresh at 12:41, both host-origin probes passing. Collection latest: one success in five seconds; cumulative counters 6,490 HTTP 304s / 13,296 successes, 3,254,878,427 body bytes, without a controlled savings claim. Intermittent Hacker News failure and existing six HTTP 403 restrictions persist; Lex Fridman's error has cleared.
 
 No runtime changes/deployment/model/ranking promotion; website `deb3280`, diagnostic worker `94ad389`. Completed source assessment is retained; all remaining implementation and acceptance gates stay open.
+
+
+### 2026-09-21 — English email regression repair
+
+Confirmed both noon email payloads rendered Portuguese source titles/summaries, although all three translations were complete before dispatch. Both delivery paths now refresh translation attachments and materialize English copy before constructing HTML and plain text. Select up to three English-ready stories from the top 50 ranked candidates. Pending, failed, missing, malformed or stale translations cannot fall back to source-language copy. Private/owner-edited copy without a matching verified translation is omitted; it is never sent to the public translation worker. If fewer than three are ready, send fewer; if none are ready, do not enqueue a digest. Existing ranking weights and publication timing are unchanged.
+
+Validation: 67 unit tests passed, production build passed. A read-only check of the latest production edition found 28/28 items English-ready. No test email or duplicate delivery was sent. This fixes future queued emails; already delivered messages are immutable. Provider event coverage and translation quality evaluation remain separate outstanding gates.

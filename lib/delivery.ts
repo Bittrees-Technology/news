@@ -1,3 +1,5 @@
+import { withTranslations } from "./translation";
+import { englishDigestItems } from "./digest-language";
 import { newspaperEmail, compactSummary, digestArticles } from "./newspaper-email";
 import { subscriptionContent, subscriptionStillAllowed } from "./subscriptions";
 import { rankingSchema } from "./scoring";
@@ -33,13 +35,16 @@ export async function queueDigests(now = new Date()) {
         : i,
     ) as Item[];
     const prefs = preferencesSchema.parse(d.preferences);
-    const selected = await rankedItems(
+    const candidates = await rankedItems(
       d.kind === "email" ? all.filter(i => i.kind === "article") : all,
       prefs,
       rankingSchema.parse(d.ranking),
       d.account_id,
-      d.kind === "email" ? 3 : prefs.length,
+      d.kind === "email" ? 50 : prefs.length,
     );
+    const selected = d.kind === "email"
+      ? englishDigestItems(await withTranslations(candidates)).slice(0, 3)
+      : candidates;
     if (!selected.length) continue;
     const unsubscribe = `${process.env.APP_URL}/unsubscribe?id=${d.id}&token=${unsubscribeToken(d.id)}`;
     const date = period.end.toISOString().slice(0, 10);
@@ -88,7 +93,9 @@ export async function queueSubscriptions(now = new Date()) {
     const email = s.kind === "email";
     const prefs = preferencesSchema.parse(s.preferences);
     const profile = rankingSchema.parse(s.ranking);
-    const selected = email ? digestArticles(edition.items, prefs, profile, now) : edition.items;
+    const selected = email
+      ? englishDigestItems(await withTranslations(digestArticles(edition.items, prefs, profile, now, 50))).slice(0, 3)
+      : edition.items;
     if (!selected.length) continue;
     const readMore = new URL(edition.readMorePath, process.env.APP_URL).href;
     const unsubscribe = `${process.env.APP_URL}/unsubscribe?id=${s.id}&token=${unsubscribeToken(s.id)}`;
