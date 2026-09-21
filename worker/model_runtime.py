@@ -1,5 +1,5 @@
 """One local inference at a time; cache successful calls by exact request content."""
-import contextlib, fcntl, hashlib, json, logging, os, pathlib, time, urllib.request, urllib.error
+import contextlib, fcntl, hashlib, json, logging, math, os, pathlib, time, urllib.request, urllib.error
 
 from model_registry import read_registry,artifact_key
 
@@ -26,7 +26,15 @@ def model_slot(state, priority):
         finally:
             fcntl.flock(lock, fcntl.LOCK_UN)
 
-def completion(config, state, data, priority, timeout=900):
+def add_inference_timings(timings, result):
+    if timings is None: return
+    metrics=result.get('news_metrics',{})
+    for source,stage in [('load_seconds','model_prepare'),('inference_seconds','inference_request')]:
+        value=metrics.get(source)
+        if isinstance(value,(int,float)) and not isinstance(value,bool) and math.isfinite(value) and 0<=value<=10000:
+            timings[stage]=timings.get(stage,0)+value*1000
+
+def completion(config, state, data, priority, timeout=900, timings=None):
     gateway=config.get('model_gateway')
     if gateway:
         registry=read_registry(config['model_registry'])
@@ -42,7 +50,11 @@ def completion(config, state, data, priority, timeout=900):
     path = cache / (key + '.json')
     if path.exists():
         logging.info('Inference cache hit task=%s', priority)
-        return json.loads(path.read_text())
+        start=time.monotonic()
+        result=json.loads(path.read_text())
+        if timings is not None: timings['cache_read']=timings.get('cache_read',0)+(time.monotonic()-start)*1000
+        # Cached news_metrics describe the original request, not this cache hit.
+        return result
     with (contextlib.nullcontext() if gateway else model_slot(state, priority)):
         start = time.monotonic()
         req = urllib.request.Request((gateway or config['model_url'])+'/chat/completions', data=json.dumps(data).encode(), headers={'Content-Type':'application/json','X-News-Task':priority})
@@ -51,6 +63,7 @@ def completion(config, state, data, priority, timeout=900):
         except urllib.error.HTTPError as e:
             if e.code==503:raise ModelBusy()
             raise
+        add_inference_timings(timings,result)
         if result['choices'][0].get('finish_reason') == 'length':
             raise ValueError('Truncated model output')
         if data.get('response_format'):
