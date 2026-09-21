@@ -22,6 +22,6 @@ export function ArticleFeedback({id}:{id:string}){
  async function rate(value:number){if(busy||!ready)return;setBusy(true);setError('');try{await writeFeedback(signed,id,vote===value?0:value);}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
  return <span className="article-feedback" data-insights-ignore="true">
  {[1,-1].map(v=><button key={v} disabled={busy||!ready} aria-pressed={vote===v} title={signed?'Click again to remove your preference':'Saved on this device only'} onClick={()=>void rate(v)}>{v===1?'Interested':'Not interested'}</button>)}
- {ready&&!signed&&<small>Guest · on this device</small>}{error&&<small role="status">{error}</small>}
+ {error&&<small role="status">{error}</small>}
  </span>;
 }
