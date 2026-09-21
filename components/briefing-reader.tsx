@@ -1,6 +1,7 @@
 'use client';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {call} from './client';
+import {ArticleFeedback} from './article-feedback';
 import {StoryContent} from './story-content';
 import {loadReading,writeReading,watchReading,type ReadingState} from '@/lib/reading-sync';
 type Batch={entries:any[];next:string|null;snapshot:string};
@@ -35,10 +36,22 @@ export function BriefingReader({initial}:{initial:Batch}){
   }catch{setError('Could not save read status. This briefing has not been dismissed.');}
   finally{setBusy(null);}
  }
+ async function save(id:string){
+  if(busy)return;setBusy(id);setError('');
+  const value=!reading[id]?.saved;
+  try{await writeReading(signed,id,'saved',value);setReading(r=>({...r,[id]:{...(r[id]||{is_read:false}),saved:value}}));}
+  catch{setError('Could not save this briefing. Please try again.');}
+  finally{setBusy(null);}
+ }
+ const preferences=current&&ready?<>
+  <ArticleFeedback key={current.id} id={current.id}/>
+  <button disabled={!!busy} aria-pressed={!!reading[current.id]?.saved} onClick={()=>void save(current.id)}>{reading[current.id]?.saved?'★ Saved':'☆ Save'}</button>
+ </>:null;
  return <section className="briefing-reader">
   <div className="briefing-toolbar">
    <h1 ref={heading} tabIndex={-1}>Briefings</h1>
    <div className="briefing-controls">
+    {preferences}
     <button onClick={()=>window.location.reload()}>Refresh</button>
     <button disabled={!ready||!current||!!busy} onClick={()=>current&&void advance(current.id,false)} aria-label="Next briefing without marking as read">Next <span aria-hidden="true">→</span></button>
    </div>
@@ -48,6 +61,7 @@ export function BriefingReader({initial}:{initial:Batch}){
    {current&&<div className="briefing-entry" key={current.id}>
     <StoryContent item={current}/>
     <div className="briefing-navigation briefing-controls">
+     {preferences}
      <button onClick={()=>window.location.reload()}>Refresh</button>
      <button disabled={!!busy} onClick={()=>void advance(current.id,true)} aria-label="Mark as read and go to next briefing">Mark as read <span aria-hidden="true">→</span></button>
     </div>
