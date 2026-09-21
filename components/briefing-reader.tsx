@@ -40,14 +40,17 @@ export function BriefingReader({initial}:{initial:Batch}){
    <h1 ref={heading} tabIndex={-1}>Briefings</h1>
    <div className="briefing-controls">
     <button onClick={()=>window.location.reload()}>Refresh</button>
-    <button disabled={!ready||!current||!!busy} onClick={()=>current&&void advance(current.id,true)} aria-label="Mark as read and go to next briefing">Mark as read <span aria-hidden="true">→</span></button>
+    <button disabled={!ready||!current||!!busy} onClick={()=>current&&void advance(current.id,false)} aria-label="Next briefing without marking as read">Next <span aria-hidden="true">→</span></button>
    </div>
   </div>
   {error&&<p role="alert">{error}</p>}
   {!ready?<p role="status">Loading read status…</p>:<>
    {current&&<div className="briefing-entry" key={current.id}>
     <StoryContent item={current}/>
-    <div className="briefing-navigation"><button disabled={!!busy} onClick={()=>void advance(current.id,false)} aria-label="Next briefing without marking as read">Next →</button></div>
+    <div className="briefing-navigation briefing-controls">
+     <button onClick={()=>window.location.reload()}>Refresh</button>
+     <button disabled={!!busy} onClick={()=>void advance(current.id,true)} aria-label="Mark as read and go to next briefing">Mark as read <span aria-hidden="true">→</span></button>
+    </div>
    </div>}
    {!current&&!next&&!loading&&<p>You’re caught up. Refresh to check for new briefings or revisit skipped ones.</p>}
    {!current&&loading&&<p role="status">Loading older briefings…</p>}
