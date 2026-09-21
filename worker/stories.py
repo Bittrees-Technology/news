@@ -2,6 +2,7 @@
 """Public briefings and local IPFS pinning; no private source or database access."""
 import json,os,time,pathlib,urllib.request,logging,fcntl
 from stage_metrics import report
+from worker_cadence import briefing_delay
 from model_runtime import completion, ModelBusy
 logging.basicConfig(level=logging.INFO,format='%(asctime)s %(message)s')
 config=json.loads((pathlib.Path.home()/'.config/bittrees-news/editor.json').read_text())
@@ -33,7 +34,7 @@ def pin(document):
  req=urllib.request.Request('http://127.0.0.1:5001/api/v0/add?pin=true&cid-version=1&raw-leaves=false',data=body,headers={'Content-Type':'multipart/form-data; boundary='+boundary})
  with urllib.request.urlopen(req,timeout=90) as r:return json.loads(r.read())['Hash']
 while True:
- job=None
+ job=None;completed=False
  try:
   job=api('claim',{})
   if not job:time.sleep(45);continue
@@ -44,9 +45,10 @@ while True:
   start=time.monotonic();api('pinned',{'id':job['item_id'],'lease':job['lease'],'cid':cid});timings['persist']=(time.monotonic()-start)*1000
   report(config,job,'briefing',timings)
   logging.info('Public briefing archived %s %s',job['item_id'],cid)
+  completed=True
  except Exception as e:
   logging.warning('Briefing worker retry: %s status=%s',type(e).__name__,getattr(e,'code','local'))
   if job:
    try:api('retry',{'id':job['item_id'],'lease':job['lease'],'busy':isinstance(e,ModelBusy),'error':type(e).__name__})
    except Exception:pass
- time.sleep(15)
+ time.sleep(briefing_delay(completed,config.get('briefing_success_pause_seconds',5)))
