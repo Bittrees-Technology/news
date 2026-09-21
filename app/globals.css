@@ -1021,3 +1021,5 @@ a.primary {
 .article-search-input {flex:1 1 240px;}
 .article-search input,.article-search select {padding:7px 10px;font-size:13px;}
 .article-search-status {flex-basis:100%;font-size:12px;}
+
+.briefing-reader{max-width:900px;margin:0 auto}.briefing-toolbar,.briefing-navigation{display:flex;justify-content:space-between;align-items:center;gap:16px}.briefing-toolbar h1{margin-bottom:6px}.briefing-navigation{margin:20px 0}.briefing-reader .standalone-story{margin-top:20px}.briefing-reader h1:focus{outline:none}@media(max-width:560px){.briefing-toolbar{align-items:flex-start}.briefing-navigation button{font-size:14px}.briefing-toolbar p{font-size:12px}}

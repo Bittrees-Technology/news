@@ -1,4 +1,5 @@
 "use client";
+import {loadReading,writeReading,watchReading} from "@/lib/reading-sync";
 import { useEffect, useMemo, useState, useRef } from "react";
 import {matchesArticleSearch,type SearchField} from "@/lib/article-search";
 import {ArticleEngagement} from "./article-engagement";
@@ -98,6 +99,12 @@ export function Newspaper({
     void load();window.addEventListener('news-auth',load);
     return()=>{active=false;window.removeEventListener('news-auth',load);};
   }, [mode]);
+  useEffect(()=>{
+    let active=true;
+    const refresh=()=>{void loadReading(signed).then(reading=>{if(active){setState(reading);setReadSnapshot(reading);}}).catch(()=>{});};
+    const stop=watchReading(refresh);
+    return()=>{active=false;stop();};
+  },[signed]);
   const geography = useMemo(
     () =>
       new Map(
@@ -141,12 +148,8 @@ export function Newspaper({
     };
     setState(next);
     try {
-      if(!signed)localStorage.setItem("bittrees-news-reading", JSON.stringify(next));
-      if (signed) {await call("reading", { id, field, value: v });}
-      else if (field === "saved")
-        setMessage(
-          "Saved on this device. Sign in to build your library across editions.",
-        );
+      await writeReading(signed,id,field,v);
+      if(!signed && field==='saved')setMessage('Saved on this device. Sign in to build your library across editions.');
     } catch (e) {
       setState(state);
       setMessage((e as Error).message);
@@ -379,7 +382,7 @@ export function Newspaper({
                   {i.translation?.title || i.title}
                 </a>
               </h2>
-              <p>{i.briefing_preview ?? i.translation?.summary ?? i.summary ?? i.excerpt}</p>
+              <p>{i.translation?.summary ?? i.summary ?? i.excerpt}</p>
               {i.translation?.language && i.translation.language !== "en" && (
                 <details className="translation-original">
                   <summary>Translated to English · View original</summary>
@@ -412,7 +415,7 @@ export function Newspaper({
                     {state[i.id]?.saved ? "★ Saved" : "☆ Save"}
                   </button>
                   <ArticleFeedback id={i.id} />
-                  {!i.owner_id&&<Link href={`/story/${i.id}`}>Summary ↗</Link>}
+                  {!i.owner_id&&<Link href={`/briefings?story=${i.id}`}>Summary ↗</Link>}
                 </div>
               </div>
             </article>
