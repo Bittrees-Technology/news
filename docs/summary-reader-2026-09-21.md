@@ -7,3 +7,13 @@ Mark as read saves the existing account read record, or the existing guest brows
 Summary content is shared between routes and retains tags, publication, authors, timestamp, source link, evidence limits, overview, key points, generation provenance, sharing and IPFS reference. Generated summaries remain distinguished from full publisher articles.
 
 Validation: 72 unit tests passed, including local guest persistence/preservation of saved flags, signed account writes without browser history storage, and failed writes without success notifications. Production build passed. Browser visual validation was attempted but blocked because the browser tool could not verify the administrator-enforced policy; no bypass was attempted. No publisher requests, test emails or source/ranking changes were made for this work.
+
+## Follow-up: unified Briefings and continuous scrolling
+
+The public UI now uses Briefings labels, removes the Feed navigation link/back link and reading-status subtitle, and labels the action Mark as read. The top-left TBN brand remains the home link. Tags use the exact feed `topic colored-tag` classes and shared color function/theme variables.
+
+The reader now displays a continuous chronological list, fetching older posts in 30-item keyset batches with no fixed total-page cap. All public source kinds are eligible, including articles, podcasts, structured data and posts without a generated briefing; pending entries retain source text and preparation status. Private items remain excluded. The initial snapshot boundary prevents newly fetched items from being injected during scrolling; only Refresh starts a new snapshot. Read/Next dismiss a post and move to the following one. Existing guest/account read synchronization remains in place.
+
+Pagination only reads stored source data and completed translation records. It does not fetch publishers, enqueue translation work, increase collection frequency or change ranking. A Load more/Retry fallback supplements automatic scrolling. No private source inclusion or source-catalog expansion is implied by all public sources.
+
+Validation: 72 unit tests and production build passed. A rollback-only database fixture validated multiple pages with tied timestamps, unique IDs, all three source kinds, multiple sources, pending/generated posts, selected starts, and private/future exclusion. All fixture tables were created within one transaction and rolled back before destroying the connection. Visual browser verification remains unavailable due to the previously reported administrator-policy check.

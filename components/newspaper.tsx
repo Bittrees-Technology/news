@@ -285,7 +285,7 @@ export function Newspaper({
         </label>
         <label>Search in
           <select value={searchField} onChange={e=>{setSearchField(e.target.value as SearchField);setCursor(-1);}}>
-            <option value="all">Title & summary</option><option value="title">Title only</option><option value="summary">Summary only</option>
+            <option value="all">Title & briefing</option><option value="title">Title only</option><option value="summary">Briefing only</option>
           </select>
         </label>
         {search&&<button type="button" onClick={()=>{setSearch("");setCursor(-1);}}>Clear search</button>}
@@ -415,7 +415,7 @@ export function Newspaper({
                     {state[i.id]?.saved ? "★ Saved" : "☆ Save"}
                   </button>
                   <ArticleFeedback id={i.id} />
-                  {!i.owner_id&&<Link href={`/briefings?story=${i.id}`}>Summary ↗</Link>}
+                  {!i.owner_id&&<Link href={`/briefings?story=${i.id}`}>Briefings ↗</Link>}
                 </div>
               </div>
             </article>

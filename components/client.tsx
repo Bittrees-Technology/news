@@ -50,8 +50,7 @@ export function Header() {
         TBN<span> / the bittrees news</span>
       </Link>
       <nav>
-        <Link href="/">Feed</Link>
-        <Link href="/briefings">Summary</Link>
+        <Link href="/briefings">Briefings</Link>
         <Link href="/archive">Archive</Link>
         {signed && (
           <>
