@@ -37,7 +37,7 @@ export function BriefingReader({initial}:{initial:Batch}){
   finally{setBusy(null);}
  }
  async function save(id:string){
-  if(busy)return;setBusy(id);setError('');
+  if(busy||!signed)return;setBusy(id);setError('');
   const value=!reading[id]?.saved;
   try{await writeReading(signed,id,'saved',value);setReading(r=>({...r,[id]:{...(r[id]||{is_read:false}),saved:value}}));}
   catch{setError('Could not save this briefing. Please try again.');}
@@ -45,7 +45,7 @@ export function BriefingReader({initial}:{initial:Batch}){
  }
  const preferences=current&&ready?<>
   <ArticleFeedback key={current.id} id={current.id}/>
-  <button disabled={!!busy} aria-pressed={!!reading[current.id]?.saved} onClick={()=>void save(current.id)}>{reading[current.id]?.saved?'★ Saved':'☆ Save'}</button>
+  {signed&&<button disabled={!!busy} aria-pressed={!!reading[current.id]?.saved} onClick={()=>void save(current.id)}>{reading[current.id]?.saved?'★ Saved':'☆ Save'}</button>}
  </>:null;
  return <section className="briefing-reader">
   <div className="briefing-toolbar">

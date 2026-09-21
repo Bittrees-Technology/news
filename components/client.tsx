@@ -51,7 +51,6 @@ export function Header() {
       </Link>
       <nav>
         <Link href="/briefings">Briefings</Link>
-        <Link href="/archive">Archive</Link>
         {signed && (
           <>
             <Link href="/saved">Saved</Link>

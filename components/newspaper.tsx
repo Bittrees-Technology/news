@@ -151,6 +151,7 @@ export function Newspaper({
     field: "saved" | "is_read",
     value?: boolean,
   ) {
+    if(field === "saved" && !signed)return;
     const v = value ?? !state[id]?.[field];
     const next = {
       ...state,
@@ -159,7 +160,6 @@ export function Newspaper({
     setState(next);
     try {
       await writeReading(signed,id,field,v);
-      if(!signed && field==='saved')setMessage('Saved on this device. Sign in to build your library across editions.');
     } catch (e) {
       setState(state);
       setMessage((e as Error).message);
@@ -205,7 +205,7 @@ export function Newspaper({
         window.open(item.url, "_blank", "noopener");
         void mutate(item.id, "is_read", true);
       }
-      if (e.key === "s" && item) void mutate(item.id, "saved");
+      if (e.key === "s" && item && signed) void mutate(item.id, "saved");
       if (e.key === "m" && item) void mutate(item.id, "is_read");
       if (e.key === "?") setHelp(!help);
       if (e.key === "Escape") {
@@ -323,7 +323,7 @@ export function Newspaper({
       </div>
       {help && (
         <p className="notice">
-          j / k to move · o to open · m to mark read · s to save · Escape to
+          j / k to move · o to open · m to mark read{signed && " · s to save"} · Escape to
           clear selection
         </p>
       )}
@@ -418,12 +418,12 @@ export function Newspaper({
                   >
                     {state[i.id]?.is_read ? "Read ✓" : "Mark read"}
                   </button>
-                  <button
+                  {signed && <button
                     onClick={() => void mutate(i.id, "saved")}
                     aria-pressed={!!state[i.id]?.saved}
                   >
                     {state[i.id]?.saved ? "★ Saved" : "☆ Save"}
-                  </button>
+                  </button>}
                   <ArticleFeedback id={i.id} />
                   {!i.owner_id&&<Link href={`/briefings?story=${i.id}`}>Briefings ↗</Link>}
                 </div>
