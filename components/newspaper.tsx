@@ -53,6 +53,8 @@ export function Newspaper({
     [cursor, setCursor] = useState(-1),
     [personal, setPersonal] = useState(false),
     [help, setHelp] = useState(false);
+  const [renderCount,setRenderCount]=useState(30);
+  const moreRef=useRef<HTMLDivElement>(null);
   const hideRead=filters.hideRead;
   const saveQueue=useRef(Promise.resolve());
   function updateFilters(next:ReaderFilters){
@@ -119,6 +121,7 @@ export function Newspaper({
       ),
     [items],
   );
+  const orderPositions=useMemo(()=>new Map((rankOrder||items.map(i=>i.id)).map((id,n)=>[id,n])),[rankOrder,items]);
   const visible = useMemo(
     () =>
       (live?recentUniqueStories(items,now):items).filter(
@@ -129,10 +132,17 @@ export function Newspaper({
           matchesArticleSearch(i,search,searchField) &&
           (!hideRead || !readSnapshot[i.id]?.is_read),
       ).sort((a,b)=>{
-        const order=rankOrder||items.map(i=>i.id);return order.indexOf(a.id)-order.indexOf(b.id);
+        return (orderPositions.get(a.id)??0)-(orderPositions.get(b.id)??0);
       }),
-    [items, tab, filters, hideRead, readSnapshot, mode, geography,rankOrder,live,now,search,searchField],
+    [items, tab, filters, hideRead, readSnapshot, mode, geography,rankOrder,orderPositions,live,now,search,searchField],
   );
+  useEffect(()=>{setRenderCount(30);},[tab,filters,search,searchField,items]);
+  useEffect(()=>{
+    if(!moreRef.current||renderCount>=visible.length)return;
+    const observer=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting))setRenderCount(n=>n+30);},{rootMargin:'500px'});
+    observer.observe(moreRef.current);return()=>observer.disconnect();
+  },[renderCount,visible.length]);
+  useEffect(()=>{if(cursor>=0){setRenderCount(n=>Math.max(n,cursor+1));requestAnimationFrame(()=>refs.current.get(visible[cursor]?.id)?.focus());}},[cursor]);
   const topics = [...new Set([...items.flatMap(articleTags),...catalogTopics,...addedTopics,...filters.topics,...filters.excludedTopics])]
     .filter((t) => t !== "Portugal" && t !== "Europe")
     .sort();
@@ -349,7 +359,7 @@ export function Newspaper({
         </div>
       ) : (
         <section className="story-list" aria-label="Stories">
-          {visible.map((i, n) => (
+          {visible.slice(0,renderCount).map((i, n) => (
             <article
               key={i.id}
               tabIndex={-1}
@@ -422,6 +432,7 @@ export function Newspaper({
           ))}
         </section>
       )}
+      {renderCount<visible.length&&<div ref={moreRef}><button onClick={()=>setRenderCount(n=>n+30)}>Load more stories</button></div>}
     </>
   );
 }

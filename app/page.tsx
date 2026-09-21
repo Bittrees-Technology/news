@@ -4,21 +4,11 @@ const baseMetadata=pageMetadata(siteName,siteDescription,"/");
 export const metadata = {...baseMetadata,alternates:{...baseMetadata.alternates,types:{"application/rss+xml":"/rss.xml"}}};
 import { viewer } from "@/lib/viewer";
 import { scoreVisibility } from "@/lib/roles";
-import { withTranslations } from "@/lib/translation";
-import { recentPublicRanked } from "@/lib/ranking";
-import { latestEdition } from "@/lib/publish";
+import { publicHome } from "@/lib/public-home";
 import { Newspaper } from "@/components/newspaper";
 export const dynamic = "force-dynamic";
 export default async function Page() {
-  const account = await viewer();
-  let edition = null;
-  try {
-    edition = await latestEdition();
-    if (edition)
-      edition.data.items = await withTranslations(
-        await recentPublicRanked(),
-      );
-  } catch {}
+  const [account,edition]=await Promise.all([viewer(),publicHome().catch(()=>null)]);
   return (
     <>
       <script

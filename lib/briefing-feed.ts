@@ -8,6 +8,6 @@ export async function briefingBatch(before:string|null=null,selected:string|null
  ORDER BY i.published_at DESC,i.id DESC LIMIT 31`,[before,selected,snapshot])).rows;
  const hasMore=rows.length>30,items=rows.slice(0,30);
  const translations=new Map((await translationStatus(items.map(translationKey))).map(r=>[r.key,r]));
- const entries=items.map(i=>{const t=translations.get(translationKey(i)),evidence=i.document?.evidence||sourceEvidence(i);return {...i,translation:t?.status==='done'?t.result:undefined,evidence,evidence_label:evidenceLabel(evidence.kind)};});
+ const entries=items.map(i=>{const t=translations.get(translationKey(i)),evidence=i.document?.evidence||sourceEvidence(i);const {source_context,...display}=i;return {...display,translation:t?.status==='done'?t.result:undefined,evidence,evidence_label:evidenceLabel(evidence.kind)};});
  return JSON.parse(JSON.stringify({entries,next:hasMore?items.at(-1)?.id:null,snapshot}));
 }
