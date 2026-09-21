@@ -77,3 +77,10 @@ Not activated: BIS research candidate returned 404; RNZ World, Bitcoin Core and 
 | P2 | Track delivery-provider events and SMTP route health | Distinguish accepted, delivered, deferred and bounced | Event coverage plus verified inbound route monitoring; do not equate “sent” with receipt |
 
 These are recommendations unless listed in the implemented section. Do not change all ranking weights at once: first fix measurement, then compare changes against the current ranking on a fixed set. Reassess new-source contribution and failures after 24 hours; avoid expanding inference demand indiscriminately. All new sources use existing bounded collection limits and backoff. Reader-controlled refresh remains unchanged.
+
+
+## Standing requirement — source restraint (21 September 2026)
+
+Optimize local processing and cached evidence before increasing publisher requests. Do not increase polling frequency, collection concurrency or source count as a shortcut to throughput. Reuse frozen evidence for debugging and model comparisons; avoid repeated live probes of restricted sources. Preserve conditional requests, exclusive collection leases, bounded response sizes and rate-limit/failure backoff. Evaluate request budgets at publisher/domain level across related feeds; use measured new-item yield to justify slowing low-yield sources. Publisher-wide budgets and adaptive low-yield cadence remain follow-up work, not controls claimed as already implemented.
+
+Also avoid editorial overreliance on individual sources: monitor publisher-family concentration and repeated-event coverage for the default TBN newspaper. Keep the existing diversity shadow and quality review gate before changing live selection, preserve readers' explicit choices, and do not add unvalidated caps or equate volume with reliability.
