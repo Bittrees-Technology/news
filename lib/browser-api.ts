@@ -125,7 +125,7 @@ export class BrowserApi {
                 ? ["account", "newspaper", "ranking", "sources"]
                 : path === "subscriptions"
                   ? ["account"]
-                  : path === "preferences"
+                  : path === "preferences" || path === "topic-settings"
                     ? ["account", "newspaper", "ranking"]
                     : path.startsWith("destinations")
                       ? ["account"]

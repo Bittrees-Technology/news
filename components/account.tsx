@@ -1,6 +1,6 @@
 "use client";
 import {RoleSwitcher} from "./role-switcher";
-import { ReaderExclusions } from "./reader-exclusions";
+import { TopicSettings } from "./topic-settings";
 import { Subscriptions } from "./subscriptions";
 import { canAccountSection } from "@/lib/permissions";
 import { StaffPanel } from "./staff-panel";
@@ -362,8 +362,8 @@ export function Account({
         <Analytics role={data.account?.role || "member"} />
       )}
       {section === "ai" && <AiConnection />}
-      {section === "topics" && <ReaderExclusions />}
-      {(section === "topics" || section === "sources") && (
+      {section === "topics" && <TopicSettings initial={prefs} onSaved={setPrefs} />}
+      {section === "sources" && (
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -375,64 +375,6 @@ export function Account({
             });
           }}
         >
-          {section === "topics" && (
-            <section className="panel">
-              <h2>Topics & interests</h2>
-              <p>Leave every topic unselected to include all topics.</p>
-              <div className="checks">
-                {topics.map((t) => (
-                  <label key={t}>
-                    <input
-                      type="checkbox"
-                      checked={prefs.topics.includes(t)}
-                      onChange={() => toggle("topics", t)}
-                    />
-                    {t}
-                  </label>
-                ))}
-              </div>
-              <label className="field">
-                What would you like more of?
-                <textarea
-                  value={prefs.interests}
-                  onChange={(e) =>
-                    setPrefs({ ...prefs, interests: e.target.value })
-                  }
-                  maxLength={1000}
-                  placeholder="e.g. European energy, open-source models, public infrastructure"
-                />
-              </label>
-              <div className="form-grid">
-                <label className="field">
-                  Exclude words or phrases, one per line
-                  <textarea
-                    value={prefs.blocked.join("\n")}
-                    onChange={(e) =>
-                      setPrefs({
-                        ...prefs,
-                        blocked: e.target.value.split("\n").filter(Boolean),
-                      })
-                    }
-                  />
-                </label>
-                <label className="field">
-                  Stories per delivery
-                  <input
-                    type="number"
-                    min={5}
-                    max={50}
-                    value={prefs.length}
-                    onChange={(e) =>
-                      setPrefs({ ...prefs, length: Number(e.target.value) })
-                    }
-                  />
-                  <span className="muted">
-                    Between 5 and 50, subject to available stories.
-                  </span>
-                </label>
-              </div>
-            </section>
-          )}
           {section === "sources" && (
             <section className="panel">
               <h2>Sources & public data connections</h2>

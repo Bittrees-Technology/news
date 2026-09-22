@@ -1165,3 +1165,10 @@ summary:focus-visible, [tabindex="0"]:focus-visible { outline: 3px solid #77ade0
 }
 a.primary { max-width: 100%; overflow-wrap: anywhere; }
 .account-tabs a { overflow-wrap: anywhere; min-width: 0; }
+
+.topic-choice-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:10px 16px; }
+.topic-choice { display:flex; align-items:center; justify-content:space-between; gap:12px; min-width:0; padding:8px 0; border-bottom:1px solid var(--rule); }
+.topic-choice .colored-tag { font-size:13px; overflow-wrap:anywhere; }
+.topic-choice select { width:120px; flex-shrink:0; }
+.topic-settings > fieldset { margin-bottom:0; }
+@media screen and (max-width:600px) { .topic-choice-grid { grid-template-columns:minmax(0,1fr); } }

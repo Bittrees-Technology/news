@@ -625,6 +625,14 @@ export async function api(r: Request) {
       if (!result.rowCount) throw new HttpError(404, "Feed not found");
       return json({ ok: true });
     }
+    if(path === "topic-settings" && method === "POST") {
+      const b=z.object({preferences:preferencesSchema.pick({topics:true,interests:true,blocked:true,length:true}),blocks:readerFiltersSchema.pick({excludedTopics:true,excludedCountries:true,excludedRegions:true})}).parse(await body(r));
+      // Blocking wins for legacy or conflicting input; unrelated settings stay untouched.
+      b.preferences.topics=b.preferences.topics.filter(t=>!b.blocks.excludedTopics.includes(t));
+      await validatePreferences(preferencesSchema.parse(b.preferences),a!.id);
+      await pool().query("UPDATE accounts SET preferences=coalesce(preferences,'{}'::jsonb)||$2::jsonb,reader_filters=coalesce(reader_filters,'{}'::jsonb)||$3::jsonb WHERE id=$1",[a!.id,JSON.stringify(b.preferences),JSON.stringify(b.blocks)]);
+      return json({ok:true});
+    }
     if (path === "preferences" && method === "POST") {
       const p = preferencesSchema.parse(await body(r));
       await validatePreferences(p, a!.id);
