@@ -1,7 +1,7 @@
 import {annualObservation} from "./data-dates";
 import {publicRanked} from "./ranking";
 import {articleTags,normalizeTopic} from "./tags";
-import Parser from "rss-parser";
+import {feedParser,feedAuthors} from "./feed-attribution";
 import { createHash } from "node:crypto";
 import {collectionMinutes,retryMinutes} from "./collection-policy";
 import {withTranslations} from "./translation";
@@ -9,7 +9,7 @@ import { safeFetchResponse,type FetchValidators,SourceFetchError } from "./safe-
 import { sources, type Source } from "./catalog";
 import { pool } from "./db";
 import type { Item } from "./model";
-const parser = new Parser();
+const parser = feedParser;
 export const clean = (t: string = "", max = 600) =>
   t
     .replace(/<[^>]*>/g, " ")
@@ -126,21 +126,14 @@ export async function fetchSourceSnapshot(s: Source, owner?: string, previousHas
     const feed = await parser.parseString(body);
     for (const e of (feed.items || []).slice(0, 15)) {
       if (!e.link || !e.title) continue;
-      list.push(
-        item(
-          s,
-          e.title,
-          e.link,
-          e["content:encodedSnippet"] || e.contentSnippet || e.summary || e.content || "",
-          e.isoDate || e.pubDate || now,
-          owner,
-        ),
+      const row=item(
+        s,e.title,e.link,
+        e["content:encodedSnippet"] || e.contentSnippet || e.summary || e.content || "",
+        e.isoDate || e.pubDate || now,owner,
       );
+      if(row){row.authors=feedAuthors(e);row.publication=clean(feed.title||s.name,200);}
+      list.push(row);
     }
-  }
-  if(!['hfpapers','worldbank','github','defillama'].includes(s.kind)){
-    const feed=await parser.parseString(body);
-    for(const row of list){if(!row)continue;const e=feed.items.find(e=>e.link===row.url);const author=e?.creator || e?.['dc:creator'];row.authors=author?[clean(String(author),200)]:[];row.publication=clean(feed.title||s.name,200);}
   }
   return {...response,hash,items:list
     .filter((i): i is Item => !!i)
