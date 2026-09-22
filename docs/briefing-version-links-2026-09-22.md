@@ -14,3 +14,9 @@ Deployment: `5c749e8`, production alias verified. 79 unit tests and production b
 - Corrected CID: `bafybeiarxcmujdqzufum3pb72m4ehlvz4wh7jtczk5h2nacxsi2hrasv7i`
 - Previous: https://news.bittrees.org/briefings/kl6yhtzucsnkcr4ct4ce
 - Previous CID: `bafybeibxbrmboduziatw7cjvwfxycmpoybgo7xkl6yhtzucsnkcr4ct4ce`
+
+## Compact links and English display titles
+
+Follow-up `6e61328` removes the visible Briefing ID row and uses 12-character suffix aliases for browser, canonical and share paths. The existing 20-character links still resolve. A unique expression index protects the shorter mapping against collisions without changing any CID. Archive pages now retrieve completed English title translations using the exact archived source title, rather than silently dropping the feed's translated display title; metadata uses the same English title. The original title remains in the immutable document. No page-load inference or publisher request is introduced; pending or unavailable translations retain the original title until the existing translation pipeline completes and the reader reloads.
+
+79 unit tests and production build passed. Rollback-only version checks additionally verify legacy and compact resolution, cached translated titles and short-alias collision rejection. Production checks confirmed both lengths resolve and a Portuguese example returns its cached English headline.
