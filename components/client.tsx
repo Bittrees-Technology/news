@@ -50,7 +50,7 @@ export function Header() {
         TBN<span> / the bittrees news</span>
       </Link>
       <nav>
-        <Link href="/briefings">Briefings</Link>
+        <a href="/briefings" aria-label="Refresh to the most recent unread briefing">Refresh</a>
         {signed && (
           <>
             <Link href="/saved">Saved</Link>
