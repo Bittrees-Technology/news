@@ -68,11 +68,15 @@ ALTER TABLE items ADD COLUMN IF NOT EXISTS retrieved_at timestamptz;
 ALTER TABLE items ADD COLUMN IF NOT EXISTS date_basis text NOT NULL DEFAULT 'publication';
 ALTER TABLE items ADD COLUMN IF NOT EXISTS tags text[] NOT NULL DEFAULT '{}';
 ALTER TABLE items ADD COLUMN IF NOT EXISTS authors text[] NOT NULL DEFAULT '{}';
+ALTER TABLE items ADD COLUMN IF NOT EXISTS attribution jsonb;
 ALTER TABLE items ADD COLUMN IF NOT EXISTS publication text;
 ALTER TABLE items ADD COLUMN IF NOT EXISTS source_context text;
 CREATE TABLE IF NOT EXISTS reader_events(account_id uuid NOT NULL REFERENCES accounts ON DELETE CASCADE,item_id text NOT NULL REFERENCES items ON DELETE CASCADE,event_type text NOT NULL CHECK(event_type IN ('impression','source_click')),bucket date NOT NULL DEFAULT (now() AT TIME ZONE 'UTC')::date,PRIMARY KEY(account_id,item_id,event_type,bucket));
 CREATE INDEX IF NOT EXISTS reader_events_bucket ON reader_events(bucket);
 CREATE TABLE IF NOT EXISTS story_documents(item_id text PRIMARY KEY REFERENCES items ON DELETE CASCADE,document jsonb,cid text,generated_at timestamptz,pinned_at timestamptz,claimed_at timestamptz,error text);
+CREATE TABLE IF NOT EXISTS briefing_versions(short_id text PRIMARY KEY,cid text NOT NULL UNIQUE,item_id text NOT NULL REFERENCES items(id) ON DELETE CASCADE,document jsonb NOT NULL,created_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS briefing_versions_item ON briefing_versions(item_id);
+
 ALTER TABLE story_documents ADD COLUMN IF NOT EXISTS enqueued_at timestamptz;
 ALTER TABLE story_documents ALTER COLUMN enqueued_at SET DEFAULT now();
 ALTER TABLE story_documents ADD COLUMN IF NOT EXISTS lease uuid;

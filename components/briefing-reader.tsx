@@ -1,10 +1,11 @@
 'use client';
+import {briefingPath} from '@/lib/briefing-links';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {call} from './client';
 import {ArticleFeedback} from './article-feedback';
 import {StoryContent} from './story-content';
 import {loadReading,writeReading,watchReading,type ReadingState} from '@/lib/reading-sync';
-type Batch={entries:any[];next:string|null;snapshot:string};
+type Batch={entries:any[];next:string|null;snapshot:string;selectedId?:string};
 export function BriefingReader({initial}:{initial:Batch}){
  const [items,setItems]=useState(initial.entries),[next,setNext]=useState(initial.next);
  const [reading,setReading]=useState<ReadingState>({}),[signed,setSigned]=useState(false),[ready,setReady]=useState(false),[busy,setBusy]=useState<string|null>(null),[error,setError]=useState(''),[skipped,setSkipped]=useState<string[]>([]),[loading,setLoading]=useState(false),[loadError,setLoadError]=useState('');
@@ -21,8 +22,11 @@ export function BriefingReader({initial}:{initial:Batch}){
   catch{setLoadError('Could not load older briefings. Try again.');}
   finally{fetching.current=false;setLoading(false);}
  },[next,initial.snapshot]);
- const visible=items.filter(i=>!reading[i.id]?.is_read&&!skipped.includes(i.id));
+ const visible=items.filter(i=>(!reading[i.id]?.is_read||i.id===initial.selectedId)&&!skipped.includes(i.id));
  const current=visible[0];
+ useEffect(()=>{
+  if(ready&&current)window.history.replaceState(window.history.state,'',briefingPath(current));
+ },[ready,current?.id,current?.cid]);
  // Fetch older batches only as the reader approaches the end; never poll for new posts.
  useEffect(()=>{
   if(ready&&!loadError&&next&&visible.length<3)void loadMore();
