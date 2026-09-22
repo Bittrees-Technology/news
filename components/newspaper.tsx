@@ -1,7 +1,7 @@
 "use client";
 import {loadReading,writeReading,watchReading} from "@/lib/reading-sync";
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
-import {matchesArticleSearch,type SearchField} from "@/lib/article-search";
+import {matchesArticleSearch} from "@/lib/article-search";
 import {ArticleEngagement} from "./article-engagement";
 import {ArticleFeedback} from "./article-feedback";
 import {articleTags,addedTopics,tagStyle} from "@/lib/tags";
@@ -46,7 +46,6 @@ export function Newspaper({
     [tab, setTab] = useState<FeedCategory>("all"),
     [countrySearch,setCountrySearch]=useState(""),
     [search,setSearch]=useState(""),
-    [searchField,setSearchField]=useState<SearchField>("all"),
     [rankOrder,setRankOrder]=useState<string[]|null>(null),
     [filters, setFilters] = useState<ReaderFilters>(defaultReaderFilters),
     [readSnapshot,setReadSnapshot] = useState<State>({}),
@@ -140,15 +139,15 @@ export function Newspaper({
           (mode === "saved" || tab === "all" || (tab === "podcasts" ? i.kind === "podcast" : tab === "news" ? i.kind === "article" : !["article","podcast"].includes(i.kind))) &&
           (!rankOrder||rankOrder.includes(i.id)) &&
           matchesReaderFilters(articleTags(i),geography.get(i.id)!,filters) &&
-          matchesArticleSearch(i,search,searchField) &&
+          matchesArticleSearch(i,search) &&
           (!hideRead || !readSnapshot[i.id]?.is_read),
       ).sort((a,b)=>{
         if(paged)return 0;
         return (orderPositions.get(a.id)??0)-(orderPositions.get(b.id)??0);
       }),
-    [items, tab, filters, hideRead, readSnapshot, mode, geography,rankOrder,orderPositions,paged,edition,live,now,search,searchField],
+    [items, tab, filters, hideRead, readSnapshot, mode, geography,rankOrder,orderPositions,paged,edition,live,now,search],
   );
-  useEffect(()=>{setRenderCount(30);},[tab,filters,search,searchField,personal,balancedView]);
+  useEffect(()=>{setRenderCount(30);},[tab,filters,search,personal,balancedView]);
   useEffect(()=>{
     if(!moreRef.current||loadingMore||pageError)return;
     if(renderCount>=visible.length&&(!paged||!nextPage))return;
@@ -307,12 +306,7 @@ export function Newspaper({
       </div>
       <div className="article-search" role="search" aria-label="Search this newspaper" data-insights-ignore="true">
         <label className="article-search-input">Search articles
-          <input type="search" placeholder="Search titles or summaries…" value={search} maxLength={200} onChange={e=>{setSearch(e.target.value);setCursor(-1);}} />
-        </label>
-        <label>Search in
-          <select value={searchField} onChange={e=>{setSearchField(e.target.value as SearchField);setCursor(-1);}}>
-            <option value="all">Title & briefing</option><option value="title">Title only</option><option value="summary">Briefing only</option>
-          </select>
+          <input type="search" placeholder="Search…" value={search} maxLength={200} onChange={e=>{setSearch(e.target.value);setCursor(-1);}} />
         </label>
         {search&&<button type="button" onClick={()=>{setSearch("");setCursor(-1);}}>Clear search</button>}
         {search.trim()&&<span className="muted article-search-status" role="status">{visible.length} {visible.length===1?'match':'matches'} in this view · Current filters still apply.</span>}
