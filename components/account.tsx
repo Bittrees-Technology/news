@@ -8,6 +8,7 @@ import { Analytics } from "./analytics";
 import { AiConnection } from "./ai-connection";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { NewspaperSettings } from "./newspaper-settings";
 import { call } from "./client";
 import { cachedData, prefetchAccountSection } from "@/lib/browser-api";
@@ -111,6 +112,7 @@ export function Account({
 }: {
   section?: AccountSection;
 }) {
+  const router = useRouter();
   const [data, setData] = useState<AccountData | null>(
       () => cachedData("account") || null,
     ),
@@ -224,6 +226,8 @@ export function Account({
         <input
           type="email"
           autoComplete="email"
+          autoCapitalize="none"
+          spellCheck={false}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
@@ -324,7 +328,16 @@ export function Account({
           </p>
         </div>
       </div>
-      <nav className="account-tabs" aria-label="Your newspaper settings">
+      <label className="account-section-picker">
+        Account section
+        <select value={section} onChange={e=>{
+          const tab=accountTabs.find(([key])=>key===e.target.value&&canAccountSection(key,data.account?.role));
+          if(tab){prefetchAccountSection(tab[0]);router.push(tab[2]);}
+        }}>
+          {accountTabs.filter(([key])=>canAccountSection(key,data.account?.role)).map(([key,label])=><option key={key} value={key}>{label}</option>)}
+        </select>
+      </label>
+      <nav className="account-tabs account-workspace-tabs" aria-label="Your newspaper settings">
         {accountTabs.filter(([key]) => canAccountSection(key, data.account?.role)).map(([key, label, href]) => (
           <Link
             key={key}

@@ -1038,3 +1038,129 @@ a.primary {
 .account-menu{position:relative}.account-menu summary{cursor:pointer;list-style:none}.account-menu summary::-webkit-details-marker{display:none}.account-menu-options{position:absolute;right:0;top:calc(100% + 8px);z-index:50;min-width:190px;padding:12px;display:flex;flex-direction:column;gap:12px;background:var(--paper);border:1px solid var(--rule);border-radius:8px}.account-menu-options button{text-align:left}
 
 .flag-dialog{width:min(560px,calc(100% - 32px));max-height:85vh;overflow:auto;background:var(--paper);color:var(--ink);border:1px solid var(--rule);border-radius:10px;padding:24px}.flag-dialog::backdrop{background:rgb(0 0 0 / .55)}.review-note{white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* Shared small-screen foundations: shrink content, not text or hit targets. */
+html { -webkit-text-size-adjust: 100%; }
+main, .panel, .form-grid > *, .source-option > div { min-width: 0; }
+:is(.panel, .prose, .standalone-story, .story, .notice, .connection, .destination, .paper-masthead, .paper-running-head) { overflow-wrap: anywhere; }
+input, textarea, select { min-width: 0; max-width: 100%; }
+input[type="checkbox"], input[type="radio"] { flex-shrink: 0; }
+pre { max-width: 100%; overflow-x: auto; }
+summary { cursor: pointer; }
+summary:focus-visible, [tabindex="0"]:focus-visible { outline: 3px solid #77ade0; outline-offset: 3px; }
+.footer > div, .actions { flex-wrap: wrap; }
+.account-section-picker { display: none; }
+.table-wrap, .history-table { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; }
+.table-wrap table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.table-wrap :is(th, td) { text-align: left; padding: 8px; border-bottom: 1px solid var(--rule); }
+.review-history { margin: 16px 0; }
+.review-history > ol { padding-left: 22px; }
+.review-history li { padding: 12px 0; border-bottom: 1px solid var(--rule); }
+
+@media screen and (max-width: 700px) {
+  .site { padding-inline: max(16px, env(safe-area-inset-left)) max(16px, env(safe-area-inset-right)); }
+  .topbar { padding: 14px 0; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+  .brand { font-size: 18px; min-height: 44px; }
+  .brand span { display: none; }
+  .topbar > nav { margin-left: auto; gap: 4px; font-size: 14px; }
+  .topbar > nav > a, .account-menu > summary { display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 8px; }
+  .account-menu-options { width: 220px; min-width: 0; max-width: calc(100vw - 32px); gap: 4px; }
+  .account-menu-options a { display: flex; align-items: center; min-height: 44px; padding: 8px; }
+  button, a.primary, .paper-page-nav a { min-height: 44px; }
+  button { max-width: 100%; }
+  input:not([type="checkbox"]):not([type="radio"]), textarea, select,
+  .article-search input, .article-search select, .reader-sort select,
+  .geography-filters select, .active-role select { font-size: 16px; min-height: 44px; }
+  input[type="range"] { padding-inline: 0; }
+  input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; }
+  .checks { gap: 4px 16px; }
+  .checks label, .check-line, .delete-acknowledgment { min-height: 44px; }
+  .checks label { padding-block: 6px; }
+  .check-line { align-items: flex-start; }
+  .check-line input { margin-top: 3px; }
+  .source-option { padding-block: 12px; gap: 12px; }
+  .source-picker { max-height: min(430px, 60dvh); overscroll-behavior-y: contain; }
+  .panel { padding: 18px; margin: 18px 0; }
+  .panel .panel, .account-danger-zone { padding: 14px; }
+  .panel p, label.field, .checks label, .source-option, .check-line { font-size: 15px; }
+  .form-grid { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .button-row { gap: 8px; align-items: stretch; }
+  .button-row > button, .button-row > a.primary { flex: 1 1 150px; margin-right: 0; text-align: center; }
+  .destination .button-row select { flex: 1 1 100%; max-width: none; }
+  .sticky-save { flex-wrap: wrap; gap: 8px; bottom: max(8px, env(safe-area-inset-bottom)); }
+  .sticky-save > button, .sticky-save > a { flex: 1 1 180px; text-align: center; }
+  .sticky-save > a { padding: 8px; min-height: 44px; }
+  .account-section-picker { display: grid; gap: 6px; margin: 0 0 20px; font-size: 14px; }
+  .account-workspace-tabs { display: none; }
+  .account-tabs:not(.account-workspace-tabs) { gap: 4px 16px; justify-content: flex-start; }
+  .account-tabs a { min-height: 44px; }
+  .edition-head { margin: 24px 0 20px; }
+  .edition-head h1 { font-size: clamp(30px, 7vw, 40px); overflow-wrap: anywhere; }
+  .controls { margin: 20px 0 14px; gap: 10px; }
+  .tabs { width: 100%; }
+  .tabs button { flex: 1; min-width: 0; padding: 6px; font-size: 14px; }
+  .actions { width: 100%; gap: 8px; }
+  .actions button { flex: 1 1 120px; }
+  .article-search { align-items: stretch; }
+  .article-search-input { flex-basis: 100%; }
+  .article-search label:not(.article-search-input) { flex: 1 1 160px; }
+  .article-search > button { align-self: end; }
+  .reader-filters summary, .reader-blocks summary, .panel summary { min-height: 44px; padding-block: 10px; font-size: 14px; }
+  .reader-filters details { padding: 0 10px; }
+  .exclusion-tags { gap: 6px; }
+  .exclusion-tags button { min-height: 44px; padding: 6px 10px; font-size: 12px; }
+  .filter-options { max-height: min(300px, 50dvh); overscroll-behavior-y: contain; padding: 4px; }
+  .story, .story.lead { padding: 14px; }
+  .story h2, .story.lead h2 { font-size: 20px; line-height: 1.35; }
+  .story-bottom, .story-bottom > div { width: 100%; }
+  .story-bottom > div { gap: 6px; }
+  .story-bottom button, .story-bottom a { min-height: 44px; font-size: 14px; padding: 8px; }
+  .story-bottom a { display: inline-flex; align-items: center; color: var(--accent); }
+  .article-feedback { gap: 6px; }
+  .article-feedback small { flex-basis: 100%; font-size: 13px; }
+  .briefing-toolbar { display: block; margin: 20px 0; }
+  .briefing-toolbar h1 { font-size: 24px; line-height: 1.25; margin: 0 0 16px; }
+  .briefing-controls { gap: 8px; width: 100%; }
+  .briefing-controls > .article-feedback { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+  .briefing-controls .article-feedback small { grid-column: 1 / -1; }
+  .briefing-controls > button { flex: 1 1 100px; font-size: 15px; }
+  .briefing-controls > .briefing-advance { flex-basis: 100%; background: var(--soft); border-color: var(--accent); font-weight: 600; }
+  .briefing-navigation { padding-top: 8px; margin: 24px 0 8px; }
+  .briefing-reader .standalone-story, .standalone-story { margin: 24px auto; line-height: 1.7; }
+  .standalone-story h1 { font-size: clamp(26px, 6.5vw, 34px); line-height: 1.25; letter-spacing: -.4px; margin: 16px 0 20px; }
+  .standalone-story h2 { font-size: 21px; line-height: 1.35; margin: 28px 0 12px; }
+  .standalone-story ul { padding-left: 22px; }
+  .standalone-story li { padding-left: 2px; margin: 10px 0; }
+  .briefing-attribution { font-size: 14px; line-height: 1.6; }
+  .briefing-attribution p { margin: 7px 0; }
+  .briefing-entry { padding-bottom: 16px; margin-bottom: 24px; }
+  .flag-dialog { padding: 18px; max-height: 85dvh; }
+  .flag-dialog h2 { font-size: 22px; line-height: 1.3; }
+  .flag-dialog textarea { margin-top: 8px; }
+  .flag-dialog small { display: block; margin-top: 6px; }
+  .prose { margin: 28px auto; }
+  .prose h1 { font-size: 32px; line-height: 1.2; }
+  .prose h2 { line-height: 1.35; }
+  .archive-list a { flex-wrap: wrap; gap: 4px 16px; }
+  .paper-page-nav { gap: 8px; }
+  .paper-page-nav a { display: inline-flex; align-items: center; }
+  .paper-masthead h1 { font-size: clamp(28px, 7vw, 44px); }
+  .footer { gap: 10px; padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+  .footer > div { gap: 4px 16px; }
+  .footer a { display: inline-flex; align-items: center; min-height: 44px; font-size: 13px; }
+}
+
+@media screen and (max-width: 380px) {
+  .topbar { display: block; }
+  .topbar > nav { justify-content: space-between; margin-top: 6px; }
+  .panel { padding: 14px; }
+  .story-bottom .article-feedback { flex-basis: 100%; }
+}
+
+/* Tablet touch controls keep the desktop layout without small hit areas. */
+@media screen and (pointer: coarse) {
+  button, .account-link, .account-tabs a, .paper-page-nav a { min-height: 44px; }
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea { font-size: 16px; }
+}
+a.primary { max-width: 100%; overflow-wrap: anywhere; }
+.account-tabs a { overflow-wrap: anywhere; min-width: 0; }

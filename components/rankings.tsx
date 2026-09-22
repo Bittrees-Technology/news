@@ -322,7 +322,7 @@ export function Rankings({ showHistory = true }: { showHistory?: boolean }) {
                   </circle>
                 ))}
               </svg>
-              <div className="history-table">
+              <div className="history-table" tabIndex={0} role="region" aria-label="Ranking history table">
                 <table>
                   <thead>
                     <tr>

@@ -61,18 +61,18 @@ export function StaffPanel({ role, section }: { role: string; section: "access" 
               save("staff/roles", Object.fromEntries(f));
             }}
           >
-            <label>
+            <label className="field">
               Identity type
               <select name="kind">
                 <option value="email">Email</option>
                 <option value="wallet">Wallet address</option>
               </select>
             </label>
-            <label>
+            <label className="field">
               Verified identity
               <input name="value" required maxLength={254} />
             </label>
-            <label>
+            <label className="field">
               Role
               <select name="role">
                 {["member", "moderator", "editor", "admin", "super_admin"].map(
@@ -111,13 +111,13 @@ export function StaffPanel({ role, section }: { role: string; section: "access" 
               save("staff/reviews",{...form,item_id:target.briefing_cid||target.item_id,expected_cid:target.briefing_cid});
             }}
           >
-            <label>
+            <label className="field">
               Article or briefing reference
               <input value={reference} onChange={e=>{setReference(e.target.value);setTarget(null);}} required maxLength={300}/>
               <button type="button" disabled={busy||!reference.trim()} onClick={()=>void resolve(reference)}>Find article / briefing</button>
             </label>
             {target&&<div className="notice"><strong>{target.title}</strong><p className="editorial-id">Article ID: {target.item_id}</p><p>Briefing ID: {target.briefing_cid?(target.review_status==='flagged'?<a href={briefingPath({id:target.item_id,cid:target.briefing_cid})}>{briefingShortId(target.briefing_cid)}</a>:briefingShortId(target.briefing_cid)):'Not archived yet'}</p><a href={target.url} target="_blank" rel="noopener noreferrer">Original source ↗</a></div>}
-            <label>
+            <label className="field">
               Status
               <select name="status">
                 <option value="flagged">Flag for review</option>
@@ -127,7 +127,7 @@ export function StaffPanel({ role, section }: { role: string; section: "access" 
                 )}
               </select>
             </label>
-            <label>
+            <label className="field">
               Review note (optional)
               <textarea name="note" maxLength={2000} />
             </label>
