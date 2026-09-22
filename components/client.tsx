@@ -1,9 +1,18 @@
 "use client";
 import Link from "next/link";
+import {usePathname} from "next/navigation";
 import { useEffect, useState } from "react";
 import { call, cachedData, connectAuthEvents } from "@/lib/browser-api";
 export { call } from "@/lib/browser-api";
 export function Header() {
+  const pathname=usePathname();
+  const inBriefings=pathname.startsWith('/briefings')||pathname.startsWith('/story/');
+  const [loggingOut,setLoggingOut]=useState(false),[logoutError,setLogoutError]=useState('');
+  async function logout(){
+    if(loggingOut)return;setLoggingOut(true);setLogoutError('');
+    try{await call('auth/logout',{});window.location.assign('/');}
+    catch{setLogoutError('Could not log out. Please try again.');setLoggingOut(false);}
+  }
   const [signed, setSigned] = useState(!!cachedData("session")?.account);
   useEffect(() => {
     connectAuthEvents();
@@ -50,7 +59,7 @@ export function Header() {
         TBN<span> / the bittrees news</span>
       </Link>
       <nav>
-        <a href="/briefings" aria-label="Refresh to the most recent unread briefing">Refresh</a>
+        <a href="/briefings" aria-label={inBriefings?"Refresh to the most recent unread briefing":"Briefings"}>{inBriefings?"Refresh":"Briefings"}</a>
         {signed && (
           <>
             <Link href="/saved">Saved</Link>
@@ -59,6 +68,8 @@ export function Header() {
         <Link className="account-link" href="/account">
           {signed ? "Your account" : "Sign in / Sign up"}
         </Link>
+        {signed&&<button disabled={loggingOut} onClick={()=>void logout()}>{loggingOut?'Logging out…':'Log out'}</button>}
+        {logoutError&&<span role="alert">{logoutError}</span>}
       </nav>
     </header>
   );

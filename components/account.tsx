@@ -129,7 +129,11 @@ export function Account({
     [feedUrl, setFeedUrl] = useState(""),
     [feedTopic, setFeedTopic] = useState("Tech"),
     [sourceStatuses, setSourceStatuses] = useState<Record<string, string>>({}),
-    [deleteConfirm, setDeleteConfirm] = useState(false);
+    [deleteConfirm, setDeleteConfirm] = useState(false),
+    [deletePhrase,setDeletePhrase]=useState(''),
+    [deleteAcknowledged,setDeleteAcknowledged]=useState(false);
+  function cancelDeletion(){setDeleteConfirm(false);setDeletePhrase('');setDeleteAcknowledged(false);}
+  useEffect(()=>{cancelDeletion();},[section,data?.account?.id]);
   async function load() {
     const d = await call("account");
     setData(d);
@@ -722,45 +726,24 @@ export function Account({
             </button>
           </div>
           {emailForm("link")}
-          <div className="button-row">
-            <button
-              onClick={() =>
-                run(async () => {
-                  await call("auth/logout", {});
-                  window.location.assign("/");
-                })
-              }
-            >
-              Sign out
-            </button>
-            <button
-              className="danger"
-              onClick={() => setDeleteConfirm(!deleteConfirm)}
-            >
-              Delete account
-            </button>
-          </div>
-          {deleteConfirm && (
-            <div className="notice">
-              <p>
-                This removes your preferences, identities, saved items, personal
-                feeds and delivery subscriptions. Published newspaper editions
-                remain public.
-              </p>
-              <button
-                className="danger"
-                disabled={busy}
-                onClick={() =>
-                  run(async () => {
-                    await call("account", {}, "DELETE");
-                    window.location.assign("/");
-                  })
-                }
-              >
-                Permanently delete my account
-              </button>
-            </div>
-          )}
+          <section className="account-danger-zone" aria-labelledby="account-deletion-heading">
+            <h3 id="account-deletion-heading">Delete account</h3>
+            <p>To leave this session, use <strong>Log out</strong> in the top navigation. Deleting your account permanently removes your preferences, sign-in methods, saved items, personal feeds and delivery subscriptions.</p>
+            {!deleteConfirm?<button className="danger" disabled={busy} onClick={()=>{setDeletePhrase('');setDeleteAcknowledged(false);setDeleteConfirm(true);}}>Review account deletion</button>:<div className="notice">
+              <p>This cannot be undone. Already published or IPFS-archived material may remain available.</p>
+              <label htmlFor="delete-account-phrase">Type <strong>DELETE MY ACCOUNT</strong> to confirm</label>
+              <input id="delete-account-phrase" value={deletePhrase} autoComplete="off" spellCheck={false} disabled={busy} onChange={e=>setDeletePhrase(e.target.value)}/>
+              <label className="delete-acknowledgment"><input type="checkbox" checked={deleteAcknowledged} disabled={busy} onChange={e=>setDeleteAcknowledged(e.target.checked)}/> I understand this permanently deletes my account and saved preferences.</label>
+              <div className="button-row">
+                <button disabled={busy} onClick={cancelDeletion}>Cancel — keep my account</button>
+                <button className="danger" disabled={busy||deletePhrase!=='DELETE MY ACCOUNT'||!deleteAcknowledged} onClick={()=>{
+                  if(deletePhrase!=='DELETE MY ACCOUNT'||!deleteAcknowledged||busy)return;
+                  if(!window.confirm('Permanently delete your TBN account? This cannot be undone.'))return;
+                  void run(async()=>{await call('account',{confirmation:deletePhrase,acknowledge:deleteAcknowledged},'DELETE');window.location.assign('/');});
+                }}>Permanently delete my account</button>
+              </div>
+            </div>}
+          </section>
         </section>
       )}
     </>

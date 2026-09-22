@@ -1028,3 +1028,5 @@ a.primary {
 .briefing-controls{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}.briefing-toolbar{scroll-margin-top:16px}.briefing-entry{animation:briefing-enter .18s ease-out}@keyframes briefing-enter{from{opacity:.5;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}@media(prefers-reduced-motion:reduce){.briefing-entry{animation:none}}
 
 .briefing-attribution{font-size:14px;color:var(--muted)}.briefing-attribution p{margin:4px 0}
+
+.account-danger-zone{border:1px solid #c96565;border-radius:8px;padding:18px;margin-top:32px}.delete-acknowledgment{display:flex;gap:10px;align-items:flex-start;margin:16px 0}.delete-acknowledgment input{width:auto;margin:4px 0 0;flex-shrink:0}

@@ -1,3 +1,4 @@
+import {accountDeletionSchema} from './account-deletion';
 import {qualityQueue,saveQualityReview} from "./quality-review";
 import {recordStage} from "./stage-metrics";
 import {recordEngagement} from "./engagement";
@@ -740,10 +741,11 @@ export async function api(r: Request) {
       return json(await changeSourceSharing(a!.id, b.id, false, true));
     }
     if (path === "account" && method === "DELETE") {
-      await pool().query("DELETE FROM ranking_history WHERE owner_key=$1", [
-        a!.id,
-      ]);
-      await pool().query("DELETE FROM accounts WHERE id=$1", [a!.id]);
+      accountDeletionSchema.parse(await body(r));
+      await tx(async d=>{
+        await d.query("DELETE FROM ranking_history WHERE owner_key=$1",[a!.id]);
+        await d.query("DELETE FROM accounts WHERE id=$1",[a!.id]);
+      });
       return json({ ok: true }, 200, {
         "Set-Cookie": setCookie(sessionName, "", 0),
       });
