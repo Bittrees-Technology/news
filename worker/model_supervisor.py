@@ -48,7 +48,7 @@ class Supervisor:
         m=r['models'][name]
         if mode!='benchmark' and m['status']!='approved':raise ValueError('Model is benchmark-only')
         if not self.mutex.acquire(blocking=False):raise ModelBusy()
-        start=time.monotonic()
+        start=time.monotonic();loaded=None
         try:
             with model_slot(self.state,task):
                 self.prepare(name,m,r);loaded=time.monotonic()
@@ -58,11 +58,15 @@ class Supervisor:
                 finished=time.monotonic()
                 if m.get('managed'):self.last_used=finished
                 result['news_metrics']={'model_id':name,'digest':m['sha256'],'load_seconds':round(loaded-start,3),'inference_seconds':round(finished-loaded,3),'mode':mode}
-                self.event({'ok':True,'task':task,**result['news_metrics'],'tokens':result.get('usage',{}).get('completion_tokens',0)})
+                reason=result.get('choices',[{}])[0].get('finish_reason') if result.get('choices') else None
+                reason=reason if reason in ('stop','length','content_filter','tool_calls','function_call') else 'unknown'
+                # ok describes transport, never reviewed content quality.
+                self.event({'ok':True,'task':task,**result['news_metrics'],'tokens':result.get('usage',{}).get('completion_tokens',0),'finish_reason':reason,'output_complete':True if reason=='stop' else False if reason in ('length','content_filter') else None,'elapsed_seconds':round(finished-start,3)})
                 return result
         except Exception as e:
             if m.get('managed'):self.last_used=time.monotonic()
-            self.event({'ok':None if isinstance(e,ModelBusy) else False,'task':task,'model_id':name,'mode':mode,'outcome':'deferred' if isinstance(e,ModelBusy) else 'failed','error':type(e).__name__});raise
+            finished=time.monotonic()
+            self.event({'ok':None if isinstance(e,ModelBusy) else False,'task':task,'model_id':name,'mode':mode,'outcome':'deferred' if isinstance(e,ModelBusy) else 'failed','error':type(e).__name__,'elapsed_seconds':round(finished-start,3),'load_seconds':round(loaded-start,3) if loaded is not None else None,'inference_seconds':round(finished-loaded,3) if loaded is not None else None,'output_complete':None});raise
         finally:self.mutex.release()
     def event(self,value):
         self.state.mkdir(parents=True,exist_ok=True)
