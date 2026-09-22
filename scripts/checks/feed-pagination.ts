@@ -28,5 +28,17 @@ try{
  // Arrivals after the reading snapshot never slide into later pages.
  await d.query("UPDATE items SET fetched_at=$1::timestamptz+interval '1 second' WHERE id=$2",[snapshot,first.items[0].id]);
  assert.equal((await publicFeedBatch(snapshot)).items[0].id,(2).toString(16).padStart(64,'0'));
- console.log('PASS: bounded feed/briefing pages, unique cursors, older history, completed creation order, frozen arrivals; rolled back fixtures');
+ // Sparse categories are selected before LIMIT, not filtered out of a mixed page.
+ await d.query("UPDATE items SET kind='podcast' WHERE id BETWEEN $1 AND $2",[(31).toString(16).padStart(64,'0'),(62).toString(16).padStart(64,'0')]);
+ await d.query("UPDATE items SET kind='data' WHERE id>$1",[(62).toString(16).padStart(64,'0')]);
+ const podcasts=await publicFeedBatch(snapshot,null,'podcasts');
+ const morePodcasts=await publicFeedBatch(snapshot,podcasts.next,'podcasts');
+ assert.equal(podcasts.items.length,30);assert.equal(morePodcasts.items.length,2);assert.equal(morePodcasts.next,null);
+ assert.ok([...podcasts.items,...morePodcasts.items].every(i=>i.kind==='podcast'));
+ assert.equal(new Set([...podcasts.items,...morePodcasts.items].map(i=>i.id)).size,32);
+ const data=await publicFeedBatch(snapshot,null,'data');assert.equal(data.items.length,3);assert.equal(data.next,null);assert.ok(data.items.every(i=>i.kind==='data'));
+ assert.ok((await publicFeedBatch(snapshot,null,'news')).items.every(i=>i.kind==='article'));
+ await d.query("UPDATE items SET owner_id='00000000-0000-0000-0000-000000000001' WHERE id=$1",[data.items[0].id]);
+ assert.equal((await publicFeedBatch(snapshot,null,'data')).items.length,2);
+ console.log('PASS: bounded feed/briefing pages, unique cursors, older history, completed creation order, frozen arrivals, sparse categories and private exclusion; rolled back fixtures');
 }finally{await d.query('ROLLBACK');d.release();await p.end();delete (globalThis as any).newsPool;}

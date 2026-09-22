@@ -7,7 +7,9 @@ import {ArticleFeedback} from "./article-feedback";
 import {articleTags,addedTopics,tagStyle} from "@/lib/tags";
 import {defaultReaderFilters,readerFiltersSchema,matchesReaderFilters,guestReaderFilters,selectReaderFilter,type ReaderFilters} from "@/lib/reader-filters";
 import {recentUniqueStories} from "@/lib/recent-stories";
-import {feedOrder,uniqueStories} from "@/lib/feed-order";
+import {usePublicFeed} from "@/lib/use-public-feed";
+import type {FeedCategory} from "@/lib/public-feed";
+import {feedOrder} from "@/lib/feed-order";
 import Link from "next/link";
 import { call } from "./client";
 import { sourceName, topics as catalogTopics } from "@/lib/catalog";
@@ -38,10 +40,10 @@ export function Newspaper({
 }) {
   // Hold the reading window steady until the reader explicitly reloads.
   const [now]=useState(()=>Date.now());
-  const [items, setItems] = useState<Item[]>(
+  const [storedItems, setItems] = useState<Item[]>(
       initialItems || edition?.data.items || [],
     ),
-    [tab, setTab] = useState("all"),
+    [tab, setTab] = useState<FeedCategory>("all"),
     [countrySearch,setCountrySearch]=useState(""),
     [search,setSearch]=useState(""),
     [searchField,setSearchField]=useState<SearchField>("all"),
@@ -57,24 +59,10 @@ export function Newspaper({
   const [renderCount,setRenderCount]=useState(30);
   const moreRef=useRef<HTMLDivElement>(null);
   const paged=live&&!personal&&!!edition?.feedPage;
-  const [nextPage,setNextPage]=useState(edition?.feedPage?.next||null);
-  const [loadingMore,setLoadingMore]=useState(false),[pageError,setPageError]=useState("");
-  const fetchingPage=useRef(false),pageGeneration=useRef(0);
-  useEffect(()=>{pageGeneration.current++;},[personal,edition]);
-  const loadMore=useCallback(async()=>{
-    if(!paged||!nextPage||fetchingPage.current)return;
-    const generation=pageGeneration.current;
-    fetchingPage.current=true;setLoadingMore(true);setPageError("");
-    try{
-      const response=await fetch(`/api/feed?before=${nextPage}&snapshot=${encodeURIComponent(edition!.feedPage!.snapshot)}`);
-      if(!response.ok)throw Error();
-      const batch=await response.json();
-      if(generation!==pageGeneration.current)return;
-      setItems(old=>uniqueStories([...old,...batch.items]));setNextPage(batch.next);
-      setRenderCount(n=>n+30);
-    }catch{if(generation===pageGeneration.current)setPageError("Could not load older stories. Try again.");}
-    finally{fetchingPage.current=false;setLoadingMore(false);}
-  },[paged,nextPage,edition]);
+  const feed=usePublicFeed(paged,tab,edition?.data.items||[],edition?.feedPage);
+  const items=paged?feed.items:storedItems;
+  const nextPage=feed.next,loadingMore=feed.loading,pageError=feed.error;
+  const loadMore=useCallback(async()=>{await feed.loadMore();setRenderCount(n=>n+30);},[feed.loadMore]);
   const hideRead=filters.hideRead;
   const saveQueue=useRef(Promise.resolve());
   function updateFilters(next:ReaderFilters){
@@ -96,7 +84,6 @@ export function Newspaper({
   useEffect(() => {
     if (mode === "public" && !personal) {
       setItems(edition?.data.items || []);
-      setNextPage(edition?.feedPage?.next||null);
       setCursor(-1);
     }
   }, [edition, mode, personal]);
@@ -365,7 +352,7 @@ export function Newspaper({
         </p>
       )}
       {live&&<p className="muted">Leading stories from the last 24 hours, then newest first. Refresh stories to update.</p>}
-      {!visible.length ? (
+      {paged&&loadingMore&&!visible.length?<p role="status">Loading {tab==='all'?'stories':tab}…</p>:!visible.length ? (
         <div className="empty">
           <h2>
             {mode === "saved"
@@ -457,7 +444,7 @@ export function Newspaper({
           ))}
         </section>
       )}
-      {(renderCount<visible.length||(paged&&nextPage))&&<div ref={moreRef}>
+      {(renderCount<visible.length||(paged&&(nextPage||pageError)))&&<div ref={moreRef}>
         {pageError&&<p role="alert">{pageError}</p>}
         <button disabled={loadingMore} onClick={()=>renderCount<visible.length?setRenderCount(n=>n+30):void loadMore()}>{loadingMore?'Loading older stories…':pageError?'Retry loading older stories':'Load more stories'}</button>
       </div>}
