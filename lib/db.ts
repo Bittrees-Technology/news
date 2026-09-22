@@ -76,6 +76,8 @@ CREATE INDEX IF NOT EXISTS reader_events_bucket ON reader_events(bucket);
 CREATE TABLE IF NOT EXISTS story_documents(item_id text PRIMARY KEY REFERENCES items ON DELETE CASCADE,document jsonb,cid text,generated_at timestamptz,pinned_at timestamptz,claimed_at timestamptz,error text);
 CREATE TABLE IF NOT EXISTS briefing_versions(short_id text PRIMARY KEY,cid text NOT NULL UNIQUE,item_id text NOT NULL REFERENCES items(id) ON DELETE CASCADE,document jsonb NOT NULL,created_at timestamptz NOT NULL DEFAULT now());
 CREATE INDEX IF NOT EXISTS briefing_versions_item ON briefing_versions(item_id);
+CREATE UNIQUE INDEX IF NOT EXISTS briefing_versions_compact ON briefing_versions((right(cid,12)));
+CREATE INDEX IF NOT EXISTS translations_completed_title ON translations((payload->>'title'),completed_at DESC) WHERE status='done';
 
 ALTER TABLE story_documents ADD COLUMN IF NOT EXISTS enqueued_at timestamptz;
 ALTER TABLE story_documents ALTER COLUMN enqueued_at SET DEFAULT now();
