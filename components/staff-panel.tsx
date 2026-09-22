@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { canManageAccess, canReview, canApprove, canAccountSection } from "@/lib/permissions";
 import {briefingPath,briefingShortId} from "@/lib/briefing-links";
+import {ReviewHistory} from "./review-history";
 import { call } from "./client";
 export function StaffPanel({ role, section }: { role: string; section: "access" | "editorial" }) {
   const [grants, setGrants] = useState<any[]>([]),
@@ -127,11 +128,12 @@ export function StaffPanel({ role, section }: { role: string; section: "access" 
               </select>
             </label>
             <label>
-              Review note
-              <textarea name="note" required minLength={3} maxLength={2000} />
+              Review note (optional)
+              <textarea name="note" maxLength={2000} />
             </label>
             <button disabled={busy||!target}>Save review</button>
           </form>
+          {target&&<ReviewHistory key={target.item_id+target.review_updated_at} reference={target.item_id}/>}
           <ul>
             {reviews.map((r) => (
               <li key={r.item_id}>
@@ -139,8 +141,9 @@ export function StaffPanel({ role, section }: { role: string; section: "access" 
                 <p className="editorial-id">Article ID: {r.item_id}</p>
                 <p>Reviewed briefing: {r.briefing_cid?<>{r.status==='flagged'?<a href={briefingPath({id:r.item_id,cid:r.briefing_cid})}>{briefingShortId(r.briefing_cid)}</a>:briefingShortId(r.briefing_cid)} · <a href={`https://ipfs.io/ipfs/${r.briefing_cid}`} target="_blank" rel="noopener noreferrer">IPFS ↗</a></>:'Version not recorded'}</p>
                 {r.current_cid&&r.current_cid!==r.briefing_cid&&<p>Current briefing: {briefingShortId(r.current_cid)} — not the recorded reviewed version.</p>}
-                <button disabled={busy} onClick={()=>{const ref=r.briefing_cid||r.item_id;setReference(ref);void resolve(ref);}}>Review this version</button>
-                <p className="review-note">{r.note}</p>
+                <button disabled={busy} onClick={()=>{const ref=r.briefing_cid||r.item_id;setReference(ref);void resolve(ref);}}>{r.status==='flagged'?'Review flagged briefing':'Review this version again'}</button>
+                {r.note&&<p className="review-note">{r.note}</p>}
+                <ReviewHistory key={r.updated_at} reference={r.item_id}/>
               </li>
             ))}
           </ul>

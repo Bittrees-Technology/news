@@ -480,16 +480,24 @@ export async function api(r: Request) {
         await tx(async db=>{
           const target=await resolveEditorialReference(db,b.reference);
           await db.query("INSERT INTO news_reviews(item_id,status,note,actor,briefing_cid) VALUES($1,'flagged',coalesce(nullif($4,''),'Flagged from the briefing page.'),$2,$3) ON CONFLICT(item_id) DO UPDATE SET status='flagged',briefing_cid=$3,actor=$2,note=CASE WHEN nullif($4,'') IS NULL THEN news_reviews.note ELSE news_reviews.note||E'\n\nFlag note: '||$4 END,updated_at=now()",[target.item_id,a!.id,target.briefing_cid,b.note||'']);
-          await db.query("INSERT INTO news_staff_audit(id,actor,action,detail) VALUES($1,$2,'flag_briefing',$3)",[randomUUID(),a!.id,JSON.stringify({...target,note:b.note||null})]);
+          await db.query("INSERT INTO news_staff_audit(id,actor,action,detail) VALUES($1,$2,'flag_briefing',$3)",[randomUUID(),a!.id,JSON.stringify({...target,note:b.note||null,actor_role:a!.role})]);
         });return json({ok:true,flagged:true});
       }
+    }
+    if(path==='staff/reviews/history'&&method==='GET'){
+      if(!canReview(a!.role))throw new HttpError(403,'Editorial staff access required.');
+      const target=await resolveEditorialReference(pool(),url.searchParams.get('reference')||'');
+      const before=z.uuid().nullable().parse(url.searchParams.get('before'));
+      const rows=(await pool().query(`SELECT id,actor,action,created_at,detail->>'status' status,detail->>'note' note,detail->>'briefing_cid' briefing_cid,detail->>'actor_role' actor_role FROM news_staff_audit WHERE action IN ('flag_briefing','review_article') AND detail->>'item_id'=$1 AND ($2::uuid IS NULL OR (created_at,id)<(SELECT created_at,id FROM news_staff_audit WHERE id=$2 AND detail->>'item_id'=$1)) ORDER BY created_at DESC,id DESC LIMIT 51`,[target.item_id,before])).rows;
+      const entries=rows.slice(0,50).map(row=>({...row,is_you:row.actor===a!.id,status:row.action==='flag_briefing'?'flagged':row.status}));
+      return json({entries,next:rows.length>50?entries.at(-1)?.id:null});
     }
     if (path === "staff/reviews") {
       if (!canReview(a!.role))
         throw new HttpError(403, "Editorial staff access required.");
       if (method === "GET") {
         const reference=url.searchParams.get('reference');
-        if(reference){const target=await resolveEditorialReference(pool(),reference);const review=(await pool().query('SELECT status FROM news_reviews WHERE item_id=$1 AND briefing_cid IS NOT DISTINCT FROM $2',[target.item_id,target.briefing_cid])).rows[0];return json({...target,review_status:review?.status||null});}
+        if(reference){const target=await resolveEditorialReference(pool(),reference);const review=(await pool().query('SELECT status,updated_at FROM news_reviews WHERE item_id=$1 AND briefing_cid IS NOT DISTINCT FROM $2',[target.item_id,target.briefing_cid])).rows[0];return json({...target,review_status:review?.status||null,review_updated_at:review?.updated_at||null});}
         return json((await pool().query("SELECT r.item_id,r.status,r.note,r.updated_at,r.briefing_cid,coalesce(v.document->>'title',i.title) title,i.url,s.cid current_cid FROM news_reviews r JOIN items i ON i.id=r.item_id LEFT JOIN story_documents s ON s.item_id=i.id LEFT JOIN briefing_versions v ON v.cid=r.briefing_cid WHERE i.owner_id IS NULL ORDER BY r.updated_at DESC LIMIT 100")).rows);
       }
       if (method === "POST") {
@@ -498,7 +506,7 @@ export async function api(r: Request) {
             item_id: z.string().min(1).max(300),
             expected_cid:z.string().regex(/^b[a-z2-7]{30,120}$/).nullable().optional(),
             status: z.enum(["flagged", "reviewed", "approved"]),
-            note: z.string().min(3).max(2000),
+            note: z.string().trim().max(2000).default(""),
           })
           .parse(await body(r));
         if (b.status === "approved" && !canApprove(a!.role))
@@ -515,7 +523,7 @@ export async function api(r: Request) {
           );
           await db.query(
             "INSERT INTO news_staff_audit(id,actor,action,detail) VALUES($1,$2,'review_article',$3)",
-            [randomUUID(), a!.id, JSON.stringify({...b,item_id:target.item_id,briefing_cid:target.briefing_cid})],
+            [randomUUID(), a!.id, JSON.stringify({...b,item_id:target.item_id,briefing_cid:target.briefing_cid,actor_role:a!.role})],
           );
         });
         return json({ ok: true });

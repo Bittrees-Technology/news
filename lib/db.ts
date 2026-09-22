@@ -44,6 +44,7 @@ ALTER TABLE accounts ADD COLUMN IF NOT EXISTS reader_filters jsonb NOT NULL DEFA
 CREATE TABLE IF NOT EXISTS identities(kind text NOT NULL CHECK(kind IN ('email','wallet')),value text NOT NULL,account_id uuid NOT NULL REFERENCES accounts ON DELETE CASCADE,verified_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(kind,value));
 CREATE TABLE IF NOT EXISTS news_role_grants(kind text NOT NULL CHECK(kind IN ('email','wallet')),value text NOT NULL,role text NOT NULL CHECK(role IN ('member','moderator','editor','admin','super_admin')),protected boolean NOT NULL DEFAULT false,updated_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(kind,value));
 CREATE TABLE IF NOT EXISTS news_staff_audit(id uuid PRIMARY KEY,actor uuid NOT NULL,action text NOT NULL,detail jsonb NOT NULL,created_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS news_staff_audit_item_history ON news_staff_audit((detail->>'item_id'),created_at DESC,id DESC) WHERE action IN ('flag_briefing','review_article');
 CREATE TABLE IF NOT EXISTS news_reviews(item_id text PRIMARY KEY,status text NOT NULL CHECK(status IN ('flagged','reviewed','approved')),note text NOT NULL,actor uuid NOT NULL,updated_at timestamptz NOT NULL DEFAULT now());
 ALTER TABLE news_reviews ADD COLUMN IF NOT EXISTS briefing_cid text;
 CREATE TABLE IF NOT EXISTS sessions(hash text PRIMARY KEY,account_id uuid NOT NULL REFERENCES accounts ON DELETE CASCADE,expires_at timestamptz NOT NULL);
