@@ -2,6 +2,7 @@
 """Public briefings and local IPFS pinning; no private source or database access."""
 import json,os,time,pathlib,urllib.request,logging,fcntl
 from stage_metrics import report
+from archive_availability import archive_ready, defer_archive_error
 from worker_cadence import briefing_delay
 from briefing_quality import KEY_POINT_GUIDANCE, validate_key_points, validate_briefing_content
 from briefing_failure import failure_category, failure_label
@@ -39,6 +40,9 @@ def pin(document):
 while True:
  job=None;completed=False;phase="claim"
  try:
+  if not archive_ready():
+   logging.info('Local archive unavailable; waiting before claiming a briefing')
+   time.sleep(60);continue
   job=api('claim',{})
   if not job:time.sleep(45);continue
   timings={'queue':job.get('queue_wait_ms')}
@@ -54,6 +58,6 @@ while True:
  except Exception as e:
   logging.warning('Briefing worker retry: category=%s phase=%s type=%s status=%s',failure_category(e,phase),phase,type(e).__name__,getattr(e,'code','local'))
   if job:
-   try:api('retry',{'id':job['item_id'],'lease':job['lease'],'busy':isinstance(e,ModelBusy),'error':failure_label(e,phase)})
+   try:api('retry',{'id':job['item_id'],'lease':job['lease'],'busy':isinstance(e,ModelBusy) or defer_archive_error(e,phase),'error':failure_label(e,phase)})
    except Exception:pass
  time.sleep(briefing_delay(completed,config.get('briefing_success_pause_seconds',5)))
