@@ -2,3 +2,19 @@ worker/
 docs/processing-benchmark-fixtures.json
 docs/processing-benchmark-results*.jsonl
 .env*
+
+# Processing plans and operational evidence stay local.
+private/
+.local/
+plans/
+docs/analytics-audit-2026-09-20.md
+docs/optimization-validation.md
+docs/processing-rollout-status.md
+docs/processing-flow.md
+docs/source-review-2026-09-21.md
+docs/source-triage.md
+docs/page-performance-2026-09-22.md
+docs/processing-*
+docs/optimization-*
+docs/analytics-audit-*
+docs/source-review-*
