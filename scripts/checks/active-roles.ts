@@ -1,13 +1,13 @@
 import {Pool} from 'pg';import assert from 'node:assert/strict';
 import {api} from '../../lib/api';import {hash,sessionName,currentAccount} from '../../lib/auth';
 const p=new Pool({connectionString:process.env.DATABASE_URL}),c=await p.connect();
-(globalThis as any).newsPool={query:c.query.bind(c)};
+(globalThis as any).newsPool={query:c.query.bind(c),connect:async()=>({query:(sql:string,args?:any[])=>c.query(sql==='BEGIN'?'SAVEPOINT flag_write':sql==='COMMIT'?'RELEASE SAVEPOINT flag_write':sql==='ROLLBACK'?'ROLLBACK TO SAVEPOINT flag_write':sql,args),release:()=>{}})};
 const origin=process.env.APP_URL||'https://news.bittrees.org';
 const account='00000000-0000-4000-8000-000000000003',member='00000000-0000-4000-8000-000000000004';
 function request(path:string,token:string,body?:unknown){return new Request(origin+'/api/'+path,{method:body?'POST':'GET',headers:{cookie:`${sessionName}=${token}`,origin,'content-type':'application/json'},body:body?JSON.stringify(body):undefined});}
 try{
  await c.query('BEGIN');
- for(const t of ['accounts','identities','news_role_grants','sessions'])await c.query(`CREATE TEMP TABLE ${t} (LIKE public.${t} INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES) ON COMMIT DROP`);
+ for(const t of ['accounts','identities','news_role_grants','sessions','items','story_documents','briefing_versions','news_reviews','news_staff_audit'])await c.query(`CREATE TEMP TABLE ${t} (LIKE public.${t} INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES) ON COMMIT DROP`);
  await c.query('INSERT INTO accounts(id) VALUES($1),($2)',[account,member]);
  await c.query("INSERT INTO identities(kind,value,account_id) VALUES('email','fixture@example.invalid',$1)",[account]);
  await c.query("INSERT INTO news_role_grants(kind,value,role) VALUES('email','fixture@example.invalid','super_admin')");
@@ -20,6 +20,19 @@ try{
  assert.equal((await api(request('session/role','staff-fixture',{role:'editor'}))).status,200);
  assert.equal((await currentAccount(request('session','staff-fixture')))?.role,'editor');
  assert.equal((await api(request('staff/roles','staff-fixture'))).status,403);
+ const article='a'.repeat(64),cid='bafy'+'c'.repeat(40);
+ await c.query("INSERT INTO items(id,source_id,topic,kind,title,url,excerpt,published_at) VALUES($1,'fixture','World','article','Fixture','https://example.org','Evidence',now())",[article]);
+ await c.query("INSERT INTO briefing_versions(short_id,cid,item_id,document) VALUES($1,$2,$3,'{\"title\":\"Fixture\"}')",[cid.slice(-20),cid,article]);
+ await c.query("INSERT INTO news_reviews(item_id,status,note,actor,briefing_cid) VALUES($1,'reviewed','Preserve this note',$2,$3)",[article,account,cid]);
+ assert.equal((await api(request('staff/flags','member-fixture',{reference:cid}))).status,403);
+ assert.equal((await api(request('staff/flags','staff-fixture',{reference:cid}))).status,200);
+ const flag=await api(request('staff/flags?reference='+cid,'staff-fixture'));assert.deepEqual(await flag.json(),{flagged:true});
+ assert.equal((await c.query('SELECT note FROM news_reviews WHERE item_id=$1',[article])).rows[0].note,'Preserve this note');
+ assert.equal((await api(request('session/role','staff-fixture',{role:'moderator'}))).status,200);
+ assert.equal((await api(request('staff/flags','staff-fixture',{reference:cid}))).status,403);
+ assert.equal((await api(request('session/role','staff-fixture',{role:'editor'}))).status,200);
+ await c.query('UPDATE items SET owner_id=$1 WHERE id=$2',[member,article]);
+ assert.equal((await api(request('staff/flags','staff-fixture',{reference:cid}))).status,404);
  await c.query('DELETE FROM news_role_grants');
  assert.equal((await currentAccount(request('session','staff-fixture')))?.role,'member');
  assert.equal((await api(request('session/role','staff-fixture',{role:'super_admin'}))).status,403);

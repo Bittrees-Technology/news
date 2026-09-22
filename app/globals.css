@@ -1034,3 +1034,5 @@ a.primary {
 .editorial-id{overflow-wrap:anywhere;font-size:13px}
 
 .active-role{display:flex;align-items:center;gap:6px;font-size:12px}.active-role select{width:auto;margin:0;padding:7px;font-size:12px}
+
+.account-menu{position:relative}.account-menu summary{cursor:pointer;list-style:none}.account-menu summary::-webkit-details-marker{display:none}.account-menu-options{position:absolute;right:0;top:calc(100% + 8px);z-index:50;min-width:190px;padding:12px;display:flex;flex-direction:column;gap:12px;background:var(--paper);border:1px solid var(--rule);border-radius:8px}.account-menu-options button{text-align:left}

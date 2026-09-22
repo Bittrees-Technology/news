@@ -29,6 +29,7 @@ export function StaffPanel({ role, section }: { role: string; section: "access" 
     try {
       await call(path, data);
       await refresh();
+      if(path==='staff/reviews'&&target)setTarget(await call('staff/reviews?reference='+encodeURIComponent(target.briefing_cid||target.item_id)));
       setMessage("Saved.");
     } catch (e) {
       setMessage((e as Error).message);
@@ -114,7 +115,7 @@ export function StaffPanel({ role, section }: { role: string; section: "access" 
               <input value={reference} onChange={e=>{setReference(e.target.value);setTarget(null);}} required maxLength={300}/>
               <button type="button" disabled={busy||!reference.trim()} onClick={()=>void resolve(reference)}>Find article / briefing</button>
             </label>
-            {target&&<div className="notice"><strong>{target.title}</strong><p className="editorial-id">Article ID: {target.item_id}</p><p>Briefing ID: {target.briefing_cid?<a href={briefingPath({id:target.item_id,cid:target.briefing_cid})}>{briefingShortId(target.briefing_cid)}</a>:'Not archived yet'}</p><a href={target.url} target="_blank" rel="noopener noreferrer">Original source ↗</a></div>}
+            {target&&<div className="notice"><strong>{target.title}</strong><p className="editorial-id">Article ID: {target.item_id}</p><p>Briefing ID: {target.briefing_cid?(target.review_status==='flagged'?<a href={briefingPath({id:target.item_id,cid:target.briefing_cid})}>{briefingShortId(target.briefing_cid)}</a>:briefingShortId(target.briefing_cid)):'Not archived yet'}</p><a href={target.url} target="_blank" rel="noopener noreferrer">Original source ↗</a></div>}
             <label>
               Status
               <select name="status">
@@ -136,8 +137,8 @@ export function StaffPanel({ role, section }: { role: string; section: "access" 
               <li key={r.item_id}>
                 <strong>{r.title}</strong> — {r.status}
                 <p className="editorial-id">Article ID: {r.item_id}</p>
-                <p>Reviewed briefing: {r.briefing_cid?<><a href={briefingPath({id:r.item_id,cid:r.briefing_cid})}>{briefingShortId(r.briefing_cid)}</a> · <a href={`https://ipfs.io/ipfs/${r.briefing_cid}`} target="_blank" rel="noopener noreferrer">IPFS ↗</a></>:'Version not recorded'}</p>
-                {r.current_cid&&r.current_cid!==r.briefing_cid&&<p>Current briefing: <a href={briefingPath({id:r.item_id,cid:r.current_cid})}>{briefingShortId(r.current_cid)}</a> — not the recorded reviewed version.</p>}
+                <p>Reviewed briefing: {r.briefing_cid?<>{r.status==='flagged'?<a href={briefingPath({id:r.item_id,cid:r.briefing_cid})}>{briefingShortId(r.briefing_cid)}</a>:briefingShortId(r.briefing_cid)} · <a href={`https://ipfs.io/ipfs/${r.briefing_cid}`} target="_blank" rel="noopener noreferrer">IPFS ↗</a></>:'Version not recorded'}</p>
+                {r.current_cid&&r.current_cid!==r.briefing_cid&&<p>Current briefing: {briefingShortId(r.current_cid)} — not the recorded reviewed version.</p>}
                 <button disabled={busy} onClick={()=>{const ref=r.briefing_cid||r.item_id;setReference(ref);void resolve(ref);}}>Review this version</button>
                 <p>{r.note}</p>
               </li>

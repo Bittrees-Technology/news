@@ -468,12 +468,28 @@ export async function api(r: Request) {
         return json({ ok: true });
       }
     }
+    if(path==='staff/flags'){
+      if(!canApprove(a!.role))throw new HttpError(403,'Editor access required.');
+      if(method==='GET'){
+        const target=await resolveEditorialReference(pool(),url.searchParams.get('reference')||'');
+        const r=await pool().query("SELECT 1 FROM news_reviews WHERE item_id=$1 AND briefing_cid IS NOT DISTINCT FROM $2 AND status='flagged'",[target.item_id,target.briefing_cid]);
+        return json({flagged:!!r.rowCount});
+      }
+      if(method==='POST'){
+        const b=z.object({reference:z.string().min(1).max(300)}).strict().parse(await body(r));
+        await tx(async db=>{
+          const target=await resolveEditorialReference(db,b.reference);
+          await db.query("INSERT INTO news_reviews(item_id,status,note,actor,briefing_cid) VALUES($1,'flagged','Flagged from the briefing page.',$2,$3) ON CONFLICT(item_id) DO UPDATE SET status='flagged',briefing_cid=$3,actor=$2,updated_at=now()",[target.item_id,a!.id,target.briefing_cid]);
+          await db.query("INSERT INTO news_staff_audit(id,actor,action,detail) VALUES($1,$2,'flag_briefing',$3)",[randomUUID(),a!.id,JSON.stringify(target)]);
+        });return json({ok:true,flagged:true});
+      }
+    }
     if (path === "staff/reviews") {
       if (!canReview(a!.role))
         throw new HttpError(403, "Editorial staff access required.");
       if (method === "GET") {
         const reference=url.searchParams.get('reference');
-        if(reference)return json(await resolveEditorialReference(pool(),reference));
+        if(reference){const target=await resolveEditorialReference(pool(),reference);const review=(await pool().query('SELECT status FROM news_reviews WHERE item_id=$1 AND briefing_cid IS NOT DISTINCT FROM $2',[target.item_id,target.briefing_cid])).rows[0];return json({...target,review_status:review?.status||null});}
         return json((await pool().query("SELECT r.item_id,r.status,r.note,r.updated_at,r.briefing_cid,coalesce(v.document->>'title',i.title) title,i.url,s.cid current_cid FROM news_reviews r JOIN items i ON i.id=r.item_id LEFT JOIN story_documents s ON s.item_id=i.id LEFT JOIN briefing_versions v ON v.cid=r.briefing_cid WHERE i.owner_id IS NULL ORDER BY r.updated_at DESC LIMIT 100")).rows);
       }
       if (method === "POST") {

@@ -9,6 +9,7 @@ import {loadReading,writeReading,watchReading,type ReadingState} from '@/lib/rea
 type Batch={entries:any[];next:string|null;snapshot:string;selectedId?:string};
 export function BriefingReader({initial}:{initial:Batch}){
  const [reviewAllowed,setReviewAllowed]=useState(false);
+ const [flagged,setFlagged]=useState(false),[flagReady,setFlagReady]=useState(false),[flagBusy,setFlagBusy]=useState(false);
  const [items,setItems]=useState(initial.entries),[next,setNext]=useState(initial.next);
  const [reading,setReading]=useState<ReadingState>({}),[signed,setSigned]=useState(false),[ready,setReady]=useState(false),[busy,setBusy]=useState<string|null>(null),[error,setError]=useState(''),[skipped,setSkipped]=useState<string[]>([]),[loading,setLoading]=useState(false),[loadError,setLoadError]=useState('');
  const fetching=useRef(false),heading=useRef<HTMLHeadingElement>(null);
@@ -26,6 +27,18 @@ export function BriefingReader({initial}:{initial:Batch}){
  },[next,initial.snapshot]);
  const visible=items.filter(i=>(!reading[i.id]?.is_read||i.id===initial.selectedId)&&!skipped.includes(i.id));
  const current=visible[0];
+ const flagTarget=useRef<string|undefined>(undefined);flagTarget.current=current?.cid||current?.id;
+ useEffect(()=>{
+  let active=true;setFlagged(false);setFlagReady(false);
+  if(reviewAllowed&&current)void call('staff/flags?reference='+encodeURIComponent(current.cid||current.id)).then(d=>{if(active){setFlagged(d.flagged);setFlagReady(true);}}).catch(()=>{if(active)setError('Could not load the editorial flag. Reload to retry.');});
+  return()=>{active=false;};
+ },[reviewAllowed,current?.id,current?.cid]);
+ async function flag(){
+  if(!current||!reviewAllowed||!flagReady||flagBusy||flagged)return;
+  setFlagBusy(true);setError('');const reference=current.cid||current.id;
+  try{await call('staff/flags',{reference});if(flagTarget.current===reference)setFlagged(true);}
+  catch(e){setError((e as Error).message);}finally{setFlagBusy(false);}
+ }
  useEffect(()=>{
   if(ready&&current)window.history.replaceState(window.history.state,'',briefingPath(current));
  },[ready,current?.id,current?.cid]);
@@ -50,7 +63,7 @@ export function BriefingReader({initial}:{initial:Batch}){
   finally{setBusy(null);}
  }
  const preferences=current&&ready?<>
-  {reviewAllowed&&<a href={`/account/editorial?reference=${encodeURIComponent(current.cid||current.id)}`}>Editorial review</a>}
+  {reviewAllowed&&<button disabled={!flagReady||flagBusy||flagged} aria-pressed={flagged} aria-label={flagged?"Flagged for editorial review":"Flag for editorial review"} onClick={()=>void flag()}><span aria-hidden="true">⚑</span> {flagged?"Flagged":"Flag"}</button>}
   <ArticleFeedback key={current.id} id={current.id}/>
   {signed&&<button disabled={!!busy} aria-pressed={!!reading[current.id]?.saved} onClick={()=>void save(current.id)}>{reading[current.id]?.saved?'★ Saved':'☆ Save'}</button>}
  </>:null;
@@ -59,7 +72,7 @@ export function BriefingReader({initial}:{initial:Batch}){
    <h1 ref={heading} tabIndex={-1}>Briefings</h1>
    <div className="briefing-controls">
     {preferences}
-    <button disabled={!ready||!current||!!busy} onClick={()=>current&&void advance(current.id,true)} aria-label="Mark as read and go to next briefing">Mark as read <span aria-hidden="true">→</span></button>
+    <button disabled={!ready||!current||!!busy||flagBusy} onClick={()=>current&&void advance(current.id,true)} aria-label="Mark as read and go to next briefing">Mark as read <span aria-hidden="true">→</span></button>
    </div>
   </div>
   {error&&<p role="alert">{error}</p>}
@@ -68,7 +81,7 @@ export function BriefingReader({initial}:{initial:Batch}){
     <StoryContent item={current}/>
     <div className="briefing-navigation briefing-controls">
      {preferences}
-     <button disabled={!!busy} onClick={()=>void advance(current.id,true)} aria-label="Mark as read and go to next briefing">Mark as read <span aria-hidden="true">→</span></button>
+     <button disabled={!!busy||flagBusy} onClick={()=>void advance(current.id,true)} aria-label="Mark as read and go to next briefing">Mark as read <span aria-hidden="true">→</span></button>
     </div>
    </div>}
    {!current&&!next&&!loading&&<p>You’re caught up. Reload the page to check for new briefings.</p>}

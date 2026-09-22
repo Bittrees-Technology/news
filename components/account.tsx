@@ -1,4 +1,5 @@
 "use client";
+import {RoleSwitcher} from "./role-switcher";
 import { ReaderExclusions } from "./reader-exclusions";
 import { Subscriptions } from "./subscriptions";
 import { canAccountSection } from "@/lib/permissions";
@@ -701,6 +702,7 @@ export function Account({
       {section === "settings" && (
         <section className="panel">
           <h2>Sign-in methods</h2>
+          <RoleSwitcher/>
           {data.identities?.map((i) => (
             <p key={i.kind + i.value}>
               {i.kind === "wallet" ? "Wallet" : "Email"}: {i.value}
@@ -728,7 +730,7 @@ export function Account({
           {emailForm("link")}
           <section className="account-danger-zone" aria-labelledby="account-deletion-heading">
             <h3 id="account-deletion-heading">Delete account</h3>
-            <p>To leave this session, use <strong>Log out</strong> in the top navigation. Deleting your account permanently removes your preferences, sign-in methods, saved items, personal feeds and delivery subscriptions.</p>
+            <p>To leave this session, use <strong>My account → Log out</strong> in the top navigation. Deleting your account permanently removes your preferences, sign-in methods, saved items, personal feeds and delivery subscriptions.</p>
             {!deleteConfirm?<button className="danger" disabled={busy} onClick={()=>{setDeletePhrase('');setDeleteAcknowledged(false);setDeleteConfirm(true);}}>Review account deletion</button>:<div className="notice">
               <p>This cannot be undone. Already published or IPFS-archived material may remain available.</p>
               <label htmlFor="delete-account-phrase">Type <strong>DELETE MY ACCOUNT</strong> to confirm</label>

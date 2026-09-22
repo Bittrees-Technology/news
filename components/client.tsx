@@ -1,19 +1,15 @@
 "use client";
 import Link from "next/link";
 import {usePathname} from "next/navigation";
-import { useEffect, useState } from "react";
-import { call, cachedData, connectAuthEvents, reloadForRoleChange } from "@/lib/browser-api";
+import { useEffect, useState, useRef } from "react";
+import { call, cachedData, connectAuthEvents } from "@/lib/browser-api";
 export { call } from "@/lib/browser-api";
 export function Header() {
   const pathname=usePathname();
   const inBriefings=pathname.startsWith('/briefings')||pathname.startsWith('/story/');
-  const [account,setAccount]=useState<any>(cachedData('session')?.account||null);
-  const [switching,setSwitching]=useState(false),[roleError,setRoleError]=useState('');
-  async function switchRole(role:string){
-    if(switching)return;setSwitching(true);setRoleError('');
-    try{await call('session/role',{role});reloadForRoleChange();}
-    catch(e){setRoleError((e as Error).message);setSwitching(false);}
-  }
+  const menu=useRef<HTMLDetailsElement>(null);
+  useEffect(()=>{if(menu.current)menu.current.open=false;},[pathname]);
+  useEffect(()=>{const close=(e:PointerEvent)=>{if(menu.current&&!menu.current.contains(e.target as Node))menu.current.open=false;};document.addEventListener('pointerdown',close);return()=>document.removeEventListener('pointerdown',close);},[]);
   const [loggingOut,setLoggingOut]=useState(false),[logoutError,setLogoutError]=useState('');
   async function logout(){
     if(loggingOut)return;setLoggingOut(true);setLogoutError('');
@@ -27,13 +23,13 @@ export function Header() {
     const refresh = () =>
       call("session")
         .then((d) => {
-          if (active){setSigned(!!d.account);setAccount(d.account);}
+          if (active){setSigned(!!d.account);}
         })
         .catch(() => {
-          if (active){setSigned(false);setAccount(null);}
+          if (active){setSigned(false);}
         });
     const changed = () => {
-      setSigned(false);setAccount(null);
+      setSigned(false);
       void refresh();
     };
     const focus = () => {
@@ -72,13 +68,15 @@ export function Header() {
             <Link href="/saved">Saved</Link>
           </>
         )}
-        <Link className="account-link" href="/account">
-          {signed ? "Your account" : "Sign in / Sign up"}
-        </Link>
-        {signed&&account?.availableRoles?.length>1&&<label className="active-role">Active role <select aria-label="Active role" value={account.role} disabled={switching} onChange={e=>void switchRole(e.target.value)}>{account.availableRoles.map((role:string)=><option key={role} value={role}>{role.replaceAll('_','-')}</option>)}</select></label>}
-        {roleError&&<span role="alert">{roleError}</span>}
-        {signed&&<button disabled={loggingOut} onClick={()=>void logout()}>{loggingOut?'Logging out…':'Log out'}</button>}
-        {logoutError&&<span role="alert">{logoutError}</span>}
+        {signed?<details className="account-menu" ref={menu} onKeyDown={e=>{if(e.key==='Escape'&&menu.current){menu.current.open=false;menu.current.querySelector('summary')?.focus();}}}>
+          <summary className="account-link">My account</summary>
+          <div className="account-menu-options">
+            <Link href="/account">My newspaper</Link>
+            <Link href="/account/settings">Account settings</Link>
+            <button disabled={loggingOut} onClick={()=>void logout()}>{loggingOut?'Logging out…':'Log out'}</button>
+            {logoutError&&<span role="alert">{logoutError}</span>}
+          </div>
+        </details>:<Link className="account-link" href="/account">Sign in / Sign up</Link>}
       </nav>
     </header>
   );
