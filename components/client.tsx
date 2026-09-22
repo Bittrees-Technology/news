@@ -62,7 +62,7 @@ export function Header() {
         TBN<span> / the bittrees news</span>
       </Link>
       <nav aria-label="Main navigation">
-        <a href="/briefings" aria-label={inBriefings?"Refresh to the most recent unread briefing":"Briefings"}>{inBriefings?"Refresh":"Briefings"}</a>
+        {inBriefings?<a href="/briefings" aria-label="Refresh to the most recent unread briefing">Refresh</a>:<Link href="/briefings">Briefings</Link>}
         {signed && (
           <>
             <Link href="/saved">Saved</Link>

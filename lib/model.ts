@@ -43,6 +43,7 @@ export type Item = {
   ranking?: import("./scoring").Score;
 };
 export type Edition = {
+  feedPage?: import("./public-feed").FeedPage;
   id: string;
   publish_at: string;
   published_at: string;

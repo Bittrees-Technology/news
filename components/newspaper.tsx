@@ -1,12 +1,13 @@
 "use client";
 import {loadReading,writeReading,watchReading} from "@/lib/reading-sync";
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import {matchesArticleSearch,type SearchField} from "@/lib/article-search";
 import {ArticleEngagement} from "./article-engagement";
 import {ArticleFeedback} from "./article-feedback";
 import {articleTags,addedTopics,tagStyle} from "@/lib/tags";
 import {defaultReaderFilters,readerFiltersSchema,matchesReaderFilters,guestReaderFilters,selectReaderFilter,type ReaderFilters} from "@/lib/reader-filters";
 import {recentUniqueStories} from "@/lib/recent-stories";
+import {feedOrder,uniqueStories} from "@/lib/feed-order";
 import Link from "next/link";
 import { call } from "./client";
 import { sourceName, topics as catalogTopics } from "@/lib/catalog";
@@ -55,6 +56,25 @@ export function Newspaper({
     [help, setHelp] = useState(false);
   const [renderCount,setRenderCount]=useState(30);
   const moreRef=useRef<HTMLDivElement>(null);
+  const paged=live&&!personal&&!!edition?.feedPage;
+  const [nextPage,setNextPage]=useState(edition?.feedPage?.next||null);
+  const [loadingMore,setLoadingMore]=useState(false),[pageError,setPageError]=useState("");
+  const fetchingPage=useRef(false),pageGeneration=useRef(0);
+  useEffect(()=>{pageGeneration.current++;},[personal,edition]);
+  const loadMore=useCallback(async()=>{
+    if(!paged||!nextPage||fetchingPage.current)return;
+    const generation=pageGeneration.current;
+    fetchingPage.current=true;setLoadingMore(true);setPageError("");
+    try{
+      const response=await fetch(`/api/feed?before=${nextPage}&snapshot=${encodeURIComponent(edition!.feedPage!.snapshot)}`);
+      if(!response.ok)throw Error();
+      const batch=await response.json();
+      if(generation!==pageGeneration.current)return;
+      setItems(old=>uniqueStories([...old,...batch.items]));setNextPage(batch.next);
+      setRenderCount(n=>n+30);
+    }catch{if(generation===pageGeneration.current)setPageError("Could not load older stories. Try again.");}
+    finally{fetchingPage.current=false;setLoadingMore(false);}
+  },[paged,nextPage,edition]);
   const hideRead=filters.hideRead;
   const saveQueue=useRef(Promise.resolve());
   function updateFilters(next:ReaderFilters){
@@ -68,14 +88,15 @@ export function Newspaper({
   const itemIds=items.map(i=>i.id).join(',');
   useEffect(()=>{
     let active=true;setRankOrder(null);
-    if(!signed||!itemIds)return;
+    if(!signed||!itemIds||paged)return;
     void call('reader-order',{ids:itemIds.split(',')}).then(ids=>{if(active)setRankOrder(ids);}).catch(()=>{if(active)setMessage('Could not apply your ranking preferences. Showing the edition order.');});
     return()=>{active=false;};
-  },[signed,itemIds]);
+  },[signed,itemIds,paged]);
   const refs = useRef(new Map<string, HTMLElement>());
   useEffect(() => {
     if (mode === "public" && !personal) {
       setItems(edition?.data.items || []);
+      setNextPage(edition?.feedPage?.next||null);
       setCursor(-1);
     }
   }, [edition, mode, personal]);
@@ -124,7 +145,7 @@ export function Newspaper({
   const orderPositions=useMemo(()=>new Map((rankOrder||items.map(i=>i.id)).map((id,n)=>[id,n])),[rankOrder,items]);
   const visible = useMemo(
     () =>
-      (live?recentUniqueStories(items,now):items).filter(
+      (paged?feedOrder(items,edition?.feedPage?.leadIds||[]):live?recentUniqueStories(items,now):items).filter(
         (i) =>
           (mode === "saved" || tab === "all" || (tab === "podcasts" ? i.kind === "podcast" : tab === "news" ? i.kind === "article" : !["article","podcast"].includes(i.kind))) &&
           (!rankOrder||rankOrder.includes(i.id)) &&
@@ -132,16 +153,20 @@ export function Newspaper({
           matchesArticleSearch(i,search,searchField) &&
           (!hideRead || !readSnapshot[i.id]?.is_read),
       ).sort((a,b)=>{
+        if(paged)return 0;
         return (orderPositions.get(a.id)??0)-(orderPositions.get(b.id)??0);
       }),
-    [items, tab, filters, hideRead, readSnapshot, mode, geography,rankOrder,orderPositions,live,now,search,searchField],
+    [items, tab, filters, hideRead, readSnapshot, mode, geography,rankOrder,orderPositions,paged,edition,live,now,search,searchField],
   );
-  useEffect(()=>{setRenderCount(30);},[tab,filters,search,searchField,items]);
+  useEffect(()=>{setRenderCount(30);},[tab,filters,search,searchField,personal]);
   useEffect(()=>{
-    if(!moreRef.current||renderCount>=visible.length)return;
-    const observer=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting))setRenderCount(n=>n+30);},{rootMargin:'500px'});
+    if(!moreRef.current||loadingMore||pageError)return;
+    if(renderCount>=visible.length&&(!paged||!nextPage))return;
+    const observer=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)){
+      if(renderCount<visible.length)setRenderCount(n=>n+30);else void loadMore();
+    }},{rootMargin:'400px'});
     observer.observe(moreRef.current);return()=>observer.disconnect();
-  },[renderCount,visible.length]);
+  },[renderCount,visible.length,paged,nextPage,loadingMore,pageError,loadMore]);
   useEffect(()=>{if(cursor>=0){setRenderCount(n=>Math.max(n,cursor+1));requestAnimationFrame(()=>refs.current.get(visible[cursor]?.id)?.focus());}},[cursor]);
   const topics = [...new Set([...items.flatMap(articleTags),...catalogTopics,...addedTopics,...filters.topics,...filters.excludedTopics])]
     .filter((t) => t !== "Portugal" && t !== "Europe")
@@ -339,7 +364,7 @@ export function Newspaper({
           {message} <Link href="/account">Your account</Link>
         </p>
       )}
-      {live&&<p className="muted">Last 24 hours at page load · Refresh stories to update content and rankings.</p>}
+      {live&&<p className="muted">Leading stories from the last 24 hours, then newest first. Refresh stories to update.</p>}
       {!visible.length ? (
         <div className="empty">
           <h2>
@@ -367,7 +392,7 @@ export function Newspaper({
                 if (el) refs.current.set(i.id, el);
                 else refs.current.delete(i.id);
               }}
-              className={`story ${n < 3 ? "lead" : ""} ${state[i.id]?.is_read ? "read" : ""} ${cursor === n ? "cursor" : ""}`}
+              className={`story ${(paged ? edition?.feedPage?.leadIds.includes(i.id) : n < 3) ? "lead" : ""} ${state[i.id]?.is_read ? "read" : ""} ${cursor === n ? "cursor" : ""}`}
             >
               <ArticleEngagement id={i.id} signed={signed}/>
               <div className="story-meta">
@@ -425,14 +450,17 @@ export function Newspaper({
                     {state[i.id]?.saved ? "★ Saved" : "☆ Save"}
                   </button>}
                   <ArticleFeedback id={i.id} />
-                  {!i.owner_id&&<Link href={`/briefings?story=${i.id}`}>Briefings ↗</Link>}
+                  {!i.owner_id&&<Link prefetch={false} href={`/briefings?story=${i.id}`}>Briefings ↗</Link>}
                 </div>
               </div>
             </article>
           ))}
         </section>
       )}
-      {renderCount<visible.length&&<div ref={moreRef}><button onClick={()=>setRenderCount(n=>n+30)}>Load more stories</button></div>}
+      {(renderCount<visible.length||(paged&&nextPage))&&<div ref={moreRef}>
+        {pageError&&<p role="alert">{pageError}</p>}
+        <button disabled={loadingMore} onClick={()=>renderCount<visible.length?setRenderCount(n=>n+30):void loadMore()}>{loadingMore?'Loading older stories…':pageError?'Retry loading older stories':'Load more stories'}</button>
+      </div>}
     </>
   );
 }

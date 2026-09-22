@@ -127,7 +127,7 @@ export async function historyFor(accountId: string) {
   ).rows;
 }
 
-export async function recentPublicRanked(){
- const items=(await pool().query("SELECT * FROM items WHERE owner_id IS NULL AND published_at>=now()-interval '24 hours' AND published_at<=now() ORDER BY published_at DESC LIMIT 2000")).rows as Item[];
- return recentUniqueStories(await publicRanked(items));
+export async function recentPublicRanked(snapshot=new Date().toISOString()){
+ const items=(await pool().query("SELECT * FROM items WHERE owner_id IS NULL AND published_at>=$1::timestamptz-interval '24 hours' AND published_at<=$1 AND fetched_at<=$1 ORDER BY published_at DESC",[snapshot])).rows as Item[];
+ return recentUniqueStories(await publicRanked(items),Date.parse(snapshot));
 }
