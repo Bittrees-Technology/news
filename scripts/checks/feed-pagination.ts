@@ -25,6 +25,14 @@ try{
  assert.equal(older.entries[0].id,(57).toString(16).padStart(64,'0'));
  await d.query('UPDATE story_documents SET document=NULL WHERE item_id=$1',[brief.entries[0].id]);
  assert.equal((await briefingBatch(null,null,snapshot)).entries[0].id,(64).toString(16).padStart(64,'0'));
+ // Clicking an unfinished story must never substitute a different completed one.
+ const pending=await briefingBatch(null,brief.entries[0].id,snapshot);
+ assert.equal(pending.entries[0].id,brief.entries[0].id);assert.equal(pending.entries[0].document,null);assert.equal(pending.selectedId,brief.entries[0].id);
+ await d.query('DELETE FROM story_documents WHERE item_id=$1',[brief.entries[0].id]);
+ assert.equal((await briefingBatch(null,brief.entries[0].id,snapshot)).entries[0].id,brief.entries[0].id);
+ const complete=await briefingBatch(null,older.entries[0].id,snapshot);
+ assert.equal(complete.entries[0].id,older.entries[0].id);assert.ok(complete.entries[0].document);
+ assert.equal((await briefingBatch(null,'f'.repeat(64),snapshot)).entries.length,0);
  // Arrivals after the reading snapshot never slide into later pages.
  await d.query("UPDATE items SET fetched_at=$1::timestamptz+interval '1 second' WHERE id=$2",[snapshot,first.items[0].id]);
  assert.equal((await publicFeedBatch(snapshot)).items[0].id,(2).toString(16).padStart(64,'0'));
@@ -40,5 +48,6 @@ try{
  assert.ok((await publicFeedBatch(snapshot,null,'news')).items.every(i=>i.kind==='article'));
  await d.query("UPDATE items SET owner_id='00000000-0000-0000-0000-000000000001' WHERE id=$1",[data.items[0].id]);
  assert.equal((await publicFeedBatch(snapshot,null,'data')).items.length,2);
- console.log('PASS: bounded feed/briefing pages, unique cursors, older history, completed creation order, frozen arrivals, sparse categories and private exclusion; rolled back fixtures');
+ assert.equal((await briefingBatch(null,data.items[0].id,snapshot)).entries.length,0);
+ console.log('PASS: bounded feed/briefing pages, unique cursors, older history, completed creation order, frozen arrivals, sparse categories, exact unfinished/completed links and private exclusion; rolled back fixtures');
 }finally{await d.query('ROLLBACK');d.release();await p.end();delete (globalThis as any).newsPool;}

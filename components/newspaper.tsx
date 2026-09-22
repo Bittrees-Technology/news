@@ -437,7 +437,7 @@ export function Newspaper({
                     {state[i.id]?.saved ? "★ Saved" : "☆ Save"}
                   </button>}
                   <ArticleFeedback id={i.id} />
-                  {!i.owner_id&&<Link prefetch={false} href={`/briefings?story=${i.id}`}>Briefings ↗</Link>}
+                  {!i.owner_id&&<Link prefetch={false} href={`/story/${i.id}`}>Briefings ↗</Link>}
                 </div>
               </div>
             </article>
