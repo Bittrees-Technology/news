@@ -3,7 +3,7 @@
 import json,os,time,pathlib,urllib.request,logging,fcntl
 from stage_metrics import report
 from worker_cadence import briefing_delay
-from briefing_failure import failure_category
+from briefing_failure import failure_category, failure_label
 from model_runtime import completion, ModelBusy
 logging.basicConfig(level=logging.INFO,format='%(asctime)s %(message)s')
 config=json.loads((pathlib.Path.home()/'.config/bittrees-news/editor.json').read_text())
@@ -52,6 +52,6 @@ while True:
  except Exception as e:
   logging.warning('Briefing worker retry: category=%s phase=%s type=%s status=%s',failure_category(e,phase),phase,type(e).__name__,getattr(e,'code','local'))
   if job:
-   try:api('retry',{'id':job['item_id'],'lease':job['lease'],'busy':isinstance(e,ModelBusy),'error':type(e).__name__})
+   try:api('retry',{'id':job['item_id'],'lease':job['lease'],'busy':isinstance(e,ModelBusy),'error':failure_label(e,phase)})
    except Exception:pass
  time.sleep(briefing_delay(completed,config.get('briefing_success_pause_seconds',5)))

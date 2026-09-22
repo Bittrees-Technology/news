@@ -16,3 +16,11 @@ def failure_category(error, phase):
     if type(error).__name__ == 'ModelBusy':
         return 'capacity_deferred'
     return 'unclassified'
+
+def failure_label(error, phase):
+    """Persist bounded diagnostics, never exception text, URLs or model output."""
+    safe_phase = phase if phase in ('claim', 'generate', 'persist', 'archive', 'pinned') else 'unknown'
+    label = failure_category(error, safe_phase) + ':' + safe_phase
+    if isinstance(error, urllib.error.HTTPError) and isinstance(error.code, int) and 100 <= error.code <= 599:
+        label += ':http_' + str(error.code)
+    return label

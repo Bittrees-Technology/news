@@ -1,5 +1,5 @@
 import json,unittest,urllib.error
-from briefing_failure import failure_category
+from briefing_failure import failure_category, failure_label
 from model_runtime import ModelBusy
 
 class BriefingFailureTests(unittest.TestCase):
@@ -17,3 +17,11 @@ class BriefingFailureTests(unittest.TestCase):
     def test_transport_and_resource_deferrals(self):
         self.assertEqual(failure_category(TimeoutError(),'generate'),'transport')
         self.assertEqual(failure_category(ModelBusy(),'generate'),'capacity_deferred')
+
+    def test_persisted_labels_keep_phase_and_http_status_without_content(self):
+        self.assertEqual(failure_label(ValueError('Truncated model output'), 'generate'), 'truncated_output:generate')
+        self.assertEqual(failure_label(json.JSONDecodeError('private text', 'secret', 0), 'generate'), 'malformed_json:generate')
+        error=urllib.error.HTTPError('https://secret-token',502,'private content',{},None)
+        self.assertEqual(failure_label(error, 'persist'), 'http_error:persist:http_502')
+        self.assertEqual(failure_label(RuntimeError('private token'), 'secret phase'), 'unclassified:unknown')
+        self.assertLess(len(failure_label(error, 'archive')),100)
