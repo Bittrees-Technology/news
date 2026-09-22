@@ -3,7 +3,7 @@
 import json,os,time,pathlib,urllib.request,logging,fcntl
 from stage_metrics import report
 from worker_cadence import briefing_delay
-from briefing_quality import KEY_POINT_GUIDANCE, validate_key_points
+from briefing_quality import KEY_POINT_GUIDANCE, validate_key_points, validate_briefing_content
 from briefing_failure import failure_category, failure_label
 from model_runtime import completion, ModelBusy
 logging.basicConfig(level=logging.INFO,format='%(asctime)s %(message)s')
@@ -23,7 +23,7 @@ def brief(j):
  system+=KEY_POINT_GUIDANCE
  data={'model':config['model'],'temperature':0.1,'max_tokens':320,'chat_template_kwargs':{'enable_thinking':False},'messages':[{'role':'system','content':system},{'role':'user','content':json.dumps({'title':j['title'],'published':j['published_at'],'kind':j['kind'],'evidence':evidence})}]}
  data['response_format']={'type':'json_schema','json_schema':{'name':'briefing','strict':True,'schema':{'type':'object','properties':{'overview':{'type':'string'},'points':{'type':'array','items':{'type':'string'},'minItems':1,'maxItems':2},'limitations':{'type':'string'}},'required':['overview','points','limitations'],'additionalProperties':False}}}
- out=completion(config,state,data,'briefing',timings=timings)['choices'][0]['message']['content']
+ out=completion(config,state,data,'briefing',timings=timings,validator=validate_briefing_content)['choices'][0]['message']['content']
  timings['generation']=(time.monotonic()-start)*1000
  start=time.monotonic()
  out=out.split('</think>')[-1].strip().removeprefix('```json').removeprefix('```').removesuffix('```').strip()

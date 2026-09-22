@@ -34,7 +34,7 @@ def add_inference_timings(timings, result):
         if isinstance(value,(int,float)) and not isinstance(value,bool) and math.isfinite(value) and 0<=value<=10000:
             timings[stage]=timings.get(stage,0)+value*1000
 
-def completion(config, state, data, priority, timeout=900, timings=None):
+def completion(config, state, data, priority, timeout=900, timings=None, validator=None):
     gateway=config.get('model_gateway')
     if gateway:
         registry=read_registry(config['model_registry'])
@@ -52,6 +52,11 @@ def completion(config, state, data, priority, timeout=900, timings=None):
         logging.info('Inference cache hit task=%s', priority)
         start=time.monotonic()
         result=json.loads(path.read_text())
+        if validator:
+            try:validator(result['choices'][0]['message']['content'])
+            except (ValueError,TypeError,KeyError):
+                path.unlink(missing_ok=True)
+                raise
         if timings is not None: timings['cache_read']=timings.get('cache_read',0)+(time.monotonic()-start)*1000
         # Cached news_metrics describe the original request, not this cache hit.
         return result
@@ -68,6 +73,7 @@ def completion(config, state, data, priority, timeout=900, timings=None):
             raise ValueError('Truncated model output')
         if data.get('response_format'):
             json.loads(result['choices'][0]['message']['content'])
+        if validator:validator(result['choices'][0]['message']['content'])
         tmp = path.with_suffix('.tmp')
         tmp.write_text(json.dumps(result)); os.replace(tmp, path)
         # Bound only disposable inference cache; published artifacts are stored separately.

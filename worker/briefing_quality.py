@@ -1,5 +1,5 @@
 """Lightweight key-point checks; no extra inference or publisher requests."""
-import re
+import re, json
 
 KEY_POINT_GUIDANCE = (' Key points must be distinct, self-contained facts supported by the evidence. '
  'Prefer the central finding and its most consequential supporting fact: include named actors, '
@@ -27,3 +27,6 @@ def validate_key_points(result):
             raise KeyPointQualityError('Generic point')
         seen.append(words)
     return result
+
+def validate_briefing_content(content):
+    return validate_key_points(json.loads(content))
