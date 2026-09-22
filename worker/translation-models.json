@@ -27,7 +27,8 @@
     "folder": "translate-es_en-1_9",
     "version": "1.9",
     "sha256": "c54df2b62fceaf54a3ce5d97db6bf56efd7940063329f6778f4212d2acb370d4",
-    "url": "https://data.argosopentech.com/argospm/v1/translate-es_en-1_9.argosmodel"
+    "url": "https://data.argosopentech.com/argospm/v1/translate-es_en-1_9.argosmodel",
+    "compute_type": "float32"
   },
   "fr": {
     "folder": "translate-fr_en-1_9",

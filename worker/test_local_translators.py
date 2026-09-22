@@ -10,7 +10,7 @@ class TranslatorTests(unittest.TestCase):
             registry={c:{'folder':c,'sha256':c,'version':'test'} for c in ['fr','de']}
             for c in registry:(pathlib.Path(tmp)/c/'model').mkdir(parents=True)
             loaded=[];unloaded=[]
-            def factory(folder):
+            def factory(folder, compute_type="int8"):
                 loaded.append(folder.name)
                 engine=SimpleNamespace(unload_model=lambda:unloaded.append(folder.name),translate_batch=lambda *a,**k:[SimpleNamespace(hypotheses=[['English 2026']])])
                 return engine,SimpleNamespace(encode=lambda *a,**k:['input'],decode=lambda x:x[0])
@@ -28,7 +28,7 @@ class TranslatorTests(unittest.TestCase):
             (pathlib.Path(tmp)/'de'/'model').mkdir(parents=True)
             registry={'de':{'folder':'de','sha256':'d','version':'test'}}
             output=['Rate could fall by 0.25 in October 2026']
-            def factory(folder):
+            def factory(folder, compute_type="int8"):
                 return SimpleNamespace(translate_batch=lambda *a,**k:[SimpleNamespace(hypotheses=[[output[0]]])]),SimpleNamespace(encode=lambda *a,**k:['input'],decode=lambda x:x[0])
             pool=LocalTranslators(tmp,registry,['de'],factory)
             self.assertEqual(pool.translate('Oktober 2026 um 0,25','de')[0],output[0])
@@ -40,7 +40,7 @@ class TranslatorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             (pathlib.Path(tmp)/'fr'/'model').mkdir(parents=True)
             registry={'fr':{'folder':'fr','sha256':'f','version':'test'}}
-            def factory(folder):
+            def factory(folder, compute_type="int8"):
                 return SimpleNamespace(translate_batch=lambda *a,**k:[SimpleNamespace(hypotheses=[['x']*512])]),SimpleNamespace(encode=lambda *a,**k:['input'])
             pool=LocalTranslators(tmp,registry,[],factory)
             self.assertIsNone(pool.translate('Bonjour','fr'))

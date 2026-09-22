@@ -29,12 +29,12 @@ class BPETokenizer:
         return self.detokenizer.detokenize(' '.join(tokens).replace('@@ ', '').split(' '))
 
 
-def _engine(folder):
+def _engine(folder, compute_type='int8'):
     import ctranslate2
     import sentencepiece
     tokenizer = (sentencepiece.SentencePieceProcessor(model_file=str(folder / 'sentencepiece.model'))
                  if (folder / 'sentencepiece.model').exists() else BPETokenizer(folder))
-    return (ctranslate2.Translator(str(folder / 'model'), device='cpu', compute_type='int8', intra_threads=2, inter_threads=1),
+    return (ctranslate2.Translator(str(folder / 'model'), device='cpu', compute_type=compute_type, intra_threads=2, inter_threads=1),
             tokenizer)
 
 
@@ -53,7 +53,7 @@ class LocalTranslators:
         if language not in self.enabled or language not in self.registry:
             return None
         model = self.registry[language]
-        key = (language, model['sha256'], text)
+        key = (language, model['sha256'], model.get('compute_type', 'int8'), text)
         if key in self.cache:
             self.cache.move_to_end(key)
             return self.cache[key]
@@ -65,7 +65,7 @@ class LocalTranslators:
                 self.loaded[1].unload_model()
                 self.loaded = None
                 gc.collect()
-            engine, tokenizer = self.factory(folder)
+            engine, tokenizer = self.factory(folder, compute_type=model.get('compute_type', 'int8'))
             self.loaded = (language, engine, tokenizer)
         _, engine, tokenizer = self.loaded
         tokens = tokenizer.encode(text, out_type=str)
