@@ -11,6 +11,8 @@ def failure_category(error, phase):
         return 'transport'
     if isinstance(error, json.JSONDecodeError):
         return 'malformed_json'
+    if type(error).__name__ == 'KeyPointQualityError':
+        return 'key_point_quality'
     if isinstance(error, ValueError):
         return 'truncated_output' if str(error) == 'Truncated model output' else 'unclassified_validation'
     if type(error).__name__ == 'ModelBusy':

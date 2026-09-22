@@ -3,7 +3,7 @@ import {publicRanked} from "./ranking";
 import {articleTags,normalizeTopic} from "./tags";
 import {feedParser,feedAuthors} from "./feed-attribution";
 import { createHash } from "node:crypto";
-import {collectionMinutes,retryMinutes} from "./collection-policy";
+import {collectionMinutes,retryMinutes,nextSourcePoll} from "./collection-policy";
 import {withTranslations} from "./translation";
 import { safeFetchResponse,type FetchValidators,SourceFetchError } from "./safe-fetch";
 import { sources, type Source } from "./catalog";
@@ -176,11 +176,11 @@ export async function claimSource(ids:string[]){
 }
 export async function collect() {
  const started=Date.now(),ids=sources.map(s=>s.id);
- await pool().query('INSERT INTO sources(id) SELECT unnest($1::text[]) ON CONFLICT DO NOTHING',[ids]);
+ await pool().query('INSERT INTO sources(id,next_poll_at) SELECT id,next_poll_at FROM jsonb_to_recordset($1::jsonb) AS x(id text,next_poll_at timestamptz) ON CONFLICT DO NOTHING',[JSON.stringify(sources.map(s=>({id:s.id,next_poll_at:nextSourcePoll(s.id,collectionMinutes(s))})))]);
  let ok=0,failed=0,unchanged=0,claimed=0,changed=false;
  // A time and work budget keeps this job below the route's five-minute limit.
- await Promise.all(Array.from({length:8},async()=>{
-  while(Date.now()-started<180000 && claimed<80){
+ await Promise.all(Array.from({length:3},async()=>{
+  while(Date.now()-started<45000 && claimed<12){
    claimed++;
    const row=await claimSource(ids);
    if(!row)return;
@@ -188,7 +188,7 @@ export async function collect() {
    try{
     const result=await fetchSourceSnapshot(source,undefined,row.body_hash,{etag:row.etag,lastModified:row.last_modified});
     if(result.items){await storeItems(result.items);changed=true;}else unchanged++;
-    await pool().query("WITH completed AS (UPDATE sources SET status='healthy',checked_at=now(),error=NULL,item_count=coalesce($3,item_count),body_hash=$4,etag=$6,last_modified=$7,transferred_bytes=transferred_bytes+$8,conditional_hits=conditional_hits+CASE WHEN $9 THEN 1 ELSE 0 END,completed_checks=completed_checks+1,collected_items=collected_items+coalesce($3,0),failures=0,next_poll_at=to_timestamp(floor(extract(epoch from now())/300)*300)+$5*interval '1 minute',collection_lease=NULL,collection_lease_until=NULL WHERE id=$1 AND collection_lease=$2 RETURNING id,checked_at,status) INSERT INTO source_observations(source_id,observed_at,status) SELECT id,checked_at,status FROM completed ON CONFLICT DO NOTHING",[row.id,row.collection_lease,result.items?.length??null,result.hash,minutes,result.etag,result.lastModified,result.bytes,result.notModified]);
+    await pool().query("WITH completed AS (UPDATE sources SET status='healthy',checked_at=now(),error=NULL,item_count=coalesce($3,item_count),body_hash=$4,etag=$6,last_modified=$7,transferred_bytes=transferred_bytes+$8,conditional_hits=conditional_hits+CASE WHEN $9 THEN 1 ELSE 0 END,completed_checks=completed_checks+1,collected_items=collected_items+coalesce($3,0),failures=0,next_poll_at=$5::timestamptz,collection_lease=NULL,collection_lease_until=NULL WHERE id=$1 AND collection_lease=$2 RETURNING id,checked_at,status) INSERT INTO source_observations(source_id,observed_at,status) SELECT id,checked_at,status FROM completed ON CONFLICT DO NOTHING",[row.id,row.collection_lease,result.items?.length??null,result.hash,nextSourcePoll(source.id,minutes,Math.max(Date.now()+1,new Date(row.next_poll_at).getTime()+minutes*60_000)),result.etag,result.lastModified,result.bytes,result.notModified]);
     ok++;
    }catch(e){
     const message=e instanceof Error?e.message:'Source unavailable';

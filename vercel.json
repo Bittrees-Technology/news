@@ -3,7 +3,7 @@
   "crons": [
     {
       "path": "/api/jobs/collect",
-      "schedule": "*/5 * * * *"
+      "schedule": "* * * * *"
     },
     {
       "path": "/api/jobs/prepare",

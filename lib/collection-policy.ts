@@ -11,3 +11,12 @@ export function retryMinutes(base:number,failures:number,status?:number,retryAft
 }
 
 export function isOverdue(nextPoll:string|Date|null,minutes:number,now=Date.now()){return !!nextPoll && now>new Date(nextPoll).getTime()+minutes*60000;}
+
+// Stable per-source phases prevent aligned feeds from returning in bursts.
+export function nextSourcePoll(id:string,minutes:number,notBefore=Date.now()){
+ const period=minutes*60_000;
+ let hash=2166136261;
+ for(const c of id)hash=Math.imul(hash^c.charCodeAt(0),16777619)>>>0;
+ const phase=(hash%minutes)*60_000;
+ return new Date(Math.ceil((notBefore-phase)/period)*period+phase);
+}
