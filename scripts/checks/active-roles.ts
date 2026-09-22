@@ -28,6 +28,12 @@ try{
  assert.equal((await api(request('staff/flags','staff-fixture',{reference:cid}))).status,200);
  const flag=await api(request('staff/flags?reference='+cid,'staff-fixture'));assert.deepEqual(await flag.json(),{flagged:true});
  assert.equal((await c.query('SELECT note FROM news_reviews WHERE item_id=$1',[article])).rows[0].note,'Preserve this note');
+ assert.equal((await api(request('staff/flags','staff-fixture',{reference:cid,note:'  Please verify the byline.  '}))).status,200);
+ const savedNote=(await c.query('SELECT note FROM news_reviews WHERE item_id=$1',[article])).rows[0].note;
+ assert.equal(savedNote,'Preserve this note\n\nFlag note: Please verify the byline.');
+ assert.equal((await c.query("SELECT detail->>'note' note FROM news_staff_audit WHERE detail->>'note'='Please verify the byline.'")).rows.length,1);
+ assert.equal((await api(request('staff/flags','staff-fixture',{reference:cid,note:'x'.repeat(2001)}))).status,400);
+ assert.equal((await c.query('SELECT note FROM news_reviews WHERE item_id=$1',[article])).rows[0].note,savedNote);
  assert.equal((await api(request('session/role','staff-fixture',{role:'moderator'}))).status,200);
  assert.equal((await api(request('staff/flags','staff-fixture',{reference:cid}))).status,403);
  assert.equal((await api(request('session/role','staff-fixture',{role:'editor'}))).status,200);

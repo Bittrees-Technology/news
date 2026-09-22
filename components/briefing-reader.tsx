@@ -9,6 +9,7 @@ import {loadReading,writeReading,watchReading,type ReadingState} from '@/lib/rea
 type Batch={entries:any[];next:string|null;snapshot:string;selectedId?:string};
 export function BriefingReader({initial}:{initial:Batch}){
  const [reviewAllowed,setReviewAllowed]=useState(false);
+ const [flagNote,setFlagNote]=useState('');const flagDialog=useRef<HTMLDialogElement>(null);
  const [flagged,setFlagged]=useState(false),[flagReady,setFlagReady]=useState(false),[flagBusy,setFlagBusy]=useState(false);
  const [items,setItems]=useState(initial.entries),[next,setNext]=useState(initial.next);
  const [reading,setReading]=useState<ReadingState>({}),[signed,setSigned]=useState(false),[ready,setReady]=useState(false),[busy,setBusy]=useState<string|null>(null),[error,setError]=useState(''),[skipped,setSkipped]=useState<string[]>([]),[loading,setLoading]=useState(false),[loadError,setLoadError]=useState('');
@@ -29,14 +30,14 @@ export function BriefingReader({initial}:{initial:Batch}){
  const current=visible[0];
  const flagTarget=useRef<string|undefined>(undefined);flagTarget.current=current?.cid||current?.id;
  useEffect(()=>{
-  let active=true;setFlagged(false);setFlagReady(false);
+  let active=true;setFlagged(false);setFlagReady(false);setFlagNote('');flagDialog.current?.close();
   if(reviewAllowed&&current)void call('staff/flags?reference='+encodeURIComponent(current.cid||current.id)).then(d=>{if(active){setFlagged(d.flagged);setFlagReady(true);}}).catch(()=>{if(active)setError('Could not load the editorial flag. Reload to retry.');});
   return()=>{active=false;};
  },[reviewAllowed,current?.id,current?.cid]);
  async function flag(){
-  if(!current||!reviewAllowed||!flagReady||flagBusy||flagged)return;
+  if(!current||!reviewAllowed||!flagReady||flagBusy)return;
   setFlagBusy(true);setError('');const reference=current.cid||current.id;
-  try{await call('staff/flags',{reference});if(flagTarget.current===reference)setFlagged(true);}
+  try{await call('staff/flags',{reference,note:flagNote});if(flagTarget.current===reference){setFlagged(true);setFlagNote('');flagDialog.current?.close();}}
   catch(e){setError((e as Error).message);}finally{setFlagBusy(false);}
  }
  useEffect(()=>{
@@ -63,11 +64,22 @@ export function BriefingReader({initial}:{initial:Batch}){
   finally{setBusy(null);}
  }
  const preferences=current&&ready?<>
-  {reviewAllowed&&<button disabled={!flagReady||flagBusy||flagged} aria-pressed={flagged} aria-label={flagged?"Flagged for editorial review":"Flag for editorial review"} onClick={()=>void flag()}><span aria-hidden="true">⚑</span> {flagged?"Flagged":"Flag"}</button>}
+  {reviewAllowed&&<button disabled={!flagReady||flagBusy} aria-pressed={flagged} aria-label={flagged?"Add a note to this flagged briefing":"Flag for editorial review"} onClick={()=>{setFlagNote('');flagDialog.current?.showModal();}}><span aria-hidden="true">⚑</span> {flagged?"Flagged":"Flag"}</button>}
   <ArticleFeedback key={current.id} id={current.id}/>
   {signed&&<button disabled={!!busy} aria-pressed={!!reading[current.id]?.saved} onClick={()=>void save(current.id)}>{reading[current.id]?.saved?'★ Saved':'☆ Save'}</button>}
  </>:null;
  return <section className="briefing-reader">
+  {reviewAllowed&&<dialog ref={flagDialog} className="flag-dialog" aria-labelledby="flag-dialog-title" onCancel={e=>{if(flagBusy)e.preventDefault();}}>
+   <form onSubmit={e=>{e.preventDefault();void flag();}}>
+    <h2 id="flag-dialog-title">{flagged?'Add a flag note':'Flag for editorial review'}</h2>
+    <p>{current?.translation?.title||current?.title}</p>
+    <label htmlFor="flag-note">Note (optional)</label>
+    <textarea id="flag-note" value={flagNote} maxLength={2000} rows={4} disabled={flagBusy} placeholder="What should the editorial team check?" onChange={e=>setFlagNote(e.target.value)}/>
+    <small>{flagNote.length}/2000 · Visible to editorial staff</small>
+    <div className="button-row"><button type="button" disabled={flagBusy} onClick={()=>{flagDialog.current?.close();setFlagNote('');}}>Cancel</button><button disabled={flagBusy||(flagged&&!flagNote.trim())}>{flagBusy?'Saving…':flagged?'Save note':'Submit flag'}</button></div>
+    {error&&<p role="alert">{error}</p>}
+   </form>
+  </dialog>}
   <div className="briefing-toolbar">
    <h1 ref={heading} tabIndex={-1}>Briefings</h1>
    <div className="briefing-controls">

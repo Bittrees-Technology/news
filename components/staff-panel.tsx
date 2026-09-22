@@ -140,7 +140,7 @@ export function StaffPanel({ role, section }: { role: string; section: "access" 
                 <p>Reviewed briefing: {r.briefing_cid?<>{r.status==='flagged'?<a href={briefingPath({id:r.item_id,cid:r.briefing_cid})}>{briefingShortId(r.briefing_cid)}</a>:briefingShortId(r.briefing_cid)} · <a href={`https://ipfs.io/ipfs/${r.briefing_cid}`} target="_blank" rel="noopener noreferrer">IPFS ↗</a></>:'Version not recorded'}</p>
                 {r.current_cid&&r.current_cid!==r.briefing_cid&&<p>Current briefing: {briefingShortId(r.current_cid)} — not the recorded reviewed version.</p>}
                 <button disabled={busy} onClick={()=>{const ref=r.briefing_cid||r.item_id;setReference(ref);void resolve(ref);}}>Review this version</button>
-                <p>{r.note}</p>
+                <p className="review-note">{r.note}</p>
               </li>
             ))}
           </ul>

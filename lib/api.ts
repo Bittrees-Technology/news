@@ -476,11 +476,11 @@ export async function api(r: Request) {
         return json({flagged:!!r.rowCount});
       }
       if(method==='POST'){
-        const b=z.object({reference:z.string().min(1).max(300)}).strict().parse(await body(r));
+        const b=z.object({reference:z.string().min(1).max(300),note:z.string().trim().max(2000).optional()}).strict().parse(await body(r));
         await tx(async db=>{
           const target=await resolveEditorialReference(db,b.reference);
-          await db.query("INSERT INTO news_reviews(item_id,status,note,actor,briefing_cid) VALUES($1,'flagged','Flagged from the briefing page.',$2,$3) ON CONFLICT(item_id) DO UPDATE SET status='flagged',briefing_cid=$3,actor=$2,updated_at=now()",[target.item_id,a!.id,target.briefing_cid]);
-          await db.query("INSERT INTO news_staff_audit(id,actor,action,detail) VALUES($1,$2,'flag_briefing',$3)",[randomUUID(),a!.id,JSON.stringify(target)]);
+          await db.query("INSERT INTO news_reviews(item_id,status,note,actor,briefing_cid) VALUES($1,'flagged',coalesce(nullif($4,''),'Flagged from the briefing page.'),$2,$3) ON CONFLICT(item_id) DO UPDATE SET status='flagged',briefing_cid=$3,actor=$2,note=CASE WHEN nullif($4,'') IS NULL THEN news_reviews.note ELSE news_reviews.note||E'\n\nFlag note: '||$4 END,updated_at=now()",[target.item_id,a!.id,target.briefing_cid,b.note||'']);
+          await db.query("INSERT INTO news_staff_audit(id,actor,action,detail) VALUES($1,$2,'flag_briefing',$3)",[randomUUID(),a!.id,JSON.stringify({...target,note:b.note||null})]);
         });return json({ok:true,flagged:true});
       }
     }
