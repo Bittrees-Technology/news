@@ -59,7 +59,10 @@ export function Newspaper({
   const [renderCount,setRenderCount]=useState(30);
   const moreRef=useRef<HTMLDivElement>(null);
   const paged=live&&!personal&&!!edition?.feedPage;
-  const feed=usePublicFeed(paged,tab,edition?.data.items||[],edition?.feedPage);
+  const [balanced,setBalanced]=useState(true);
+  // Explicit topic/place/search choices show all matching updates, not a sample.
+  const balancedView=balanced&&!filters.topics.length&&!filters.countries.length&&!filters.regions.length&&!search.trim();
+  const feed=usePublicFeed(paged,tab,edition?.data.items||[],edition?.feedPage,balancedView);
   const items=paged?feed.items:storedItems;
   const nextPage=feed.next,loadingMore=feed.loading,pageError=feed.error;
   const loadMore=useCallback(async()=>{await feed.loadMore();setRenderCount(n=>n+30);},[feed.loadMore]);
@@ -145,7 +148,7 @@ export function Newspaper({
       }),
     [items, tab, filters, hideRead, readSnapshot, mode, geography,rankOrder,orderPositions,paged,edition,live,now,search,searchField],
   );
-  useEffect(()=>{setRenderCount(30);},[tab,filters,search,searchField,personal]);
+  useEffect(()=>{setRenderCount(30);},[tab,filters,search,searchField,personal,balancedView]);
   useEffect(()=>{
     if(!moreRef.current||loadingMore||pageError)return;
     if(renderCount>=visible.length&&(!paged||!nextPage))return;
@@ -285,6 +288,7 @@ export function Newspaper({
         </div>
         <div className="actions">
           <button onClick={()=>window.location.reload()}>Refresh stories</button>
+          {paged&&(tab==='all'||tab==='news')&&<button aria-pressed={balanced} onClick={()=>setBalanced(v=>!v)}>{balanced?'Show all source updates':'Balance source coverage'}</button>}
           {signed && mode === "public" && (
             <button onClick={chooseFeed}>
               {personal ? "Public newspaper" : "My edition"}
@@ -351,7 +355,7 @@ export function Newspaper({
           {message} <Link href="/account">Your account</Link>
         </p>
       )}
-      {live&&<p className="muted">Leading stories from the last 24 hours, then newest first. Refresh stories to update.</p>}
+      {live&&<p className="muted">Leading stories from the last 24 hours, then newest first. {paged&&balancedView&&(tab==='all'||tab==='news')?'Balanced timeline: up to two articles per publisher per UTC hour. ':''}Refresh stories to update.</p>}
       {paged&&loadingMore&&!visible.length?<p role="status">Loading {tab==='all'?'stories':tab}…</p>:!visible.length ? (
         <div className="empty">
           <h2>

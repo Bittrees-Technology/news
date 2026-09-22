@@ -1,5 +1,6 @@
 import {Pool} from 'pg';
 import assert from 'node:assert/strict';
+import {publisherFamily} from '../../lib/diversity-shadow';
 import {publicFeedBatch} from '../../lib/public-feed';
 import {briefingBatch} from '../../lib/briefing-feed';
 const p=new Pool({connectionString:process.env.DATABASE_URL}),d=await p.connect();
@@ -49,5 +50,22 @@ try{
  await d.query("UPDATE items SET owner_id='00000000-0000-0000-0000-000000000001' WHERE id=$1",[data.items[0].id]);
  assert.equal((await publicFeedBatch(snapshot,null,'data')).items.length,2);
  assert.equal((await briefingBatch(null,data.items[0].id,snapshot)).entries.length,0);
- console.log('PASS: bounded feed/briefing pages, unique cursors, older history, completed creation order, frozen arrivals, sparse categories, exact unfinished/completed links and private exclusion; rolled back fixtures');
+ // Balanced coverage shares a publisher allowance across feeds and pages.
+ await d.query('DELETE FROM items');
+ let fixture=1000;
+ for(const source of ['bbc-world','bbc-europe',...Array.from({length:18},(_,n)=>'publisher-'+n)]){
+  for(let n=0;n<3;n++){
+   const id=(++fixture).toString(16).padStart(64,'0');
+   await d.query(`INSERT INTO items(id,source_id,topic,kind,title,url,excerpt,summary_kind,published_at,fetched_at) VALUES($1,$2,'World','article',$1,'https://example.org/'||$1,'Evidence','excerpt',$3::timestamptz-interval '10 minutes'-($4||' seconds')::interval,$3::timestamptz-interval '1 hour')`,[id,source,snapshot,fixture-1000]);
+  }
+ }
+ const balanced=await publicFeedBatch(snapshot,null,'news',true);
+ const balanceNext=await publicFeedBatch(snapshot,balanced.next,'news',true);
+ const selected=[...balanced.items,...balanceNext.items];
+ assert.equal(selected.length,38);assert.equal(balanceNext.next,null);
+ assert.equal(new Set(selected.map(i=>i.id)).size,38);
+ for(const family of new Set(selected.map(publisherFamily)))assert.equal(selected.filter(i=>publisherFamily(i)===family).length,2);
+ const full=await publicFeedBatch(snapshot,null,'news',false),fullNext=await publicFeedBatch(snapshot,full.next,'news',false);
+ assert.equal(full.items.length+fullNext.items.length,60);
+ console.log('PASS: bounded feed/briefing pages, unique cursors, older history, completed creation order, frozen arrivals, sparse categories, exact unfinished/completed links and private exclusion, cross-page publisher balance and all-updates escape; rolled back fixtures');
 }finally{await d.query('ROLLBACK');d.release();await p.end();delete (globalThis as any).newsPool;}
