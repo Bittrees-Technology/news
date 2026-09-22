@@ -1252,5 +1252,75 @@
     "kind": "rss",
     "type": "article",
     "pollMinutes": 60
+  },
+  {
+    "id": "propublica",
+    "name": "ProPublica",
+    "url": "https://www.propublica.org/feeds/propublica/main",
+    "homepage": "https://www.propublica.org/",
+    "topic": "Politics",
+    "pollMinutes": 180,
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "agencia-brasil-economy",
+    "name": "Ag\u00eancia Brasil \u2014 Economia",
+    "url": "https://agenciabrasil.ebc.com.br/rss/economia/feed.xml",
+    "homepage": "https://agenciabrasil.ebc.com.br/",
+    "topic": "Economy",
+    "pollMinutes": 120,
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "our-world-in-data",
+    "name": "Our World in Data",
+    "url": "https://ourworldindata.org/atom.xml",
+    "homepage": "https://ourworldindata.org/",
+    "topic": "Science",
+    "pollMinutes": 360,
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "euronews-europe",
+    "name": "Euronews \u2014 My Europe",
+    "url": "https://euronews.com/rss?format=mrss&level=vertical&name=my-europe",
+    "homepage": "https://euronews.com/",
+    "topic": "Europe",
+    "pollMinutes": 60,
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "eff",
+    "name": "EFF \u2014 Deeplinks",
+    "url": "https://www.eff.org/rss/updates.xml",
+    "homepage": "https://www.eff.org/",
+    "topic": "Tech",
+    "pollMinutes": 360,
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "coin-center",
+    "name": "Coin Center",
+    "url": "https://coincenter.org/feed/",
+    "homepage": "https://coincenter.org/",
+    "topic": "Crypto",
+    "pollMinutes": 1440,
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "lwn",
+    "name": "LWN.net",
+    "url": "https://lwn.net/headlines/rss",
+    "homepage": "https://lwn.net/",
+    "topic": "Tech",
+    "pollMinutes": 60,
+    "kind": "rss",
+    "type": "article"
   }
 ]
