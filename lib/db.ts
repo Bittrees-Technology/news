@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS identities(kind text NOT NULL CHECK(kind IN ('email',
 CREATE TABLE IF NOT EXISTS news_role_grants(kind text NOT NULL CHECK(kind IN ('email','wallet')),value text NOT NULL,role text NOT NULL CHECK(role IN ('member','moderator','editor','admin','super_admin')),protected boolean NOT NULL DEFAULT false,updated_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(kind,value));
 CREATE TABLE IF NOT EXISTS news_staff_audit(id uuid PRIMARY KEY,actor uuid NOT NULL,action text NOT NULL,detail jsonb NOT NULL,created_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS news_reviews(item_id text PRIMARY KEY,status text NOT NULL CHECK(status IN ('flagged','reviewed','approved')),note text NOT NULL,actor uuid NOT NULL,updated_at timestamptz NOT NULL DEFAULT now());
+ALTER TABLE news_reviews ADD COLUMN IF NOT EXISTS briefing_cid text;
 CREATE TABLE IF NOT EXISTS sessions(hash text PRIMARY KEY,account_id uuid NOT NULL REFERENCES accounts ON DELETE CASCADE,expires_at timestamptz NOT NULL);
 CREATE TABLE IF NOT EXISTS challenges(id uuid PRIMARY KEY,kind text NOT NULL,value text NOT NULL,secret_hash text NOT NULL,browser_hash text NOT NULL,account_id uuid REFERENCES accounts ON DELETE CASCADE,purpose text NOT NULL,payload text,expires_at timestamptz NOT NULL,attempts int NOT NULL DEFAULT 0,consumed boolean NOT NULL DEFAULT false);
 CREATE TABLE IF NOT EXISTS rate_limits(key text PRIMARY KEY,hits int NOT NULL,resets_at timestamptz NOT NULL);

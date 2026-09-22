@@ -1,4 +1,5 @@
 'use client';
+import {canReview} from '@/lib/permissions';
 import {briefingPath} from '@/lib/briefing-links';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {call} from './client';
@@ -7,12 +8,13 @@ import {StoryContent} from './story-content';
 import {loadReading,writeReading,watchReading,type ReadingState} from '@/lib/reading-sync';
 type Batch={entries:any[];next:string|null;snapshot:string;selectedId?:string};
 export function BriefingReader({initial}:{initial:Batch}){
+ const [reviewAllowed,setReviewAllowed]=useState(false);
  const [items,setItems]=useState(initial.entries),[next,setNext]=useState(initial.next);
  const [reading,setReading]=useState<ReadingState>({}),[signed,setSigned]=useState(false),[ready,setReady]=useState(false),[busy,setBusy]=useState<string|null>(null),[error,setError]=useState(''),[skipped,setSkipped]=useState<string[]>([]),[loading,setLoading]=useState(false),[loadError,setLoadError]=useState('');
  const fetching=useRef(false),heading=useRef<HTMLHeadingElement>(null);
  useEffect(()=>{
   let active=true,version=0;
-  const load=async()=>{const request=++version;try{const session=await call('session');const value=await loadReading(!!session.account);if(active&&request===version){setSigned(!!session.account);setReading(value);setReady(true);setError('');}}catch{if(active){setError('Could not load read status. Refresh to retry.');setReady(false);}}};
+  const load=async()=>{const request=++version;try{const session=await call('session');const value=await loadReading(!!session.account);if(active&&request===version){setSigned(!!session.account);setReviewAllowed(canReview(session.account?.role));setReading(value);setReady(true);setError('');}}catch{if(active){setError('Could not load read status. Refresh to retry.');setReady(false);}}};
   void load();const stop=watchReading(()=>void load());window.addEventListener('news-auth',load);
   return()=>{active=false;stop();window.removeEventListener('news-auth',load);};
  },[]);
@@ -48,6 +50,7 @@ export function BriefingReader({initial}:{initial:Batch}){
   finally{setBusy(null);}
  }
  const preferences=current&&ready?<>
+  {reviewAllowed&&<a href={`/account/editorial?reference=${encodeURIComponent(current.cid||current.id)}`}>Editorial review</a>}
   <ArticleFeedback key={current.id} id={current.id}/>
   {signed&&<button disabled={!!busy} aria-pressed={!!reading[current.id]?.saved} onClick={()=>void save(current.id)}>{reading[current.id]?.saved?'★ Saved':'☆ Save'}</button>}
  </>:null;

@@ -1,3 +1,4 @@
+import {resolveEditorialReference} from './editorial-reference';
 import {accountDeletionSchema} from './account-deletion';
 import {qualityQueue,saveQualityReview} from "./quality-review";
 import {recordStage} from "./stage-metrics";
@@ -463,18 +464,16 @@ export async function api(r: Request) {
     if (path === "staff/reviews") {
       if (!canReview(a!.role))
         throw new HttpError(403, "Editorial staff access required.");
-      if (method === "GET")
-        return json(
-          (
-            await pool().query(
-              "SELECT r.item_id,r.status,r.note,r.updated_at,i.title FROM news_reviews r JOIN items i ON i.id=r.item_id ORDER BY r.updated_at DESC LIMIT 100",
-            )
-          ).rows,
-        );
+      if (method === "GET") {
+        const reference=url.searchParams.get('reference');
+        if(reference)return json(await resolveEditorialReference(pool(),reference));
+        return json((await pool().query("SELECT r.item_id,r.status,r.note,r.updated_at,r.briefing_cid,coalesce(v.document->>'title',i.title) title,i.url,s.cid current_cid FROM news_reviews r JOIN items i ON i.id=r.item_id LEFT JOIN story_documents s ON s.item_id=i.id LEFT JOIN briefing_versions v ON v.cid=r.briefing_cid WHERE i.owner_id IS NULL ORDER BY r.updated_at DESC LIMIT 100")).rows);
+      }
       if (method === "POST") {
         const b = z
           .object({
             item_id: z.string().min(1).max(300),
+            expected_cid:z.string().regex(/^b[a-z2-7]{30,120}$/).nullable().optional(),
             status: z.enum(["flagged", "reviewed", "approved"]),
             note: z.string().min(3).max(2000),
           })
@@ -485,22 +484,15 @@ export async function api(r: Request) {
             "Editor or administrator approval required.",
           );
         await tx(async (db) => {
-          if (
-            !(
-              await db.query(
-                "SELECT 1 FROM items WHERE id=$1 AND owner_id IS NULL",
-                [b.item_id],
-              )
-            ).rowCount
-          )
-            throw new HttpError(404, "Public article not found.");
+          const target=await resolveEditorialReference(db,b.item_id);
+          if(b.expected_cid!==undefined&&b.expected_cid!==target.briefing_cid)throw new HttpError(409,"The briefing changed. Look it up again before saving your review.");
           await db.query(
-            "INSERT INTO news_reviews(item_id,status,note,actor) VALUES($1,$2,$3,$4) ON CONFLICT(item_id) DO UPDATE SET status=$2,note=$3,actor=$4,updated_at=now()",
-            [b.item_id, b.status, b.note, a!.id],
+            "INSERT INTO news_reviews(item_id,status,note,actor,briefing_cid) VALUES($1,$2,$3,$4,$5) ON CONFLICT(item_id) DO UPDATE SET status=$2,note=$3,actor=$4,briefing_cid=$5,updated_at=now()",
+            [target.item_id,b.status,b.note,a!.id,target.briefing_cid],
           );
           await db.query(
             "INSERT INTO news_staff_audit(id,actor,action,detail) VALUES($1,$2,'review_article',$3)",
-            [randomUUID(), a!.id, JSON.stringify(b)],
+            [randomUUID(), a!.id, JSON.stringify({...b,item_id:target.item_id,briefing_cid:target.briefing_cid})],
           );
         });
         return json({ ok: true });
