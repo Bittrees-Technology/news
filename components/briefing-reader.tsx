@@ -1,5 +1,5 @@
 'use client';
-import {canReview} from '@/lib/permissions';
+import {canApprove} from '@/lib/permissions';
 import {briefingPath} from '@/lib/briefing-links';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {call} from './client';
@@ -14,7 +14,7 @@ export function BriefingReader({initial}:{initial:Batch}){
  const fetching=useRef(false),heading=useRef<HTMLHeadingElement>(null);
  useEffect(()=>{
   let active=true,version=0;
-  const load=async()=>{const request=++version;try{const session=await call('session');const value=await loadReading(!!session.account);if(active&&request===version){setSigned(!!session.account);setReviewAllowed(canReview(session.account?.role));setReading(value);setReady(true);setError('');}}catch{if(active){setError('Could not load read status. Refresh to retry.');setReady(false);}}};
+  const load=async()=>{const request=++version;try{const session=await call('session');const value=await loadReading(!!session.account);if(active&&request===version){setSigned(!!session.account);setReviewAllowed(canApprove(session.account?.role));setReading(value);setReady(true);setError('');}}catch{if(active){setError('Could not load read status. Refresh to retry.');setReady(false);}}};
   void load();const stop=watchReading(()=>void load());window.addEventListener('news-auth',load);
   return()=>{active=false;stop();window.removeEventListener('news-auth',load);};
  },[]);

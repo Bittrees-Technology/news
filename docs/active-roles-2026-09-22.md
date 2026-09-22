@@ -1,0 +1,7 @@
+# Active browser roles
+
+Staff accounts see an Active role selector in the top navigation, including Member and the existing lower-role capabilities inherited from their highest verified identity grant. Member-only accounts see neither selector nor active-role badge. The briefing Editorial review link requires active Editor, Admin or Super-admin; Moderator retains its existing account editorial review permission but does not see that briefing shortcut.
+
+Selected role is stored on the browser's authenticated session. Every server authorization recalculates available grants and applies the selection; an invalid/revoked selection falls back to Member. Users cannot switch to an ungranted role. Origin validation protects the role-switch write. A switch resets client caches, reloads the current page and notifies other tabs sharing the browser session to reload, including server-rendered score views. The switch does not modify grants, other devices' sessions or separately authorized MCP credentials.
+
+Validation: rollback-only database fixtures exercised the actual API for switching down/up, staff access denial in Member mode, member escalation denial, grant revocation fallback and foreign-origin rejection. Unit coverage includes role hierarchy, unknown role fallback, editorial shortcut eligibility and role-switch cache reset. No real account grants or selected roles were changed during tests. Browser visual/interaction checks remain unavailable under the existing policy-verification limitation.

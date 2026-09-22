@@ -1032,3 +1032,5 @@ a.primary {
 .account-danger-zone{border:1px solid #c96565;border-radius:8px;padding:18px;margin-top:32px}.delete-acknowledgment{display:flex;gap:10px;align-items:flex-start;margin:16px 0}.delete-acknowledgment input{width:auto;margin:4px 0 0;flex-shrink:0}
 
 .editorial-id{overflow-wrap:anywhere;font-size:13px}
+
+.active-role{display:flex;align-items:center;gap:6px;font-size:12px}.active-role select{width:auto;margin:0;padding:7px;font-size:12px}

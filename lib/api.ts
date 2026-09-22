@@ -330,7 +330,7 @@ export async function api(r: Request) {
     if (path === "session" && method === "GET") {
       const a = await currentAccount(r, false);
       return json({
-        account: a ? { id: a.id, role: a.role } : null,
+        account: a ? { id: a.id, role: a.role, availableRoles:a.availableRoles } : null,
         emailReady: emailReady(),
       });
     }
@@ -360,7 +360,7 @@ export async function api(r: Request) {
         walletReady(),
       ]);
       return json({
-        account: { id: a.id, role: a.role },
+        account: { id: a.id, role: a.role, availableRoles:a.availableRoles },
         preferences: preferencesSchema.parse(a.preferences),
         identities: identities.rows,
         destinations: destinations.rows.map((d) => ({
@@ -388,6 +388,13 @@ export async function api(r: Request) {
       });
     }
     if (method !== "GET") checkOrigin(r);
+    if(path==='session/role'&&method==='POST'){
+      const b=z.object({role:z.enum(roles)}).strict().parse(await body(r));
+      if(!a!.availableRoles.includes(b.role))throw new HttpError(403,'This role is not available to your account.');
+      const changed=await pool().query('UPDATE sessions SET active_role=$1 WHERE hash=$2 AND account_id=$3 AND expires_at>now() RETURNING hash',[b.role,hash(cookie(r,sessionName)),a!.id]);
+      if(!changed.rowCount)throw new HttpError(401,'Sign in again to switch roles.');
+      return json({ok:true,role:b.role});
+    }
     if(path === "engagement" && method === "POST"){await rateLimit("engagement:"+a!.id,600);return json(await recordEngagement(a!.id,await body(r)));}
     if(path === "staff/quality"){requireScores(a!.role);if(method === "GET")return json(await qualityQueue());if(method === "POST")return json(await saveQualityReview(a!.id,await body(r)));}
     if (path === "subscriptions" && method === "GET")

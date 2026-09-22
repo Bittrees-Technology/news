@@ -123,3 +123,10 @@ test("unsuccessful writes preserve valid cached data", async () => {
   await assert.rejects(api.request("preferences", {}), /Invalid/);
   assert.equal(api.peek("account").account.id, "a");
 });
+test('switching active role clears cached authority and announces the change',async()=>{
+ let changes=0;
+ const api=new BrowserApi(async(url,init)=>init?.method==='POST'?response({ok:true,role:'member'}):response(String(url).endsWith('/session')?{account:{id:'staff',role:'super_admin'}}:{privateStaffData:true}),()=>changes++);
+ await api.request('session');await api.request('sources');
+ await api.request('session/role',{role:'member'});
+ assert.equal(api.peek('session'),undefined);assert.equal(api.peek('sources'),undefined);assert.equal(changes,1);assert.equal(api.getGeneration(),1);
+});

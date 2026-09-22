@@ -109,6 +109,7 @@ export class BrowserApi {
       } else if (
         path === "auth/verify" ||
         path === "auth/logout" ||
+        path === "session/role" ||
         (path === "account" && method === "DELETE")
       ) {
         this.reset();
@@ -162,6 +163,7 @@ export function connectAuthEvents() {
     return;
   channel = new BroadcastChannel("tbn-auth-state");
   channel.onmessage = (event) => {
+    if(event.data==='role-changed'){browserApi.reset();window.location.reload();return;}
     if (event.data !== "identity-changed") return;
     browserApi.reset();
     window.dispatchEvent(new Event("news-auth"));
@@ -182,3 +184,5 @@ export function prefetchAccountSection(section: string) {
   )[section];
   if (path) void call(path).catch(() => {});
 }
+
+export function reloadForRoleChange(){browserApi.reset();channel?.postMessage("role-changed");window.location.reload();}

@@ -1,3 +1,4 @@
+import {availableRoles,effectiveRole} from './active-role';
 import { roleForAccount, type NewsRole } from "./roles";
 import {
   createHash,
@@ -46,20 +47,17 @@ export async function currentAccount(r: Request, required = true) {
   const a = raw
     ? (
         await pool().query(
-          "SELECT a.id,a.preferences FROM sessions s JOIN accounts a ON a.id=s.account_id WHERE s.hash=$1 AND s.expires_at>now()",
+          "SELECT a.id,a.preferences,s.active_role FROM sessions s JOIN accounts a ON a.id=s.account_id WHERE s.hash=$1 AND s.expires_at>now()",
           [hash(raw)],
         )
       ).rows[0]
     : undefined;
   if (!a && required)
     throw new HttpError(401, "Sign in to manage your newspaper.");
-  return a
-    ? ({ ...a, role: await roleForAccount(a.id) } as {
-        id: string;
-        preferences: unknown;
-        role: NewsRole;
-      })
-    : undefined;
+  if(!a)return undefined;
+  const highest=await roleForAccount(a.id);
+  return {id:a.id,preferences:a.preferences,role:effectiveRole(highest,a.active_role),availableRoles:availableRoles(highest)};
+
 }
 export async function rateLimit(key: string, max = 10) {
   const r = await pool().query(
@@ -241,7 +239,7 @@ export async function verifyChallenge(
         [c.kind, c.value, accountId],
       );
     await d.query(
-      "INSERT INTO sessions VALUES($1,$2,now()+interval '22 hours')",
+      "INSERT INTO sessions(hash,account_id,expires_at) VALUES($1,$2,now()+interval '22 hours')",
       [hash(session), accountId],
     );
     await d.query("DELETE FROM sessions WHERE hash=$1", [

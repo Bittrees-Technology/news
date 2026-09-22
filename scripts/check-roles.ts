@@ -17,7 +17,7 @@ try {
     await pool().query('INSERT INTO accounts(id) VALUES($1)',[id]);
     await pool().query("INSERT INTO identities(kind,value,account_id) VALUES('email',$1,$2)",[email,id]);
     await pool().query("INSERT INTO news_role_grants(kind,value,role) VALUES('email',$1,$2)",[email,role]);
-    await pool().query("INSERT INTO sessions VALUES($1,$2,now()+interval '5 minutes')",[hash(session),id]);
+    await pool().query("INSERT INTO sessions(hash,account_id,expires_at) VALUES($1,$2,now()+interval '5 minutes')",[hash(session),id]);
     const rankingResponse=await request('ranking',session);
     assert.equal(rankingResponse.status,200);
     if(!['admin','super_admin'].includes(role)) assert.deepEqual((await rankingResponse.json()).history,[]);
