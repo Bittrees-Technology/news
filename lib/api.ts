@@ -1,3 +1,4 @@
+import {rankingColumns} from './ranking-projection';
 import {resolveEditorialReference} from './editorial-reference';
 import {accountDeletionSchema} from './account-deletion';
 import {qualityQueue,saveQualityReview} from "./quality-review";
@@ -655,7 +656,7 @@ export async function api(r: Request) {
     }
     if(path === "reader-order" && method === "POST"){
       const {ids}=z.object({ids:z.array(z.string().length(64)).max(2000)}).parse(await body(r));
-      const items=(await pool().query("SELECT * FROM items WHERE id=ANY($1::text[]) AND (owner_id IS NULL OR owner_id=$2)",[ids,a!.id])).rows;
+      const items=(await pool().query(`SELECT ${rankingColumns} FROM items WHERE id=ANY($1::text[]) AND (owner_id IS NULL OR owner_id=$2)`,[ids,a!.id])).rows;
       const account=(await pool().query("SELECT preferences,ranking FROM accounts WHERE id=$1",[a!.id])).rows[0];
       const ranked=await rankedItems(items,preferencesSchema.parse(account.preferences),rankingSchema.parse(account.ranking||{}),a!.id,2000);
       return json(ranked.map(i=>i.id));
