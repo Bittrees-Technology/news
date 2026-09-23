@@ -1,3 +1,4 @@
+import { connectionMetadata } from "./mcp-connection";
 import {
   getDraft,
   generateDraft,
@@ -73,6 +74,13 @@ export async function createMcpToken(accountId: string, input: unknown) {
 }
 const empty = z.object({});
 const definitions = [
+  {
+    name: "get_connection",
+    scope: "read",
+    description:
+      "Read this connection's own account ID, credential ID, expiry and scopes. Contains no key, email or wallet and grants no new authority.",
+    schema: empty,
+  },
   {
     name: "set_newspaper",
     scope: "curate",
@@ -428,11 +436,13 @@ export async function mcp(r: Request) {
       let status = "success";
       try {
         const data = scoreVisibility(
-          await execute(
-            credential.account_id,
-            t.name,
-            b.params.arguments || {},
-          ),
+          t.name === "get_connection"
+            ? connectionMetadata(credential)
+            : await execute(
+                credential.account_id,
+                t.name,
+                b.params.arguments || {},
+              ),
           await roleForAccount(credential.account_id),
         );
         await pool().query(
