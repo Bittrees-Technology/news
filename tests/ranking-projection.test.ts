@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {rankingColumns,uniqueChangedIds} from '../lib/ranking-projection';
+import {rankingColumns,accountRankingColumns,uniqueChangedIds} from '../lib/ranking-projection';
 import {scoreArticle,rankArticles,defaultRanking} from '../lib/scoring';
 import {defaults,type Item} from '../lib/model';
 import {translationKey} from '../lib/translation';
@@ -16,3 +16,5 @@ test('narrow projection preserves scores, ordering and translation identity',()=
  assert.ok(JSON.stringify(projected).length<JSON.stringify(records).length/2);
  assert.deepEqual(uniqueChangedIds(['a','b','a']),['a','b']);
 });
+
+test("account projection qualifies the same complete scoring fields",()=>{assert.deepEqual(accountRankingColumns.split(","),rankingColumns.split(",").map(k=>`i.${k}`));});

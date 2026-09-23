@@ -1,5 +1,5 @@
 import {unstable_cache} from "next/cache";
-import {rankingColumns} from "./ranking-projection";
+import {rankingColumns,accountRankingColumns} from "./ranking-projection";
 import {recentUniqueStories} from './recent-stories';
 import {communityAdjustment} from "./feedback";
 import { pool } from "./db";
@@ -71,7 +71,7 @@ export async function accountCandidates(accountId: string, publicOnly = false) {
   ).rows[0];
   const items = (
     await pool().query(
-      "SELECT i.*,c.summary AS curated_summary,c.excluded FROM items i LEFT JOIN article_curation c ON c.item_id=i.id AND c.account_id=$1 WHERE (i.owner_id IS NULL OR (i.owner_id=$1 AND ($2=false OR EXISTS(SELECT 1 FROM connections x WHERE 'private:'||x.id::text=i.source_id AND x.account_id=$1 AND x.share_public=true)))) AND i.published_at>now()-interval '90 days' ORDER BY i.published_at DESC LIMIT 3000",
+      `SELECT ${accountRankingColumns},c.summary AS curated_summary,c.excluded FROM items i LEFT JOIN article_curation c ON c.item_id=i.id AND c.account_id=$1 WHERE (i.owner_id IS NULL OR (i.owner_id=$1 AND ($2=false OR EXISTS(SELECT 1 FROM connections x WHERE 'private:'||x.id::text=i.source_id AND x.account_id=$1 AND x.share_public=true)))) AND i.published_at>now()-interval '90 days' ORDER BY i.published_at DESC LIMIT 3000`,
       [accountId, publicOnly],
     )
   ).rows
