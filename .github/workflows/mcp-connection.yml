@@ -33,3 +33,7 @@ jobs:
         run: npx tsx scripts/check-mcp-preview.ts
         env:
           NEWS_MCP_TEST_DATABASE_URL: postgresql://integration:ci-only@127.0.0.1:5432/news_test
+      - name: Reviewed publication and durable receipts on disposable PostgreSQL
+        run: npx tsx scripts/check-reviewed-publication.ts
+        env:
+          NEWS_MCP_TEST_DATABASE_URL: postgresql://integration:ci-only@127.0.0.1:5432/news_test

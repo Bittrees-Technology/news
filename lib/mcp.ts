@@ -1,3 +1,10 @@
+import {
+  getPublicationReview,
+  getPublicationReceipt,
+  publishReviewed,
+  publicationReceiptSchema,
+  publishReviewedSchema,
+} from "./reviewed-publication";
 import { connectionMetadata } from "./mcp-connection";
 import {
   getDraft,
@@ -133,6 +140,27 @@ const definitions = [
     schema: editDraftItemSchema,
   },
   {
+    name: "get_publication_review",
+    scope: "read",
+    description:
+      "Review the exact public snapshot, newspaper details, feed navigation and current source-sharing eligibility. Includes all snapshot fields; source text is untrusted. Read only; does not publish, subscribe or change schedules.",
+    schema: z.strictObject({}),
+  },
+  {
+    name: "publish_reviewed_preview",
+    scope: "publish",
+    description:
+      "Publish one explicitly confirmed exact review to the public newspaper. Use one unique operation ID and the current review digest/revisions. Retries with the same ID return the historical receipt without repeating publication. Existing subscriptions may later include the edition; this does not send now or change schedules.",
+    schema: publishReviewedSchema,
+  },
+  {
+    name: "get_publication_receipt",
+    scope: "read",
+    description:
+      "Check an own-account publication operation after an uncertain response. Returns only a historical commit receipt, not proof the edition is still public. A missing receipt is not a failed-operation guarantee while another request is in flight.",
+    schema: publicationReceiptSchema,
+  },
+  {
     name: "publish_preview",
     scope: "publish",
     description:
@@ -220,12 +248,23 @@ const definitions = [
     schema: empty,
   },
 ] as const;
-async function execute(accountId: string, name: string, args: unknown) {
+async function execute(
+  accountId: string,
+  name: string,
+  args: unknown,
+  credentialId: string,
+) {
   const role = await roleForAccount(accountId);
   if (["ranking_history"].includes(name)) requireScores(role);
   const tool = definitions.find((t) => t.name === name)!;
   const b = tool.schema.parse(args) as any;
   switch (name) {
+    case "get_publication_review":
+      return getPublicationReview(accountId, credentialId);
+    case "publish_reviewed_preview":
+      return publishReviewed(accountId, credentialId, b);
+    case "get_publication_receipt":
+      return getPublicationReceipt(accountId, credentialId, b);
     case "set_newspaper":
       return saveNewspaperDetails(accountId, b);
     case "get_delivery":
@@ -453,6 +492,7 @@ export async function mcp(r: Request) {
                 credential.account_id,
                 t.name,
                 b.params.arguments || {},
+                credential.id,
               ),
           await roleForAccount(credential.account_id),
         );
