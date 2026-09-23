@@ -1,3 +1,5 @@
+import {unstable_cache} from "next/cache";
+import {rankingColumns} from "./ranking-projection";
 import {recentUniqueStories} from './recent-stories';
 import {communityAdjustment} from "./feedback";
 import { pool } from "./db";
@@ -127,7 +129,13 @@ export async function historyFor(accountId: string) {
   ).rows;
 }
 
+// Public-source candidates only. Refresh the large input set at most once per
+// 15 minutes; still apply the caller's frozen window and current scoring on read.
+const publicCandidates=unstable_cache(async()=>{
+ return (await pool().query(`SELECT ${rankingColumns},fetched_at FROM items WHERE owner_id IS NULL AND published_at>=now()-interval '24 hours' AND published_at<=now() ORDER BY published_at DESC`)).rows;
+},['public-ranking-candidates-v1'],{revalidate:900});
 export async function recentPublicRanked(snapshot=new Date().toISOString()){
- const items=(await pool().query("SELECT * FROM items WHERE owner_id IS NULL AND published_at>=$1::timestamptz-interval '24 hours' AND published_at<=$1 AND fetched_at<=$1 ORDER BY published_at DESC",[snapshot])).rows as Item[];
- return recentUniqueStories(await publicRanked(items),Date.parse(snapshot));
+ const at=Date.parse(snapshot);
+ const items=(await publicCandidates()).filter(i=>new Date(i.published_at).getTime()<=at && new Date(i.fetched_at).getTime()<=at && new Date(i.published_at).getTime()>=at-86400000) as Item[];
+ return recentUniqueStories(await publicRanked(items),at);
 }

@@ -1,3 +1,4 @@
+import {rankingColumns,uniqueChangedIds} from "./ranking-projection";
 import {annualObservation} from "./data-dates";
 import {publicRanked} from "./ranking";
 import {articleTags,normalizeTopic} from "./tags";
@@ -163,8 +164,9 @@ export async function storeItems(items: Item[]) {
     );
   await pool().query(`INSERT INTO story_documents(item_id,content_key) SELECT id,md5(title||'|'||coalesce(source_context,excerpt)) FROM items WHERE id=ANY($1::text[]) AND owner_id IS NULL ON CONFLICT(item_id) DO UPDATE SET content_key=EXCLUDED.content_key,enqueued_at=CASE WHEN story_documents.content_key IS NULL THEN story_documents.enqueued_at ELSE now() END,document=CASE WHEN story_documents.content_key IS NULL THEN story_documents.document ELSE NULL END,cid=CASE WHEN story_documents.content_key IS NULL THEN story_documents.cid ELSE NULL END,generated_at=CASE WHEN story_documents.content_key IS NULL THEN story_documents.generated_at ELSE NULL END,pinned_at=CASE WHEN story_documents.content_key IS NULL THEN story_documents.pinned_at ELSE NULL END,claimed_at=NULL,lease=NULL,attempts=0,available_at=now(),error=NULL WHERE story_documents.content_key IS DISTINCT FROM EXCLUDED.content_key`,[items.map(i=>i.id)]);
 }
-export async function prioritizePublicWork(){
- const rows=(await pool().query("SELECT * FROM items WHERE owner_id IS NULL AND published_at>=now()-interval '24 hours' AND published_at<=now() ORDER BY published_at DESC LIMIT 2000")).rows as Item[];
+export async function prioritizePublicWork(ids:string[]){
+ if(!ids.length)return [];
+ const rows=(await pool().query(`SELECT ${rankingColumns} FROM items WHERE id=ANY($1::text[]) AND owner_id IS NULL AND published_at>=now()-interval '24 hours' AND published_at<=now() ORDER BY published_at DESC LIMIT 2000`,[uniqueChangedIds(ids)])).rows as Item[];
  const ranked=await publicRanked(rows);
  await pool().query("UPDATE story_documents s SET priority=x.score FROM jsonb_to_recordset($1::jsonb) AS x(id text,score numeric) WHERE s.item_id=x.id",[JSON.stringify(ranked.map(i=>({id:i.id,score:i.ranking.value})))]);
  return ranked;
@@ -177,7 +179,8 @@ export async function claimSource(ids:string[]){
 export async function collect() {
  const started=Date.now(),ids=sources.map(s=>s.id);
  await pool().query('INSERT INTO sources(id,next_poll_at) SELECT id,next_poll_at FROM jsonb_to_recordset($1::jsonb) AS x(id text,next_poll_at timestamptz) ON CONFLICT DO NOTHING',[JSON.stringify(sources.map(s=>({id:s.id,next_poll_at:nextSourcePoll(s.id,collectionMinutes(s))})))]);
- let ok=0,failed=0,unchanged=0,claimed=0,changed=false;
+ let ok=0,failed=0,unchanged=0,claimed=0;
+ const changedIds:string[]=[];
  // A time and work budget keeps this job below the route's five-minute limit.
  await Promise.all(Array.from({length:3},async()=>{
   while(Date.now()-started<45000 && claimed<12){
@@ -187,7 +190,7 @@ export async function collect() {
    const source=sources.find(s=>s.id===row.id)!,minutes=collectionMinutes(source);
    try{
     const result=await fetchSourceSnapshot(source,undefined,row.body_hash,{etag:row.etag,lastModified:row.last_modified});
-    if(result.items){await storeItems(result.items);changed=true;}else unchanged++;
+    if(result.items){await storeItems(result.items);changedIds.push(...result.items.map(i=>i.id));}else unchanged++;
     await pool().query("WITH completed AS (UPDATE sources SET status='healthy',checked_at=now(),error=NULL,item_count=coalesce($3,item_count),body_hash=$4,etag=$6,last_modified=$7,transferred_bytes=transferred_bytes+$8,conditional_hits=conditional_hits+CASE WHEN $9 THEN 1 ELSE 0 END,completed_checks=completed_checks+1,collected_items=collected_items+coalesce($3,0),failures=0,next_poll_at=$5::timestamptz,collection_lease=NULL,collection_lease_until=NULL WHERE id=$1 AND collection_lease=$2 RETURNING id,checked_at,status) INSERT INTO source_observations(source_id,observed_at,status) SELECT id,checked_at,status FROM completed ON CONFLICT DO NOTHING",[row.id,row.collection_lease,result.items?.length??null,result.hash,nextSourcePoll(source.id,minutes,Math.max(Date.now()+1,new Date(row.next_poll_at).getTime()+minutes*60_000)),result.etag,result.lastModified,result.bytes,result.notModified]);
     ok++;
    }catch(e){
@@ -198,7 +201,7 @@ export async function collect() {
    }
   }
  }));
- if(changed)await withTranslations(await prioritizePublicWork());
+ if(changedIds.length)await withTranslations(await prioritizePublicWork(changedIds));
  const stats={ok,failed,unchanged,seconds:Math.round((Date.now()-started)/1000)};
  await pool().query("INSERT INTO worker_state(id,data) VALUES('collection',$1) ON CONFLICT(id) DO UPDATE SET updated_at=now(),data=EXCLUDED.data",[JSON.stringify(stats)]);
  return stats;
