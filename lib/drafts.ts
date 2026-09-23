@@ -147,3 +147,57 @@ export async function publishDraft(accountId: string, revision: number) {
     return { published: true, url: "/" + p.slug };
   });
 }
+
+/** Patch one reviewed story without resubmitting/truncating unrelated source content. */
+export const editDraftItemSchema = z.strictObject({
+  revision: z
+    .number()
+    .int()
+    .min(0)
+    .max(Number.MAX_SAFE_INTEGER - 1),
+  itemId: z.string().regex(/^[a-f0-9]{64}$/),
+  title: z.string().trim().min(1).max(250),
+  summary: z.string().trim().max(2000),
+});
+export async function editDraftItem(accountId: string, input: unknown) {
+  const b = editDraftItemSchema.parse(input);
+  return tx(async (d) => {
+    const p = (
+      await d.query("SELECT * FROM newspapers WHERE account_id=$1 FOR UPDATE", [
+        accountId,
+      ])
+    ).rows[0];
+    if (!p?.draft || p.draft_revision !== b.revision)
+      throw new HttpError(
+        409,
+        "This preview has changed. Reload before saving.",
+      );
+    const original = p.draft.front.find((i: Item) => i.id === b.itemId);
+    if (!original)
+      throw new HttpError(400, "Choose an article from your current preview.");
+    if (
+      original.title === b.title &&
+      (original.summary ?? original.excerpt) === b.summary
+    )
+      throw new HttpError(400, "Change the headline or summary before saving.");
+    const edited = {
+      ...original,
+      original_title: original.original_title || original.title,
+      title: b.title,
+      summary: b.summary,
+      user_edited: true,
+      summary_kind: "user_edited",
+    };
+    const draft = {
+      ...p.draft,
+      front: p.draft.front.map((i: Item) => (i.id === b.itemId ? edited : i)),
+      editedAt: new Date().toISOString(),
+    };
+    return (
+      await d.query(
+        "UPDATE newspapers SET draft=$2,draft_revision=draft_revision+1 WHERE account_id=$1 RETURNING name,slug,description,draft,draft_revision",
+        [accountId, JSON.stringify(draft)],
+      )
+    ).rows[0];
+  });
+}
