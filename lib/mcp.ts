@@ -5,6 +5,8 @@ import {
   editDraft,
   publishDraft,
   editDraftSchema,
+  editDraftItem,
+  editDraftItemSchema,
 } from "./drafts";
 import {
   deliverySettings,
@@ -124,6 +126,13 @@ const definitions = [
     schema: editDraftSchema,
   },
   {
+    name: "edit_preview_item",
+    scope: "curate",
+    description:
+      "Save exact reviewed headline/summary edits to one story in your current private preview. Requires its latest revision; preserves other stories, source links and feeds. Owner edits are labeled, never treated as source-grounded summaries. Does not publish, send or change schedules.",
+    schema: editDraftItemSchema,
+  },
+  {
     name: "publish_preview",
     scope: "publish",
     description:
@@ -229,6 +238,8 @@ async function execute(accountId: string, name: string, args: unknown) {
       return getDraft(accountId);
     case "edit_preview":
       return editDraft(accountId, b);
+    case "edit_preview_item":
+      return editDraftItem(accountId, b);
     case "publish_preview":
       return publishDraft(accountId, b.revision);
     case "get_newspaper":
