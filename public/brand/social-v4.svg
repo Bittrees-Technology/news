@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+<rect width="1200" height="630" fill="#142630"/>
+<path d="M76 494H1124" stroke="#416171" stroke-width="2"/>
+<svg x="824" y="100" width="300" height="300" viewBox="0 0 64 64">
+<path d="M16 13h33v36a5 5 0 0 1-5 5H20a5 5 0 0 1-5-5V26h6" fill="none" stroke="#dbeaf1" stroke-width="2" stroke-linejoin="round"/>
+<path d="M32 37V21m0 10c-9 0-11-5-11-10 8 0 11 4 11 10Zm0-5c0-9 5-12 12-12 0 8-4 12-12 12Z" fill="#83c7f3" stroke="#83c7f3" stroke-width="1.5"/>
+<path d="M23 43h18m-18 5h12" stroke="#dbeaf1" stroke-width="2" stroke-linecap="round"/>
+</svg>
+<text x="72" y="263" fill="#dbeaf1" font-family="Georgia,serif" font-weight="bold" font-size="172">TBN</text>
+<text x="78" y="349" fill="#dbeaf1" font-family="Arial,sans-serif" font-size="42">A wider view of the world.</text>
+<text x="78" y="408" fill="#a8bfcc" font-family="Arial,sans-serif" font-size="28">News, economics, technology and science</text>
+<text x="78" y="554" fill="#83c7f3" font-family="Arial,sans-serif" font-size="27">Briefings, podcasts and data</text>
+<text x="1124" y="554" text-anchor="end" fill="#dbeaf1" font-family="Arial,sans-serif" font-size="27">news.bittrees.org</text>
+</svg>

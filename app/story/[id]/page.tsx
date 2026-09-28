@@ -1,9 +1,16 @@
-import {BriefingReader} from "@/components/briefing-reader";
-import {briefingBatch} from "@/lib/briefing-feed";
+import {BriefingReader} from '@/components/briefing-reader';
+import {briefingBatch} from '@/lib/briefing-feed';
 import {notFound} from 'next/navigation';
-import {pool} from '@/lib/db';
-import {pageMetadata} from '@/lib/seo';
+import {cache} from 'react';
+import {briefingMetadata,briefingSchema,schemaJson} from '@/lib/briefing-seo';
 export const dynamic='force-dynamic';
-async function story(id:string){if(!/^[a-f0-9]{64}$/.test(id))return null;return (await pool().query('SELECT i.*,s.document,s.cid,s.generated_at FROM items i LEFT JOIN story_documents s ON s.item_id=i.id WHERE i.id=$1 AND i.owner_id IS NULL',[id])).rows[0];}
-export async function generateMetadata({params}:{params:Promise<{id:string}>}){const {id}=await params;const i=await story(id);return i?pageMetadata(i.title,i.document?.briefing.overview?.slice(0,160)||'Source-linked Bittrees briefing',`/story/${id}`):{title:'Story unavailable',robots:{index:false}};}
-export default async function Page({params}:{params:Promise<{id:string}>}){const {id}=await params;const i=await story(id);if(!i)notFound();return <BriefingReader key={id} initial={{...await briefingBatch(null,id),selectedId:id}}/>;}
+const story=cache(async(id:string)=>/^[a-f0-9]{64}$/.test(id)?briefingBatch(null,id):null);
+export async function generateMetadata({params}:{params:Promise<{id:string}>}){
+ const {id}=await params;const batch=await story(id);const item=batch?.entries.find(i=>i.id===id);
+ return item?briefingMetadata(item,`/story/${id}`):{title:'Story unavailable',robots:{index:false}};
+}
+export default async function Page({params}:{params:Promise<{id:string}>}){
+ const {id}=await params;const batch=await story(id);const item=batch?.entries.find(i=>i.id===id);
+ if(!batch||!item)notFound();const schema=briefingSchema(item,`/story/${id}`);
+ return <>{schema&&<script type="application/ld+json" dangerouslySetInnerHTML={{__html:schemaJson(schema)}}/>}<BriefingReader key={id} initial={{...batch,selectedId:id}}/></>;
+}

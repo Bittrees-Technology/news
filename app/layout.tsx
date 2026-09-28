@@ -6,10 +6,10 @@ import "./globals.css";
 export const metadata: Metadata = {
   ...pageMetadata(siteName,siteDescription,"/"),
   metadataBase: new URL(siteUrl),
-  title: {default:"TBN — The Bittrees News",template:"%s | TBN"},
+  title: {default:"TBN",template:"%s | TBN"},
   alternates: undefined,
-  applicationName:siteName,
-  icons:{icon:[{url:"/favicon.ico",sizes:"32x32"},{url:"/brand/tbn-mark.svg",type:"image/svg+xml"}],apple:[{url:"/brand/tbn-180.png",sizes:"180x180"}]},
+  applicationName:"TBN",
+  icons:{icon:[{url:"/brand/tbn-mark.svg",type:"image/svg+xml"}],apple:[{url:"/brand/tbn-180.png",sizes:"180x180"}]},
   manifest:"/manifest.webmanifest",
 };
 export default function Layout({ children }: { children: React.ReactNode }) {
