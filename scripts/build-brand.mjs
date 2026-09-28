@@ -1,0 +1,11 @@
+import sharp from 'sharp';
+import {readFile,writeFile} from 'node:fs/promises';
+const root=new URL('../',import.meta.url);
+const mark=await readFile(new URL('public/brand/tbn-mark.svg',root));
+for(const size of [32,48,180,192,512])await sharp(mark).resize(size,size).png().toFile(new URL(`public/brand/tbn-${size}.png`,root).pathname);
+const sizes=[16,32,48],images=await Promise.all(sizes.map(size=>sharp(mark).resize(size,size).png().toBuffer()));
+const header=Buffer.alloc(6+16*images.length);header.writeUInt16LE(1,2);header.writeUInt16LE(images.length,4);
+let offset=header.length;
+images.forEach((data,i)=>{const pos=6+16*i;header[pos]=sizes[i];header[pos+1]=sizes[i];header.writeUInt16LE(1,pos+4);header.writeUInt16LE(32,pos+6);header.writeUInt32LE(data.length,pos+8);header.writeUInt32LE(offset,pos+12);offset+=data.length;});
+await writeFile(new URL('app/favicon.ico',root),Buffer.concat([header,...images]));
+await sharp(new URL('public/brand/social-v4.svg',root).pathname).png().toFile(new URL('public/brand/social-v4.png',root).pathname);
