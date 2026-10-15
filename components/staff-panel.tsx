@@ -5,6 +5,7 @@ import {briefingPath,briefingShortId} from "@/lib/briefing-links";
 import {ReviewHistory} from "./review-history";
 import { call } from "./client";
 export function StaffPanel({ role, section }: { role: string; section: "access" | "editorial" }) {
+  const [centralized,setCentralized]=useState(false);
   const [grants, setGrants] = useState<any[]>([]),
     [reviews, setReviews] = useState<any[]>([]),
     [message, setMessage] = useState(""),
@@ -18,7 +19,7 @@ export function StaffPanel({ role, section }: { role: string; section: "access" 
   }
   useEffect(()=>{if(section==='editorial'){const ref=new URLSearchParams(window.location.search).get('reference');if(ref){setReference(ref);void resolve(ref);}}},[section]);
   async function refresh() {
-    if (section === "access" && canManageAccess(role)) setGrants(await call("staff/roles"));
+    if (section === "access" && canManageAccess(role)){const data=await call("staff/roles");setCentralized(Boolean(data.centralized));setGrants(Array.isArray(data)?data:data.grants||[]);}
     if (section === "editorial" && staff) setReviews(await call("staff/reviews"));
   }
   useEffect(() => {
@@ -49,12 +50,13 @@ export function StaffPanel({ role, section }: { role: string; section: "access" 
       {section === "access" && canManageAccess(role) && (
         <>
           <h3>Account roles</h3>
+          <p><a href="https://roles.bittrees.org">Manage shared staff roles in Roles</a></p>
           <p>Members manage their own newspaper and sign-in methods. Moderators flag and review articles. Editors also approve articles. Admins also see scores and processing diagnostics. Super-admins also assign roles. Staff roles do not grant access to another user’s private newspaper or sign-in methods.</p>
           <p>
             Assign access to a verified email or wallet. Protected super-admin
             identities cannot be changed here.
           </p>
-          <form
+          {!centralized&&<form
             onSubmit={(e) => {
               e.preventDefault();
               const f = new FormData(e.currentTarget);
@@ -85,7 +87,7 @@ export function StaffPanel({ role, section }: { role: string; section: "access" 
               </select>
             </label>
             <button disabled={busy}>Save role</button>
-          </form>
+          </form>}
           <ul>
             {grants.map((g) => (
               <li key={g.kind + g.value}>
