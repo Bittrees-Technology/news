@@ -1,4 +1,5 @@
 "use client";
+import {SharedProfileCard} from "../shared/sso/SharedProfileCard.jsx";
 import {useSharedSignIn} from "../shared/sso/useSharedSignIn.jsx";
 import { LoginPanel, EmailSignIn, EthereumSignIn } from "./shared/login/LoginPanel.jsx";
 import {RoleSwitcher} from "./role-switcher";
@@ -317,6 +318,7 @@ useSharedSignIn(data?.account?.id);
   }
   return (
     <>
+      <SharedProfileCard sessionRevision={data.account.id}/>
       <div className="edition-head">
         <div>
           <h1>{accountTabs.find((t) => t[0] === section)?.[1]}</h1>
