@@ -1,4 +1,5 @@
 import {rankingColumns} from './ranking-projection';
+import {sharedRolesForAccount} from './roles';
 import {resolveEditorialReference} from './editorial-reference';
 import {accountDeletionSchema} from './account-deletion';
 import {qualityQueue,saveQualityReview} from "./quality-review";
@@ -420,6 +421,8 @@ export async function api(r: Request) {
     }
 
     if (path === "staff/roles") {
+      const shared=await sharedRolesForAccount(a!.id);
+      if(shared.enrolled){if(!canManageAccess(a!.role))throw new HttpError(403,'Super-admin access required.');if(method==='GET')return json({centralized:true,managedAt:'https://roles.bittrees.org',grants:[]});throw new HttpError(409,'Manage shared staff assignments at https://roles.bittrees.org. Private newspaper ownership stays in News.');}
       if (!canManageAccess(a!.role))
         throw new HttpError(403, "Super-admin access required.");
       if (method === "GET")
