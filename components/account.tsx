@@ -1,6 +1,6 @@
 "use client";
 import {useSharedSignIn} from "../shared/sso/useSharedSignIn.jsx";
-import { LoginPanel } from "./shared/login/LoginPanel.jsx";
+import { LoginPanel, EmailSignIn, EthereumSignIn } from "./shared/login/LoginPanel.jsx";
 import {RoleSwitcher} from "./role-switcher";
 import { TopicSettings } from "./topic-settings";
 import { Subscriptions } from "./subscriptions";
@@ -295,8 +295,8 @@ useSharedSignIn(data?.account?.id);
           </div>
         </div>
         <LoginPanel product="News"
-          email={<form onSubmit={e=>{e.preventDefault();void (challenge ? verifyEmail() : startEmail("login"));}}>{emailForm("login")}</form>}
-          wallet={<button type="button" disabled={busy} onClick={()=>wallet("login")}>Sign in with Ethereum</button>}
+          email={<EmailSignIn email={email} onEmailChange={setEmail} challenge={challenge} code={code} onCodeChange={setCode} busy={busy} disabled={!data.emailReady} onReset={()=>{setChallenge(null);setCode('');setStatus('');}} onSubmit={e=>{e.preventDefault();void (challenge?verifyEmail():startEmail('login'));}}/>}
+          wallet={<EthereumSignIn busy={busy} onClick={()=>wallet("login")}/>}
           notice={statusBox}
           footer={<p>By continuing, you agree to the <a href="/terms">terms</a> and acknowledge the <a href="/privacy">privacy notice</a>.</p>}
         />

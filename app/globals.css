@@ -1172,3 +1172,6 @@ a.primary { max-width: 100%; overflow-wrap: anywhere; }
 .topic-choice select { width:120px; flex-shrink:0; }
 .topic-settings > fieldset { margin-bottom:0; }
 @media screen and (max-width:600px) { .topic-choice-grid { grid-template-columns:minmax(0,1fr); } }
+
+/* Match the shared login canvas inset on narrow screens. */
+@media(max-width:480px){.site:has(.bt-login-panel){padding-inline:12px;}}
