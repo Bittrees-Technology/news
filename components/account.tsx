@@ -228,6 +228,9 @@ useSharedSignIn(data?.account?.id);
         Email address
         <input
           type="email"
+          required={purpose === "login"}
+          readOnly={purpose === "login" && !!challenge}
+          disabled={purpose === "login" && busy}
           autoComplete="email"
           autoCapitalize="none"
           spellCheck={false}
@@ -243,6 +246,8 @@ useSharedSignIn(data?.account?.id);
             <input
               value={code}
               onChange={(e) => setCode(e.target.value)}
+              required={purpose === "login"}
+              pattern="[0-9]{8}"
               inputMode="numeric"
               autoComplete="one-time-code"
               maxLength={8}
@@ -251,21 +256,21 @@ useSharedSignIn(data?.account?.id);
           <div className="button-row">
             <button
               className="primary"
-              type="button"
+              type={purpose === "login" ? "submit" : "button"}
               disabled={busy || code.length !== 8}
-              onClick={verifyEmail}
+              onClick={purpose === "login" ? undefined : verifyEmail}
             >
               Verify and continue
             </button>
-            <button type="button" className="text-button" disabled={busy} onClick={() => setChallenge(null)}>Change email or request a new code</button>
+            <button type="button" className="text-button" disabled={busy} onClick={() => {setChallenge(null);setCode("");setStatus("");}}>Change email or request a new code</button>
           </div>
         </>
       ) : (
         <button
           className="primary"
-          type="button"
+          type={purpose === "login" ? "submit" : "button"}
           disabled={busy || !email || !data.emailReady}
-          onClick={() => startEmail(purpose)}
+          onClick={purpose === "login" ? undefined : () => startEmail(purpose)}
         >
           Send verification code
         </button>
