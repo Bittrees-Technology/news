@@ -1,3 +1,4 @@
+import {cookie as sharedCookie} from '../shared/sso/client.mjs';
 import {rankingColumns} from './ranking-projection';
 import {sharedRolesForAccount} from './roles';
 import {resolveEditorialReference} from './editorial-reference';
@@ -325,9 +326,11 @@ export async function api(r: Request) {
       await pool().query("DELETE FROM sessions WHERE hash=$1", [
         hash(cookie(r, sessionName)),
       ]);
-      return json({ ok: true }, 200, {
-        "Set-Cookie": setCookie(sessionName, "", 0),
-      });
+      const response=json({ok:true},200,{"Set-Cookie":setCookie(sessionName,"",0)});
+      const sharedOrigin=process.env.APP_URL||new URL(r.url).origin;
+      response.headers.append('Set-Cookie',sharedCookie('bt-sso-skip','1',604800,sharedOrigin));
+      response.headers.append('Set-Cookie',sharedCookie('bt-sso-published','',0,sharedOrigin));
+      return response;
     }
     if (path === "session" && method === "GET") {
       const a = await currentAccount(r, false);

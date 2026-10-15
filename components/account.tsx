@@ -1,4 +1,6 @@
 "use client";
+import {useSharedSignIn} from "../shared/sso/useSharedSignIn.jsx";
+import { LoginPanel } from "./shared/login/LoginPanel.jsx";
 import {RoleSwitcher} from "./role-switcher";
 import { TopicSettings } from "./topic-settings";
 import { Subscriptions } from "./subscriptions";
@@ -135,6 +137,7 @@ export function Account({
     [deleteConfirm, setDeleteConfirm] = useState(false),
     [deletePhrase,setDeletePhrase]=useState(''),
     [deleteAcknowledged,setDeleteAcknowledged]=useState(false);
+useSharedSignIn(data?.account?.id);
   function cancelDeletion(){setDeleteConfirm(false);setDeletePhrase('');setDeleteAcknowledged(false);}
   useEffect(()=>{cancelDeletion();},[section,data?.account?.id]);
   async function load() {
@@ -248,17 +251,19 @@ export function Account({
           <div className="button-row">
             <button
               className="primary"
+              type="button"
               disabled={busy || code.length !== 8}
               onClick={verifyEmail}
             >
-              Verify email
+              Verify and continue
             </button>
-            <button onClick={() => setChallenge(null)}>Start again</button>
+            <button type="button" className="text-button" disabled={busy} onClick={() => setChallenge(null)}>Change email or request a new code</button>
           </div>
         </>
       ) : (
         <button
           className="primary"
+          type="button"
           disabled={busy || !email || !data.emailReady}
           onClick={() => startEmail(purpose)}
         >
@@ -284,24 +289,12 @@ export function Account({
             </p>
           </div>
         </div>
-        <section className="panel auth-box">
-          <h2>Sign in or create an account</h2>
-          {emailForm("login")}
-          <div className="button-row">
-            <button disabled={busy} onClick={() => wallet("login")}>
-              Continue with a wallet
-            </button>
-          </div>
-          <p>
-            Ethereum-compatible wallets. Signing in never authorizes a
-            transaction.
-          </p>
-          {statusBox}
-          <p>
-            By continuing, you agree to the <a href="/terms">terms</a> and
-            acknowledge the <a href="/privacy">privacy notice</a>.
-          </p>
-        </section>
+        <LoginPanel product="News"
+          email={<form onSubmit={e=>{e.preventDefault();void (challenge ? verifyEmail() : startEmail("login"));}}>{emailForm("login")}</form>}
+          wallet={<button type="button" disabled={busy} onClick={()=>wallet("login")}>Sign in with Ethereum</button>}
+          notice={statusBox}
+          footer={<p>By continuing, you agree to the <a href="/terms">terms</a> and acknowledge the <a href="/privacy">privacy notice</a>.</p>}
+        />
       </>
     );
   const filtered = sources.filter((s) =>
