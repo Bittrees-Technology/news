@@ -14,7 +14,7 @@ Use verified DKIM/return-path records and signed Resend bounce/complaint webhook
 
 ## Data and recovery
 
-Use the database provider's encrypted backups/PITR. Before restoring into a live environment, disable all cron triggers and workers, rotate service secrets, pause all destinations, cancel pending/sending delivery records, and reconcile provider receipts before reactivation. Never replay queued sends from a restored backup blindly. Verify restore on an isolated database before production cutover; a restore drill has not yet been completed.
+Production uses `bittrees_news` with login `news_production` on the `main` branch of Neon project `bittrees-consolidated` (`holy-brook-94367840`, Frankfurt). The old shared CRM/News project was retired on 15 October 2026. Retain encrypted migration backups and recovery keys. Acer runs daily encrypted recovery verification via `bittrees-recovery-verify.timer` at 05:13 UTC; the separate News history archive runs at 06:23 UTC. Provider PITR retention must be checked before relying on it. Before restoring into a live environment, disable all cron triggers and workers, rotate service secrets, pause all destinations, cancel pending/sending delivery records, and reconcile provider receipts before reactivation. Never replay queued sends from a restored backup blindly. Isolated restore and data comparison passed during consolidation. Repeat that verification for any new restore before production cutover. Old Vercel deployments contain retired connection strings; rebuild rollback code using current environment values.
 
 ## Monitoring
 
