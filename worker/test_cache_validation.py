@@ -20,7 +20,7 @@ class CacheValidation(unittest.TestCase):
     completion(config,state,{},'briefing')
     with self.assertRaises(KeyPointQualityError):completion(config,state,{},'briefing',validator=validate_briefing_content)
     self.assertEqual(request.call_count,1)
-    result['choices'][0]['message']['content']=json.dumps({'points':['The trial enrolled 120 adults in 2025.']})
+    result['choices'][0]['message']['content']=json.dumps({'overview':'The source describes a trial enrolling 120 adults in 2025.', 'points':['The trial enrolled 120 adults in 2025.'], 'context':'The trial studied adults enrolled during 2025.', 'limitations':'Long-term outcomes were not provided.'})
     response.__enter__.return_value.read.return_value=json.dumps(result).encode()
     completion(config,state,{},'briefing',validator=validate_briefing_content)
     completion(config,state,{},'briefing',validator=validate_briefing_content)

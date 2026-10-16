@@ -27,7 +27,7 @@ try {
  await client.query('UPDATE story_documents SET claimed_at=now(),document=NULL');
  await client.query('UPDATE translations SET claimed_at=now()');
  await assert.rejects(saveStoryCid({id,lease:randomUUID(),cid}));
- const request={id,lease,model:'test',briefing:{overview:'A factual overview based on the supplied public source evidence.',points:['The source supplies a factual description.'],limitations:'Only the supplied feed evidence is available.'}};
+ const request={id,lease,model:'test',briefing:{overview:'A factual overview based on the supplied public source evidence.',points:['The source supplies a factual description.'],context:'Source evidence provides the background for this observation.',limitations:'Only the supplied feed evidence is available.'}};
  const saved=await saveStory(request);
  const replay=await saveStory({...request,briefing:{...request.briefing,overview:'A different overview must not replace a previously saved briefing.'}});
  assert.deepEqual(replay,saved);
