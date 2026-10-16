@@ -37,3 +37,9 @@ jobs:
         run: npx tsx scripts/check-reviewed-publication.ts
         env:
           NEWS_MCP_TEST_DATABASE_URL: postgresql://integration:ci-only@127.0.0.1:5432/news_test
+      - name: Coordinated maintenance on disposable PostgreSQL
+        run: npx tsx scripts/check-periodic-maintenance.ts
+        env:
+          MAINTENANCE_TEST_DATABASE_URL: postgresql://integration:ci-only@127.0.0.1:5432/news_test
+      - name: Bounded worker idle polling
+        run: python3 -m unittest discover -s worker -p test_idle_polling.py

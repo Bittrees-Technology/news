@@ -1,3 +1,4 @@
+import {periodicMaintenance} from "./periodic-maintenance";
 import {queueHealth} from "./queue-health";
 import {stageMetrics} from "./stage-metrics";
 import {recordDiversityShadow} from "./shadow-record";
@@ -14,6 +15,7 @@ export async function processingSnapshot(){
  return {outcomes:(await pool().query("SELECT c.task,e.event,count(*)::int count FROM public_job_events e JOIN public_job_claims c USING(lease) WHERE e.recorded_at>now()-interval '7 days' GROUP BY c.task,e.event ORDER BY c.task,e.event")).rows,eligibleQueues:await queueHealth(),stages:await stageMetrics(),at:new Date().toISOString(),translations:translations.rows,stories:stories.rows,editions:editions.rows,collection:collection.rows[0]||null,workers:workers.rows};
 }
 export async function recordProcessingSample(){
+ return periodicMaintenance(pool(), async () => {
  await pool().query("DELETE FROM reader_events WHERE bucket<(now() AT TIME ZONE 'UTC')::date-29");
  await pool().query("DELETE FROM processing_stages WHERE recorded_at<now()-interval '30 days'");
  await pool().query("DELETE FROM delivery_events WHERE received_at<now()-interval '90 days'");
@@ -24,4 +26,5 @@ export async function recordProcessingSample(){
  await pool().query("INSERT INTO processing_samples(bucket,data) VALUES(to_timestamp(floor(extract(epoch FROM now())/300)*300),$1) ON CONFLICT(bucket) DO UPDATE SET data=EXCLUDED.data",[JSON.stringify(snapshot)]);
  await pool().query("DELETE FROM processing_samples WHERE bucket<now()-interval '30 days'");
  return snapshot;
+ });
 }

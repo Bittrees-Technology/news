@@ -9,10 +9,13 @@ def api(path,data):
  req=urllib.request.Request(config['site']+'/api/editor/'+path,data=json.dumps(data).encode(),headers={'Authorization':'Bearer '+config['token'],'Content-Type':'application/json'})
  with urllib.request.urlopen(req,timeout=60) as r:return json.load(r)
 from excerpt_selection import select_excerpt
+from idle_polling import IdlePolling
+idle_polling = IdlePolling(25, 60)
 while True:
  try:
   job=api('claim',{})
-  if not job:time.sleep(25);continue
+  if not job:time.sleep(idle_polling.empty_delay());continue
+  idle_polling.reset()
   file=state/(job['id'].replace(':','-')+'-grounded.json')
   saved=json.loads(file.read_text()) if file.exists() else {'stories':[]}
   # Respect server ranking and discard checkpoints that no longer match evidence.

@@ -69,12 +69,15 @@ def translate(payload):
     # Even mixed-language inputs need translated fields retained.
     if language=='en':language=next((p.lang.split('-')[0] for p in predictions if p.lang!='en'),'en')
     return {'language':language,'title':title,'summary':summary,'_model':' + '.join(sorted(used_models))}
+from idle_polling import IdlePolling
+idle_polling = IdlePolling(15, 60)
 while True:
     job=None
     phase='claim'
     try:
         job=api('claim',{})
-        if not job:time.sleep(15);continue
+        if not job:time.sleep(idle_polling.empty_delay());continue
+        idle_polling.reset()
         phase='translate'
         timings={'queue':job.get('queue_wait_ms'),'generation':0}
         start=time.monotonic();result=translate(job['payload']);timings['validation']=max(0,(time.monotonic()-start)*1000-timings['generation'])

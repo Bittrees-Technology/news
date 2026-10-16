@@ -37,6 +37,8 @@ def pin(document):
  body=('--'+boundary+'\r\nContent-Disposition: form-data; name="file"; filename="briefing.json"\r\nContent-Type: application/json\r\n\r\n').encode()+content+('\r\n--'+boundary+'--\r\n').encode()
  req=urllib.request.Request('http://127.0.0.1:5001/api/v0/add?pin=true&cid-version=1&raw-leaves=false',data=body,headers={'Content-Type':'multipart/form-data; boundary='+boundary})
  with urllib.request.urlopen(req,timeout=90) as r:return json.loads(r.read())['Hash']
+from idle_polling import IdlePolling
+idle_polling = IdlePolling(45, 60)
 while True:
  job=None;completed=False;phase="claim"
  try:
@@ -44,7 +46,8 @@ while True:
    logging.info('Local archive unavailable; waiting before claiming a briefing')
    time.sleep(60);continue
   job=api('claim',{})
-  if not job:time.sleep(45);continue
+  if not job:time.sleep(idle_polling.empty_delay());continue
+  idle_polling.reset()
   timings={'queue':job.get('queue_wait_ms')}
   document=job.get('document')
   if not document:

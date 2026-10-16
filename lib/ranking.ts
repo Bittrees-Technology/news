@@ -1,3 +1,4 @@
+import {boundedPublicCache} from "./bounded-public-cache";
 import {unstable_cache} from "next/cache";
 import {rankingColumns,accountRankingColumns} from "./ranking-projection";
 import {recentUniqueStories} from './recent-stories';
@@ -12,10 +13,12 @@ import {
 } from "./scoring";
 import { defaults, preferencesSchema, selectItems, type Item } from "./model";
 import { sources } from "./catalog";
+const publicHistoryCache = boundedPublicCache<{source_id: string; samples: number; score: number}[]>(60_000);
+const historySQL = "SELECT source_id,count(*)::int samples,round(100.0*count(*) FILTER(WHERE status='healthy')/count(*),1)::float score FROM source_observations WHERE observed_at>now()-interval '30 days' AND source_id=ANY($1::text[]) GROUP BY source_id";
 export async function sourceScores(accountId?: string) {
   const rows = (
     await pool().query(
-      "SELECT id,status,checked_at FROM sources UNION ALL SELECT 'private:'||id::text,status,checked_at FROM connections WHERE account_id=$1",
+      "SELECT id,status,checked_at,false AS is_private FROM sources UNION ALL SELECT 'private:'||id::text,status,checked_at,true AS is_private FROM connections WHERE account_id=$1",
       [accountId || null],
     )
   ).rows;
@@ -23,12 +26,13 @@ export async function sourceScores(accountId?: string) {
     "INSERT INTO source_observations(source_id,observed_at,status) SELECT 'private:'||id::text,checked_at,status FROM connections WHERE account_id=$1 AND checked_at IS NOT NULL ON CONFLICT DO NOTHING",
     [accountId || null],
   );
-  const history = (
-    await pool().query(
-      "SELECT source_id,count(*)::int samples,round(100.0*count(*) FILTER(WHERE status='healthy')/count(*),1)::float score FROM source_observations WHERE observed_at>now()-interval '30 days' AND source_id=ANY($1::text[]) GROUP BY source_id",
-      [rows.map((r) => r.id)],
-    )
-  ).rows;
+  const publicIds = rows.filter(r => !r.is_private).map(r => r.id).sort();
+  const privateIds = rows.filter(r => r.is_private).map(r => r.id);
+  const [publicHistory, privateHistory] = await Promise.all([
+    publicHistoryCache(JSON.stringify(publicIds), async () => (await pool().query(historySQL, [publicIds])).rows),
+    privateIds.length ? pool().query(historySQL, [privateIds]).then(r => r.rows) : Promise.resolve([]),
+  ]);
+  const history = [...publicHistory, ...privateHistory];
   const feedback=(await pool().query("SELECT source_id,count(*)::int voters,sum(vote)::float total FROM (SELECT i.source_id,f.account_id,avg(f.value)::float vote FROM article_feedback f JOIN items i ON i.id=f.item_id WHERE f.updated_at>now()-interval '90 days' AND i.source_id=ANY($1::text[]) AND (i.owner_id IS NULL OR i.owner_id=$2) GROUP BY i.source_id,f.account_id) per_reader GROUP BY source_id",[rows.map(r=>r.id),accountId||null])).rows;
   const adjustments=new Map(feedback.map(r=>[r.source_id,communityAdjustment(r.total,r.voters,10)]));
   return {
