@@ -10,7 +10,7 @@ const item:Item={id,source_id:'processing-test',topic:'Science',kind:'article',t
 try{
  await storeItems([item]);
  const lease=randomUUID();await pool().query('UPDATE story_documents SET lease=$2,claimed_at=now(),attempts=1 WHERE item_id=$1',[id,lease]);
- const payload={id,lease,briefing:{overview:'A source-backed observation for an isolated processing test.',points:['A test observation with bounded evidence.'],limitations:'Only supplied test evidence is available.'},model:'integration-test'};
+ const payload={id,lease,briefing:{overview:'A source-backed observation for an isolated processing test.',points:['A test observation with bounded evidence.'],context:'Source evidence provides the background for this observation.',limitations:'Only supplied test evidence is available.'},model:'integration-test'};
  await saveStory(payload);
  await assert.rejects(saveStory({...payload,lease:randomUUID()}),/lease/);
  await storeItems([item]);

@@ -29,4 +29,10 @@ def validate_key_points(result):
     return result
 
 def validate_briefing_content(content):
-    return validate_key_points(json.loads(content))
+    result=validate_key_points(json.loads(content))
+    for field,minimum,maximum in [('overview',40,2200),('context',10,600),('limitations',10,600)]:
+        if not isinstance(result.get(field),str) or not minimum<=len(result[field].strip())<=maximum:
+            raise KeyPointQualityError('Invalid '+field)
+    if result['context'].strip().casefold()==result['limitations'].strip().casefold():
+        raise KeyPointQualityError('Context and limitations must be distinct')
+    return result
