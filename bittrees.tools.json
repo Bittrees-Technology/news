@@ -1,0 +1,54 @@
+{
+  "schema": "bittrees.app-tools.v1",
+  "version": 1,
+  "projectId": "news",
+  "canonicalDiscovery": "https://mcp.bittrees.org/mcp",
+  "connections": [
+    {
+      "projectId": "news",
+      "transport": "mcp",
+      "endpoint": "https://news.bittrees.org/api/mcp",
+      "verification": "source-inspected",
+      "source": "https://github.com/Bittrees-Technology/news/blob/00d3861fb1a5761ee1710fe62c13e4abb0d66222/lib/mcp.ts",
+      "operations": {
+        "read": [
+          "get_connection",
+          "get_newspaper",
+          "list_articles",
+          "get_preview",
+          "get_publication_review",
+          "get_publication_receipt",
+          "get_delivery",
+          "ranking_history"
+        ],
+        "create": [
+          "generate_newspaper"
+        ],
+        "update": [
+          "edit_preview",
+          "edit_preview_item",
+          "set_preferences",
+          "set_newspaper",
+          "set_subscription",
+          "set_feed",
+          "set_ranking",
+          "curate_summary",
+          "refresh_rankings"
+        ],
+        "research": [
+          "add_source",
+          "refresh_source",
+          "ranking_history"
+        ],
+        "publish": [
+          "get_publication_review",
+          "publish_reviewed_preview",
+          "get_publication_receipt",
+          "publish_preview",
+          "publish_newspaper"
+        ]
+      },
+      "boundary": "Current read/curate/publish scopes are checked by News. Publication retains exact reviewed-content approval. This route does not change or select the Acer news model. Delivery changes require explicit user intent and their separate scope. Prefer publish_reviewed_preview with an exact review and stable operation ID over legacy publication tools."
+    }
+  ]
+}
