@@ -13,6 +13,6 @@ export function signRoleFeed(rows:{value:string;role:string}[],privateKey:string
   roles[wallet]=[{label:r.role}];
  }
  const content={roles,roledefs:labels.map(label=>({label})),tags:null,tagdefs:null};
- const data={schemaVersion:2,source:'news.bittrees.org',audience:'https://roles.bittrees.org',generatedAt:new Date(now).toISOString(),revision:createHash('sha256').update(JSON.stringify(content)).digest('hex'),...content,coverageNote:'Explicit wallet staff grants only. Email-only grants, default members and linked-identity effective access are not imported.'};
+ const data={schemaVersion:2,source:'news.bittrees.org',audience:'https://roles.bittrees.org',generatedAt:new Date(now).toISOString(),revision:createHash('sha256').update(JSON.stringify(content)).digest('hex'),...content,coverageNote:'Local wallet staff grants only when central authority is not enrolled; historical local grants are excluded when Roles manages assignments. Email-only grants, default members and linked-identity effective access are not imported.'};
  return {data,signature:sign(null,Buffer.from(JSON.stringify(data)),privateKey).toString('base64')};
 }
