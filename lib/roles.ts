@@ -11,14 +11,19 @@ export const roles = [
 export type NewsRole = (typeof roles)[number];
 export { canScores, canReview, canManageAccess, canApprove } from "./permissions";
 import { canScores } from "./permissions";
+export function roleFromSharedActions(actions: string[]): NewsRole {
+  return [...roles].reverse().find(role =>
+    actions.includes('role.' + role.replaceAll('_', '-')) ||
+    (role === 'admin' && actions.includes('project.admin'))
+  ) || 'member';
+}
 export async function roleForAccount(id?: string): Promise<NewsRole> {
   if (!id) return "member";
   const shared=await sharedRolesForAccount(id).catch(()=>null);
   // A service failure removes staff authority while personal ownership remains.
   if(!shared)return 'member';
   if(shared.enrolled){
-    if(shared.actions.includes('project.admin'))return 'super_admin';
-    return [...roles].reverse().find(role=>shared.actions.includes('role.'+role.replaceAll('_','-')))||'member';
+    return roleFromSharedActions(shared.actions);
   }
   const r = await pool().query(
     `SELECT g.role FROM news_role_grants g JOIN identities i ON i.kind=g.kind AND i.value=g.value WHERE i.account_id=$1 ORDER BY CASE g.role WHEN 'super_admin' THEN 5 WHEN 'admin' THEN 4 WHEN 'editor' THEN 3 WHEN 'moderator' THEN 2 ELSE 1 END DESC LIMIT 1`,
