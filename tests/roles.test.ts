@@ -1,6 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  roleFromSharedActions,
+  canManageAccess,
   canScores,
   canReview,
   requireScores,
@@ -39,4 +41,15 @@ test("score redaction covers nested editions and snapshots without mutating cach
   });
   assert.equal(data.data.items[0].ranking.value, 98);
   assert.deepEqual(scoreVisibility(data, "admin"), data);
+});
+
+test("project administration cannot acquire Superadmin staff-management authority", () => {
+  const admin = roleFromSharedActions(['project.admin', 'role.editor']);
+  assert.equal(admin, 'admin');
+  assert.equal(canScores(admin), true);
+  assert.equal(canManageAccess(admin), false);
+  assert.equal(roleFromSharedActions(['project.admin', 'role.super-admin']), 'super_admin');
+  assert.equal(canManageAccess(roleFromSharedActions(['role.super-admin'])), true);
+  assert.equal(roleFromSharedActions(['tier.partner']), 'member');
+  assert.equal(roleFromSharedActions([]), 'member');
 });
