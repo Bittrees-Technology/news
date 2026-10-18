@@ -26,3 +26,32 @@ class ReviewPriority(unittest.TestCase):
    with patch('model_supervisor.read_registry',return_value={'models':{'m':{'status':'approved','managed':False}}}),patch.object(s,'prepare',side_effect=ValueError('fixture reached foreground')):
     with self.assertRaisesRegex(ValueError,'fixture reached'):s.run({'model':'m'},'production','briefing')
    thread.join();self.assertEqual(observed,[True]);self.assertFalse(s.mutex.locked())
+ def test_real_http_stream_yields_and_foreground_completes(self):
+  from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
+  started=threading.Event();closed=threading.Event()
+  class Handler(BaseHTTPRequestHandler):
+   def log_message(self,*args):pass
+   def do_POST(self):
+    body=json.loads(self.rfile.read(int(self.headers['Content-Length'])))
+    self.send_response(200);self.end_headers()
+    if body.get('stream'):
+     started.set()
+     try:
+      for _ in range(100):
+       self.wfile.write(b'data: {"choices":[{"delta":{"content":"1"}}]}\n\n');self.wfile.flush();time.sleep(.01)
+     except (BrokenPipeError,ConnectionResetError):closed.set()
+    else:self.wfile.write(b'{"choices":[{"finish_reason":"stop","message":{"content":"foreground completed"}}]}')
+  server=ThreadingHTTPServer(('127.0.0.1',0),Handler);server.daemon_threads=True
+  listener=threading.Thread(target=server.serve_forever,daemon=True);listener.start()
+  try:
+   with tempfile.TemporaryDirectory() as folder:
+    s=Supervisor('',pathlib.Path(folder));s.prepare=MagicMock();outcomes=[]
+    registry={'models':{'m':{'status':'approved','managed':False,'max_tokens':192,'sha256':'a'*64,'endpoint':f'http://127.0.0.1:{server.server_port}/v1'}}}
+    def review():
+     try:s.run({'model':'m'},'production','daily-report')
+     except ModelBusy:outcomes.append('yielded')
+    with patch('model_supervisor.read_registry',return_value=registry):
+     t=threading.Thread(target=review);t.start();self.assertTrue(started.wait(2))
+     result=s.run({'model':'m'},'production','briefing');t.join(2)
+    self.assertEqual(outcomes,['yielded']);self.assertEqual(result['choices'][0]['message']['content'],'foreground completed');self.assertTrue(closed.wait(2));self.assertFalse(s.mutex.locked())
+  finally:server.shutdown();server.server_close();listener.join()
