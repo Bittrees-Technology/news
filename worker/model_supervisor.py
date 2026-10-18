@@ -44,12 +44,11 @@ class Supervisor:
             except Exception:time.sleep(.5)
         self.unload();raise TimeoutError('Model readiness timeout')
     def run(self,request,mode,task):
-        # Foreground requests cancel an opportunistic review, never the reverse.
-        if task!='daily-report' and self.review_active:self.review_preempt.set()
         r=read_registry(self.registry);name=request.get('model')
         if name not in r['models']:raise ValueError('Unknown model')
         m=r['models'][name]
         if mode!='benchmark' and m['status']!='approved':raise ValueError('Model is benchmark-only')
+        # Only a valid approved foreground request may interrupt a review.
         if task!='daily-report' and self.review_active:
             self.review_preempt.set()
             acquired=self.mutex.acquire(timeout=16)
