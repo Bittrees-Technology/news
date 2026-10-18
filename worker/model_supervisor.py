@@ -4,6 +4,7 @@ import argparse,atexit,hashlib,json,os,pathlib,subprocess,threading,time,urllib.
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from model_registry import read_registry
 from model_runtime import model_slot,ModelBusy
+from briefing_recovery import transient
 
 class Supervisor:
     def __init__(self,registry,state):
@@ -64,6 +65,9 @@ class Supervisor:
                 self.event({'ok':True,'task':task,**result['news_metrics'],'tokens':result.get('usage',{}).get('completion_tokens',0),'finish_reason':reason,'output_complete':True if reason=='stop' else False if reason in ('length','content_filter') else None,'elapsed_seconds':round(finished-start,3)})
                 return result
         except Exception as e:
+            # Replace only this managed child after transport/server failure;
+            # never restart unrelated models/services or bypass approval gates.
+            if m.get('managed') and transient(e):self.unload()
             if m.get('managed'):self.last_used=time.monotonic()
             finished=time.monotonic()
             self.event({'ok':None if isinstance(e,ModelBusy) else False,'task':task,'model_id':name,'mode':mode,'outcome':'deferred' if isinstance(e,ModelBusy) else 'failed','error':type(e).__name__,'elapsed_seconds':round(finished-start,3),'load_seconds':round(loaded-start,3) if loaded is not None else None,'inference_seconds':round(finished-loaded,3) if loaded is not None else None,'output_complete':None});raise

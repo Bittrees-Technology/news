@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Public briefings and local IPFS pinning; no private source or database access."""
 import sys,json,os,time,pathlib,urllib.request,logging,fcntl
+from briefing_recovery import PendingWrite, Backoff, transient, model_ready, watchdog
 from stage_metrics import report
 from archive_availability import archive_ready, defer_archive_error
 from worker_cadence import briefing_delay
@@ -40,9 +41,16 @@ def pin(document):
  with urllib.request.urlopen(req,timeout=90) as r:return json.loads(r.read())['Hash']
 from idle_polling import IdlePolling
 idle_polling = IdlePolling(45, 60)
+recovery = Backoff()
+pending = PendingWrite(state / ("archive-pending.json" if archive_mode else "generation-pending.json"), api)
 while True:
- job=None;completed=False;phase="claim"
+ job=None;completed=False;phase="claim";delay=None
  try:
+  watchdog()
+  phase="persist";pending.flush()
+  phase="claim"
+  if not archive_mode and not model_ready(config):
+   time.sleep(recovery.delay());continue
   if archive_mode and not archive_ready():
    logging.info('Local archive unavailable; waiting before claiming a briefing')
    time.sleep(60);continue
@@ -53,18 +61,21 @@ while True:
   document=job.get('document')
   if not archive_mode:
    phase='generate';briefing=brief(job)
-   phase='persist';document=api('result',{'id':job['item_id'],'lease':job['lease'],'briefing':briefing,'release':True,'model':('Bittrees structured-data briefing' if job['kind']=='data' and job['source_id'] in ('world-bank-gdp','defillama-protocols') else 'Bittrees-hosted '+config.get('last_model_used',config['model']))})
+   phase='persist';document=pending.save('result',{'id':job['item_id'],'lease':job['lease'],'briefing':briefing,'release':True,'model':('Bittrees structured-data briefing' if job['kind']=='data' and job['source_id'] in ('world-bank-gdp','defillama-protocols') else 'Bittrees-hosted '+config.get('last_model_used',config['model']))})
+   if document is None:continue
   if archive_mode:
    phase='archive';start=time.monotonic();cid=pin(document);timings['archive']=(time.monotonic()-start)*1000
-   phase='pinned';start=time.monotonic();api('pinned',{'id':job['item_id'],'lease':job['lease'],'cid':cid});timings['persist']=(time.monotonic()-start)*1000
+   phase='pinned';start=time.monotonic();ack=pending.save('pinned',{'id':job['item_id'],'lease':job['lease'],'cid':cid});timings['persist']=(time.monotonic()-start)*1000
+   if ack is None:continue
    logging.info('Public briefing archived %s %s',job['item_id'],cid)
   else:
    logging.info('Public briefing generated %s; archive queued independently',job['item_id'])
   report(config,job,'briefing',timings)
-  completed=True
+  completed=True;recovery.reset()
  except Exception as e:
   logging.warning('Briefing worker retry: category=%s phase=%s type=%s status=%s',failure_category(e,phase),phase,type(e).__name__,getattr(e,'code','local'))
-  if job:
-   try:api('retry',{'id':job['item_id'],'lease':job['lease'],'busy':isinstance(e,ModelBusy) or defer_archive_error(e,phase),'error':failure_label(e,phase)})
+  delay=recovery.delay()
+  if job and not pending.exists():
+   try:pending.save('retry',{'id':job['item_id'],'lease':job['lease'],'busy':isinstance(e,ModelBusy) or transient(e) or defer_archive_error(e,phase),'error':failure_label(e,phase)})
    except Exception:pass
- time.sleep(briefing_delay(completed,config.get('briefing_success_pause_seconds',5)))
+ time.sleep(delay if delay is not None else briefing_delay(completed,config.get('briefing_success_pause_seconds',5)))
