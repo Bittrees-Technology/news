@@ -8,7 +8,7 @@ from briefing_recovery import transient
 
 class Supervisor:
     def __init__(self,registry,state):
-        self.registry=registry;self.state=state;self.process=None;self.loaded=None;self.last_used=0;self.mutex=threading.Lock();self.verified={}
+        self.registry=registry;self.state=state;self.process=None;self.loaded=None;self.last_used=0;self.mutex=threading.Lock();self.verified={};self.review_preempt=threading.Event();self.review_active=False
     def unload(self):
         if self.process is not None:
             self.process.terminate()
@@ -48,21 +48,30 @@ class Supervisor:
         if name not in r['models']:raise ValueError('Unknown model')
         m=r['models'][name]
         if mode!='benchmark' and m['status']!='approved':raise ValueError('Model is benchmark-only')
-        if not self.mutex.acquire(blocking=False):raise ModelBusy()
+        # Only a valid approved foreground request may interrupt a review.
+        if task!='daily-report' and self.review_active:
+            self.review_preempt.set()
+            acquired=self.mutex.acquire(timeout=16)
+        else:acquired=self.mutex.acquire(blocking=False)
+        if not acquired:raise ModelBusy()
+        self.review_active=task=='daily-report';self.review_preempt.clear()
         start=time.monotonic();loaded=None
         try:
             with model_slot(self.state,task):
                 self.prepare(name,m,r);loaded=time.monotonic()
                 request={**request,'model':name,'max_tokens':min(request.get('max_tokens',320),m['max_tokens'])}
-                req=urllib.request.Request(m['endpoint']+'/chat/completions',data=json.dumps(request).encode(),headers={'Content-Type':'application/json'})
-                with urllib.request.urlopen(req,timeout=900) as response:result=json.load(response)
+                if task=='daily-report':
+                    result=self.review_completion(m,request)
+                else:
+                    req=urllib.request.Request(m['endpoint']+'/chat/completions',data=json.dumps(request).encode(),headers={'Content-Type':'application/json'})
+                    with urllib.request.urlopen(req,timeout=900) as response:result=json.load(response)
                 finished=time.monotonic()
                 if m.get('managed'):self.last_used=finished
                 result['news_metrics']={'model_id':name,'digest':m['sha256'],'load_seconds':round(loaded-start,3),'inference_seconds':round(finished-loaded,3),'mode':mode}
                 reason=result.get('choices',[{}])[0].get('finish_reason') if result.get('choices') else None
                 reason=reason if reason in ('stop','length','content_filter','tool_calls','function_call') else 'unknown'
                 # ok describes transport, never reviewed content quality.
-                self.event({'ok':True,'task':task,**result['news_metrics'],'tokens':result.get('usage',{}).get('completion_tokens',0),'finish_reason':reason,'output_complete':True if reason=='stop' else False if reason in ('length','content_filter') else None,'elapsed_seconds':round(finished-start,3)})
+                self.event({'ok':True,'task':task,**result['news_metrics'],'tokens':result.get('usage',{}).get('completion_tokens'),'finish_reason':reason,'output_complete':True if reason=='stop' else False if reason in ('length','content_filter') else None,'elapsed_seconds':round(finished-start,3)})
                 return result
         except Exception as e:
             # Replace only this managed child after transport/server failure;
@@ -71,7 +80,28 @@ class Supervisor:
             if m.get('managed'):self.last_used=time.monotonic()
             finished=time.monotonic()
             self.event({'ok':None if isinstance(e,ModelBusy) else False,'task':task,'model_id':name,'mode':mode,'outcome':'deferred' if isinstance(e,ModelBusy) else 'failed','error':type(e).__name__,'elapsed_seconds':round(finished-start,3),'load_seconds':round(loaded-start,3) if loaded is not None else None,'inference_seconds':round(finished-loaded,3) if loaded is not None else None,'output_complete':None});raise
-        finally:self.mutex.release()
+        finally:
+            self.review_active=False
+            self.mutex.release()
+    def review_completion(self,model,request):
+        # Streaming lets foreground demand interrupt at the next token. Closing the
+        # upstream connection cancels only this request, not the shared model server.
+        payload={**request,'stream':True,'stream_options':{'include_usage':True},'chat_template_kwargs':{'enable_thinking':False},'max_tokens':min(request.get('max_tokens',192),192)}
+        req=urllib.request.Request(model['endpoint']+'/chat/completions',data=json.dumps(payload).encode(),headers={'Content-Type':'application/json'})
+        text=[];reason=None;usage={};start=time.monotonic()
+        with urllib.request.urlopen(req,timeout=15) as response:
+            for line in response:
+                if self.review_preempt.is_set() or time.monotonic()-start>120:raise ModelBusy('Review yielded')
+                if not line.startswith(b'data:'):continue
+                data=line[5:].strip()
+                if data==b'[DONE]':break
+                chunk=json.loads(data)
+                if chunk.get('usage'):usage=chunk['usage']
+                for choice in chunk.get('choices',[]):
+                    text.append(choice.get('delta',{}).get('content') or '')
+                    reason=choice.get('finish_reason') or reason
+        if reason!='stop':raise ModelBusy('Incomplete review')
+        return {'choices':[{'finish_reason':reason,'message':{'content':''.join(text)}}],'usage':usage}
     def event(self,value):
         self.state.mkdir(parents=True,exist_ok=True)
         path=self.state/'model-events.jsonl'
