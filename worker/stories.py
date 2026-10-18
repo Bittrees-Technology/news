@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Public briefings and local IPFS pinning; no private source or database access."""
-import json,os,time,pathlib,urllib.request,logging,fcntl
+import sys,json,os,time,pathlib,urllib.request,logging,fcntl
 from stage_metrics import report
 from archive_availability import archive_ready, defer_archive_error
 from worker_cadence import briefing_delay
@@ -10,7 +10,8 @@ from model_runtime import completion, ModelBusy
 logging.basicConfig(level=logging.INFO,format='%(asctime)s %(message)s')
 config=json.loads((pathlib.Path.home()/'.config/bittrees-news/editor.json').read_text())
 state=pathlib.Path.home()/'.local/state/bittrees-news';state.mkdir(parents=True,exist_ok=True)
-lock=open(state/'stories.lock','w');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+archive_mode='--archive' in sys.argv
+lock=open(state/('story-archive.lock' if archive_mode else 'stories.lock'),'w');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
 def api(path,data):
  req=urllib.request.Request(config['site']+'/api/editor/story/'+path,data=json.dumps(data).encode(),headers={'Authorization':'Bearer '+config['token'],'Content-Type':'application/json'})
  with urllib.request.urlopen(req,timeout=90) as r:return json.load(r)
@@ -42,21 +43,24 @@ idle_polling = IdlePolling(45, 60)
 while True:
  job=None;completed=False;phase="claim"
  try:
-  if not archive_ready():
+  if archive_mode and not archive_ready():
    logging.info('Local archive unavailable; waiting before claiming a briefing')
    time.sleep(60);continue
-  job=api('claim',{})
+  job=api('claim',{'phase':'archive' if archive_mode else 'generation'})
   if not job:time.sleep(idle_polling.empty_delay());continue
   idle_polling.reset()
   timings={'queue':job.get('queue_wait_ms')}
   document=job.get('document')
-  if not document:
+  if not archive_mode:
    phase='generate';briefing=brief(job)
-   phase='persist';document=api('result',{'id':job['item_id'],'lease':job['lease'],'briefing':briefing,'model':('Bittrees structured-data briefing' if job['kind']=='data' and job['source_id'] in ('world-bank-gdp','defillama-protocols') else 'Bittrees-hosted '+config.get('last_model_used',config['model']))})
-  phase='archive';start=time.monotonic();cid=pin(document);timings['archive']=(time.monotonic()-start)*1000
-  phase='pinned';start=time.monotonic();api('pinned',{'id':job['item_id'],'lease':job['lease'],'cid':cid});timings['persist']=(time.monotonic()-start)*1000
+   phase='persist';document=api('result',{'id':job['item_id'],'lease':job['lease'],'briefing':briefing,'release':True,'model':('Bittrees structured-data briefing' if job['kind']=='data' and job['source_id'] in ('world-bank-gdp','defillama-protocols') else 'Bittrees-hosted '+config.get('last_model_used',config['model']))})
+  if archive_mode:
+   phase='archive';start=time.monotonic();cid=pin(document);timings['archive']=(time.monotonic()-start)*1000
+   phase='pinned';start=time.monotonic();api('pinned',{'id':job['item_id'],'lease':job['lease'],'cid':cid});timings['persist']=(time.monotonic()-start)*1000
+   logging.info('Public briefing archived %s %s',job['item_id'],cid)
+  else:
+   logging.info('Public briefing generated %s; archive queued independently',job['item_id'])
   report(config,job,'briefing',timings)
-  logging.info('Public briefing archived %s %s',job['item_id'],cid)
   completed=True
  except Exception as e:
   logging.warning('Briefing worker retry: category=%s phase=%s type=%s status=%s',failure_category(e,phase),phase,type(e).__name__,getattr(e,'code','local'))
