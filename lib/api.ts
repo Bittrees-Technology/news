@@ -207,7 +207,7 @@ export async function api(r: Request) {
     if(path.startsWith('editor/story/') && method==='POST'){
       authorizeBearer(r,'EDITOR_SECRET');
       if(path==='editor/story/retry')return json(await retryStory(await body(r)));
-      if(path==='editor/story/claim')return json(await claimStory());
+      if(path==='editor/story/claim')return json(await claimStory(await body(r)));
       if(path==='editor/story/result')return json(await saveStory(await body(r)));
       if(path==='editor/story/pinned')return json(await saveStoryCid(await body(r)));
     }
