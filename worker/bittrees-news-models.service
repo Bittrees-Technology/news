@@ -1,9 +1,10 @@
 [Unit]
 Description=Bittrees News isolated model supervisor
 After=network-online.target
+StartLimitIntervalSec=0
 [Service]
 ExecStart=/usr/bin/python3 %h/.local/lib/bittrees-news/model_supervisor.py --registry %h/.config/bittrees-news/models.json --state %h/.local/state/bittrees-news
-Restart=on-failure
+Restart=always
 RestartSec=10
 NoNewPrivileges=true
 PrivateUsers=yes

@@ -31,5 +31,13 @@ try{
  assert.equal((await claimStory({phase:'archive'})).item_id,queued);
  await saveStoryCid({id:fresh,lease:archive.lease,cid:'b'+'a'.repeat(40)});
  assert.equal((await c.query('SELECT count(*)::int n FROM briefing_versions')).rows[0].n,1);
+ // Expired infrastructure claims remain recoverable; quality-exhausted jobs do not.
+ await c.query("UPDATE story_documents SET document=NULL,cid=NULL,attempts=3,claimed_at=now()-interval '31 minutes',available_at=now() WHERE item_id=$1",[fresh]);
+ const recovered=await claimStory({phase:'generation'});assert.equal(recovered.item_id,fresh);
+ assert.equal((await c.query('SELECT attempts FROM story_documents WHERE item_id=$1',[fresh])).rows[0].attempts,3);
+ await retryStory({id:fresh,lease:recovered.lease,busy:true,error:'transport:generate'});
+ assert.equal((await c.query('SELECT attempts FROM story_documents WHERE item_id=$1',[fresh])).rows[0].attempts,2);
+ await c.query('UPDATE story_documents SET attempts=3,available_at=now() WHERE item_id=$1',[fresh]);
+ assert.equal(await claimStory({phase:'generation'}),null);
  console.log('PASS: independent generation/archive claims, released generation lease, saved pending document, archive retries beyond three attempts, stale lease denial and completed archive.');
 }finally{await c.query('ROLLBACK');c.release();await p.end();}
