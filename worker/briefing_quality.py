@@ -7,7 +7,13 @@ KEY_POINT_GUIDANCE = (' Key points must be distinct, self-contained facts suppor
  'from forecasts. Do not repeat the headline or the same fact twice, advertise the source link, '
  'or say the article discusses a topic without stating the finding. With sparse evidence, give '
  'one supported point rather than inventing a second. Silently check each point against the evidence '
- 'before returning JSON; never include the check in the output.')
+ 'before returning JSON; never include the check in the output. '
+ 'Editorial guidance v2: describe public consequences only when supported by source evidence. '
+ 'Distinguish actual impact from a claim, forecast or promotional language. Identify a city, '
+ 'region or country only when the source supports it; publisher location is not story location. '
+ 'Do not call a story a top story, most important, reliable or popular based on model confidence, '
+ 'feed uptime, repetition, clicks or publication volume. Do not change rankings or weights; '
+ 'measured feedback informs reviewed proposals, never new facts or autonomous authority.')
 
 class KeyPointQualityError(ValueError):
     pass

@@ -1,3 +1,4 @@
+import {saveAccountPreferences} from './account-preferences';
 import {cookie as sharedCookie} from '../shared/sso/client.mjs';
 import {rankingColumns} from './ranking-projection';
 import {sharedRolesForAccount} from './roles';
@@ -92,6 +93,7 @@ import { fetchSource, storeItems } from "./collect";
 import { latestEdition, prepare, publish } from "./publish";
 import {
   queueDigests,
+  queueSubscriptions,
   dispatchEmails,
   claimDelivery,
   deliveryAuthorized,
@@ -179,7 +181,7 @@ export async function api(r: Request) {
       if (path === "jobs/publish") return json(await publish());
       if (path === "jobs/deliver")
         return json({ ...(await queueDigests()), ...(await dispatchEmails()) });
-      if (path === "jobs/dispatch") return json(await dispatchEmails());
+      if (path === "jobs/dispatch") return json({queued:await queueSubscriptions(),...(await dispatchEmails())});
     }
     if (path === "translations/status" && method === "POST") {
       checkOrigin(r);
@@ -643,10 +645,7 @@ export async function api(r: Request) {
     if (path === "preferences" && method === "POST") {
       const p = preferencesSchema.parse(await body(r));
       await validatePreferences(p, a!.id);
-      await pool().query("UPDATE accounts SET preferences=$2 WHERE id=$1", [
-        a!.id,
-        JSON.stringify(p),
-      ]);
+      await saveAccountPreferences(a!.id,p);
       return json({ ok: true });
     }
     if (path === "feed" && method === "GET") {

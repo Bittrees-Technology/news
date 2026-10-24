@@ -1,3 +1,4 @@
+import {recordTopThreeMetrics} from './top-three-metrics';
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import { pool, tx } from "./db";
@@ -251,6 +252,7 @@ export async function publishPersonal(accountId: string, automatic = false) {
 }
 export async function personalScheduler() {
   await recordPublicSources();
+  await recordTopThreeMetrics().catch(()=>console.warn('Hourly top-three evaluation unavailable; retaining prior evidence.'));
   let processed = 0;
   const deadline = Date.now() + 230000;
   while (processed < 50 && Date.now() < deadline) {

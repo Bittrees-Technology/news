@@ -1,3 +1,5 @@
+import {editionPreferenceSchema,matchesEdition} from './top-three';
+import {deliveryTimeSchema,timeZoneSchema,scheduledPeriod} from './delivery-schedule';
 import { z } from "zod";
 import { pool, tx } from "./db";
 import { HttpError, periodFor, type Item } from "./model";
@@ -5,6 +7,8 @@ import { emailReady } from "./mail";
 import { walletReady } from "./wallet";
 import { buildPersonalEdition } from "./curation";
 import { latestEdition } from "./publish";
+
+export const subscriptionPreferenceColumns="COALESCE(a.preferences #>> ARRAY['deliverySubscriptions',s.id::text,'deliveryTime'],'12:00') AS delivery_time,COALESCE(a.preferences #>> ARRAY['deliverySubscriptions',s.id::text,'timeZone'],'UTC') AS time_zone,COALESCE(a.preferences #> ARRAY['deliverySubscriptions',s.id::text,'editionPreference'],'{}'::jsonb) AS edition_preference";
 
 export const subscriptionSchema = z.object({
   id: z.uuid().optional(),
@@ -14,6 +18,9 @@ export const subscriptionSchema = z.object({
   feedSlug: z.string().max(60).optional(),
   cadence: z.enum(["daily", "weekly", "monthly"]),
   enabled: z.boolean().default(false),
+  deliveryTime: deliveryTimeSchema.default('12:00'),
+  timeZone: timeZoneSchema.default('UTC'),
+  editionPreference: editionPreferenceSchema.default(()=>editionPreferenceSchema.parse({})),
 });
 export async function subscriptionTarget(
   accountId: string,
@@ -146,6 +153,8 @@ export async function saveSubscription(accountId: string, input: unknown) {
           values,
         );
     const row = result.rows[0];
+    // Account row is locked above; update one owned subscription without a schema/grant change.
+    await d.query("UPDATE accounts SET preferences=jsonb_set(COALESCE(preferences,'{}'::jsonb),'{deliverySubscriptions}',COALESCE(preferences->'deliverySubscriptions','{}'::jsonb)||jsonb_build_object($2::text,$3::jsonb)) WHERE id=$1",[accountId,row.id,JSON.stringify({deliveryTime:b.deliveryTime,timeZone:b.timeZone,editionPreference:b.editionPreference})]);
     await d.query(
       "UPDATE deliveries SET status='cancelled',error='Subscription changed' WHERE subscription_id=$1 AND status='pending'",
       [row.id],
@@ -156,7 +165,7 @@ export async function saveSubscription(accountId: string, input: unknown) {
         "UPDATE destinations SET enabled=true,revision=revision+1 WHERE id=$1",
         [dest.id],
       );
-    return { ...row, name: target.name };
+    return { ...row, name: target.name,delivery_time:b.deliveryTime,time_zone:b.timeZone,edition_preference:b.editionPreference };
   });
 }
 export async function deliverySettings(accountId: string) {
@@ -168,7 +177,7 @@ export async function deliverySettings(accountId: string) {
   ).rows;
   const subscriptions = (
     await pool().query(
-      "SELECT s.*,d.value,d.enabled AS destination_enabled,n.slug AS newspaper_slug,f.slug AS feed_slug,CASE WHEN s.target='main' THEN 'The Bittrees News' WHEN s.target='personal' THEN 'My personal newspaper' WHEN s.target='feed' THEN n.name||' / '||f.name ELSE n.name END AS name FROM news_subscriptions s JOIN destinations d ON d.id=s.destination_id LEFT JOIN newspapers n ON n.account_id=s.newspaper_owner LEFT JOIN newspaper_feeds f ON f.id=s.feed_id WHERE s.account_id=$1 ORDER BY s.created_at",
+      `SELECT s.*,${subscriptionPreferenceColumns},d.value,d.enabled AS destination_enabled,n.slug AS newspaper_slug,f.slug AS feed_slug,CASE WHEN s.target='main' THEN 'The Bittrees News' WHEN s.target='personal' THEN 'My personal newspaper' WHEN s.target='feed' THEN n.name||' / '||f.name ELSE n.name END AS name FROM news_subscriptions s JOIN accounts a ON a.id=s.account_id JOIN destinations d ON d.id=s.destination_id LEFT JOIN newspapers n ON n.account_id=s.newspaper_owner LEFT JOIN newspaper_feeds f ON f.id=s.feed_id WHERE s.account_id=$1 ORDER BY s.created_at`,
       [accountId],
     )
   ).rows;
@@ -189,23 +198,19 @@ export async function subscriptionContent(
   items: Item[];
   period: NonNullable<ReturnType<typeof periodFor>>;
 } | null> {
-  const period = periodFor(s.cadence, at);
+  const period = scheduledPeriod(s.cadence, at,s.delivery_time||'12:00',s.time_zone||'UTC');
   if (!period) return null;
   if (s.target === "main") {
-    const editions = (
-      await pool().query(
-        "SELECT data FROM editions WHERE published_at IS NOT NULL AND publish_at >= $1 AND publish_at < $2 ORDER BY publish_at DESC LIMIT 100",
-        [period.start, period.end],
-      )
-    ).rows;
-    const items = [
-      ...new Map<string, Item>(
-        editions
-          .flatMap((e) => e.data.items)
-          .map((i: Item) => [i.id, i] as [string, Item]),
-      ).values(),
-    ];
-    return { name: "The Bittrees News", readMorePath: "/", items: s.kind === "email" ? items : items.slice(0, 50), period };
+    const preference=editionPreferenceSchema.parse(s.edition_preference||{});
+    // Daily top three uses the same hourly snapshot as the public website.
+    const {publicTopThree}=await import('./top-three-public');
+    let items:Item[];
+    if(s.cadence==='daily')items=(await publicTopThree(preference,period.end)).items;
+    else {
+      const editions=(await pool().query("SELECT data FROM editions WHERE published_at IS NOT NULL AND publish_at >= $1 AND publish_at < $2 ORDER BY publish_at DESC LIMIT 100",[period.start,period.end])).rows;
+      items=[...new Map<string,Item>(editions.flatMap(e=>e.data.items).map((i:Item)=>[i.id,i] as [string,Item])).values()].filter(i=>matchesEdition(i,preference));
+    }
+    return {name:'The Bittrees News · '+(preference.scope==='global'?'Global':preference.city||preference.country||preference.region),readMorePath:'/',items,period};
   }
   if (s.target === "personal") {
     const e = await buildPersonalEdition(s.account_id);

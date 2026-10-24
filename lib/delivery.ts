@@ -1,7 +1,9 @@
 import { withTranslations } from "./translation";
 import { englishDigestItems } from "./digest-language";
 import { newspaperEmail, compactSummary, digestArticles } from "./newspaper-email";
-import { subscriptionContent, subscriptionStillAllowed } from "./subscriptions";
+import { subscriptionContent,
+  subscriptionPreferenceColumns, subscriptionStillAllowed } from "./subscriptions";
+import {scheduledPeriod} from './delivery-schedule';
 import { rankingSchema } from "./scoring";
 import { rankedItems } from "./ranking";
 import { randomUUID, createHmac } from "node:crypto";
@@ -83,17 +85,20 @@ export async function queueDigests(now = new Date()) {
 export async function queueSubscriptions(now = new Date()) {
   const subscriptions = (
     await pool().query(
-      "SELECT s.*,d.kind,a.preferences,a.ranking,d.revision AS destination_revision FROM news_subscriptions s JOIN destinations d ON d.id=s.destination_id JOIN accounts a ON a.id=s.account_id WHERE s.enabled=true AND d.enabled=true AND (d.kind='email' OR d.reachable=true) ORDER BY s.created_at LIMIT 1000",
+      `SELECT s.*,${subscriptionPreferenceColumns},d.kind,a.preferences,a.ranking,d.revision AS destination_revision FROM news_subscriptions s JOIN destinations d ON d.id=s.destination_id JOIN accounts a ON a.id=s.account_id WHERE s.enabled=true AND d.enabled=true AND (d.kind='email' OR d.reachable=true) ORDER BY s.created_at LIMIT 1000`,
     )
   ).rows;
   let queued = 0;
   for (const s of subscriptions) {
+    const period=scheduledPeriod(s.cadence,now,s.delivery_time||'12:00',s.time_zone||'UTC');
+    if(!period)continue;
+    if((await pool().query("SELECT 1 FROM deliveries WHERE destination_id=$1 AND period=$2",[s.destination_id,`subscription:${s.id}:${period.key}`])).rowCount)continue;
     const edition = await subscriptionContent(s, now);
     if (!edition?.items.length) continue;
     const email = s.kind === "email";
     const prefs = preferencesSchema.parse(s.preferences);
     const profile = rankingSchema.parse(s.ranking);
-    const selected = email
+    const selected = s.target==='main'&&s.cadence==='daily' ? (email ? englishDigestItems(await withTranslations(edition.items)).slice(0,3) : edition.items) : email
       ? englishDigestItems(await withTranslations(digestArticles(edition.items, prefs, profile, now, 50))).slice(0, 3)
       : edition.items;
     if (!selected.length) continue;

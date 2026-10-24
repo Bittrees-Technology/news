@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import Link from 'next/link';
+import {EditionChoice} from './edition-choice';
+import {globalEdition,type EditionPreference} from '@/lib/top-three';
 import { call } from "@/lib/browser-api";
 type Data = {
   destinations: { id: string; value: string; enabled: boolean }[];
@@ -22,6 +24,9 @@ export function Subscriptions({
     [choice, setChoice] = useState("main"),
     [destination, setDestination] = useState(""),
     [cadence, setCadence] = useState("daily"),
+    [deliveryTime,setDeliveryTime]=useState('12:00'),
+    [timeZone,setTimeZone]=useState('UTC'),
+    [editionPreference,setEditionPreference]=useState<EditionPreference>(globalEdition),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
   async function load() {
@@ -34,6 +39,7 @@ export function Subscriptions({
     );
   }
   useEffect(() => {
+    setTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC');
     const q = new URLSearchParams(window.location.search),
       paper = q.get("paper"),
       feed = q.get("feed");
@@ -63,9 +69,7 @@ export function Subscriptions({
       <h2>Newspaper subscriptions</h2>
       <p>
         Subscribe to the main Bittrees newspaper, your personal edition, or a
-        published newspaper or feed. Daily delivery is after 12:00 UTC; weekly
-        on Monday; monthly on the first. Weekly and monthly deliveries collect
-        editions from the preceding period.
+        published newspaper or feed. Choose a delivery time and timezone. Deliveries queue on the next ten-minute dispatch cycle; arrival can take longer. Daily delivery sends one digest; weekly is on Monday and monthly on the first. Your main newspaper digest follows your Global, country/region or city choice.
       </p>
       {message && <p role="status">{message}</p>}
       {!data ? (
@@ -76,7 +80,7 @@ export function Subscriptions({
             <div className="destination" key={s.id}>
               <strong>{s.name || "Unavailable newspaper"}</strong>
               <p>
-                {s.value} · {s.cadence} ·{" "}
+                {s.value} · {s.cadence} · {s.delivery_time||'12:00'} {s.time_zone||'UTC'} · {s.edition_preference?.scope||'global'} ·{" "}
                 {s.enabled
                   ? s.destination_enabled
                     ? "Active"
@@ -84,6 +88,7 @@ export function Subscriptions({
                   : "Paused"}
               </p>
               <div className="button-row">
+                <button disabled={busy} onClick={()=>{setChoice(s.target==='main'||s.target==='personal'?s.target:`${s.target}:${s.newspaper_slug}${s.feed_slug?'/'+s.feed_slug:''}`);setDestination(s.destination_id);setCadence(s.cadence);setDeliveryTime(s.delivery_time||'12:00');setTimeZone(s.time_zone||'UTC');setEditionPreference(s.edition_preference?.scope?s.edition_preference:globalEdition);setMessage('Edit this subscription in the form below, then save.');}}>Edit schedule and edition</button>
                 <select
                   aria-label={"Frequency for " + s.name}
                   value={s.cadence}
@@ -91,6 +96,7 @@ export function Subscriptions({
                   onChange={(e) =>
                     void run(async () => {
                       await call("subscriptions", {
+                        deliveryTime:s.delivery_time||'12:00',timeZone:s.time_zone||'UTC',editionPreference:s.edition_preference||globalEdition,
                         id: s.id,
                         destinationId: s.destination_id,
                         target: s.target,
@@ -112,6 +118,7 @@ export function Subscriptions({
                   onClick={() =>
                     void run(async () => {
                       await call("subscriptions", {
+                        deliveryTime:s.delivery_time||'12:00',timeZone:s.time_zone||'UTC',editionPreference:s.edition_preference||globalEdition,
                         id: s.id,
                         destinationId: s.destination_id,
                         target: s.target,
@@ -145,7 +152,7 @@ export function Subscriptions({
                   await call("subscriptions", {
                     ...target(choice),
                     destinationId: destination,
-                    cadence,
+                    cadence,deliveryTime,timeZone,editionPreference,
                     enabled: true,
                   });
                   setMessage(
@@ -203,8 +210,12 @@ export function Subscriptions({
                   </select>
                 </label>
               </div>
+              <label className="field">Delivery time<input type="time" required value={deliveryTime} onChange={e=>setDeliveryTime(e.target.value)}/></label>
+              <label className="field">Timezone<input required maxLength={80} value={timeZone} onChange={e=>setTimeZone(e.target.value)} placeholder="Europe/Lisbon"/></label>
+              {choice==='main'&&<EditionChoice value={editionPreference} onChange={setEditionPreference}/>}
+              <p>Saving the same newspaper and destination updates its subscription.</p>
               <button className="primary" disabled={busy || !destination}>
-                Subscribe
+                Save subscription
               </button>
             </form>
           )}

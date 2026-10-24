@@ -1,3 +1,4 @@
+import {saveAccountPreferences} from './account-preferences';
 import {
   getPublicationReview,
   getPublicationReceipt,
@@ -315,10 +316,7 @@ async function execute(
       return refreshPersonalSource(accountId, b.id);
     case "set_preferences":
       await validatePreferences(b, accountId);
-      await pool().query("UPDATE accounts SET preferences=$2 WHERE id=$1", [
-        accountId,
-        JSON.stringify(b),
-      ]);
+      await saveAccountPreferences(accountId,b);
       return { saved: true };
     case "set_feed":
       return saveFeed(accountId, b);
