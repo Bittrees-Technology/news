@@ -1,7 +1,6 @@
 import {z} from 'zod';
 import {countries,regions,geographyFor,matchesGeography} from './geography';
 import {publisherFamily,sameEvent} from './diversity-shadow';
-import {globalRelevance} from './global-relevance';
 import {rankArticles,rankingSchema} from './scoring';
 import {defaults,type Item} from './model';
 export const editionPreferenceSchema=z.object({
@@ -28,15 +27,21 @@ export function matchesEdition(i:Item,p:EditionPreference){
  const escaped=city.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
  return new RegExp('(?:^|[^\\p{L}\\p{N}])'+escaped+'(?=$|[^\\p{L}\\p{N}])','u').test(text);
 }
-export const topThreeVersion='tbn-top-three-v1';
+export const topThreeVersion='tbn-top-three-v2';
 // Capped public-interest signals, not a fact check or an estimate of lives/money affected.
 // A global-sounding headline, repetition or publisher volume cannot supply impact evidence.
 export function editorialRelevance(i:Item,scope:EditionPreference['scope']='global'){
- const text=i.title+' '+i.excerpt;
- const consequence=/\b(public health|clinical trial|vaccine|outbreak|pandemic|evacuat\w*|earthquake|flood\w*|wildfire\w*|ceasefire|war|armed conflict|civilian\w*|election\w*|parliament|court ruling|public policy|regulation\w*|treaty|sanctions?|inflation|interest rates?|trade agreement|food security|water supply|electricity|energy supply|climate change|emissions?|peer.reviewed|scientific evidence)\b/i.test(text);
- const speculative=/\b(unconfirmed|rumou?r|could revolutioni[sz]e|game.changing|promotional|sponsored|giveaway)\b/i.test(text);
- const impact=(consequence?85:45)-(speculative?15:0);
- return scope==='global'?Math.round(globalRelevance(i)*.5+impact*.5):impact;
+ const title=i.title,lead=i.excerpt.slice(0,360),text=title+' '+lead;
+ // Match the central headline, not a keyword anywhere in an excerpt/newsletter.
+ const central=/\b(emergency|evacuat\w*|outbreak|earthquake|flood\w*|wildfire\w*|ceasefire|war|armed conflict|civilian\w*|election\w*|parliament|court|ruling|regulation\w*|treaty|sanctions?|inflation|interest rates?|trade|food security|water supply|electricity|energy supply|climate change|emissions?|public health|clinical trial|vaccine)\b/i.test(title);
+ const background=/\b(public health|clinical trial|vaccine|evacuat\w*|ceasefire|court ruling|public policy|regulation\w*|treaty|sanctions?|inflation|interest rates?|trade agreement|food security|water supply|electricity|energy supply|climate change|emissions?)\b/i.test(lead);
+ const feature=/\b(ancient|anniversary|roundup|newsletter|opinion|explains why|according to.{0,30}expert|world [\p{L} -]{2,35} day)\b/iu.test(title)||/^(?:welcome back|here are the studies|in this week)/i.test(lead);
+ const promotional=/\b(unconfirmed|rumou?r|could revolutioni[sz]e|game.changing|promotional|sponsored|giveaway)\b/i.test(text);
+ const impact=(feature?35:central?90:background?65:45)-(promotional?15:0);
+ const geo=geographyFor({title,excerpt:lead,summary:'',topic:''});
+ const crossBorder=/\b(international|worldwide|cross[- ]border|multinational|global (?:economy|trade|health|markets?|climate)|united nations|world health organization)\b/i.test(text);
+ const breadth=feature?45:crossBorder&&central?95:geo.countries.length>=2&&central?90:central?75:55;
+ return scope==='global'?Math.round(breadth*.4+impact*.6):impact;
 }
 
 // Availability is operational evidence, not reliability. No clicks/popularity multiplier.
@@ -46,6 +51,7 @@ export function selectTopThree(items:Item[],preference=globalEdition,at=new Date
  const ranked=rankArticles(eligible,defaults,profile,{},eligible.length,at);
  // Geography filters eligibility. Relevance then combines breadth and supported public-interest signals.
  for(const i of ranked){
+  i.ranking.version=topThreeVersion;
   i.ranking.factors.relevance=editorialRelevance(i,preference.scope);
   i.ranking.value=Math.round((i.ranking.factors.freshness*.3+i.ranking.factors.relevance*.5+i.ranking.factors.completeness*.2)*10)/10;
  }

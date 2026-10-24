@@ -9,6 +9,7 @@ test('global default excludes future/private/stale/non-article candidates and re
  const result=selectTopThree([item('a'),item('duplicate'),item('b',{title:'New international health study reports vaccine results'}),item('c',{title:'World energy policy changes electricity transmission'}),item('future',{published_at:'2026-10-24T13:00:00Z'}),item('old',{published_at:'2026-10-22T12:00:00Z'}),item('private',{owner_id:'account'}),item('podcast',{kind:'podcast'})],undefined,at);
  assert.deepEqual(result.items.map(i=>i.id),['a','b','c']);
  assert.equal(result.metrics.publishers,3);
+ assert.equal(result.items[0].ranking.version,result.version);
 });
 test('regional ranking uses source evidence, never model-invented geography or publisher location',()=>{
  const portugal=editionPreferenceSchema.parse({scope:'region',country:'PT'});
@@ -55,4 +56,12 @@ test('global buzzwords do not beat public consequences, and regional stories ret
  assert.ok(editorialRelevance(policy)>editorialRelevance(hype));
  assert.ok(editorialRelevance(policy,'region')>editorialRelevance(hype,'region'));
  assert.equal(editorialRelevance(hype),editorialRelevance({...hype,title:hype.title.repeat(20)}));
+});
+
+test('historical pandemic mentions and anniversary features cannot masquerade as current public emergencies',()=>{
+ const roundup=item('history',{title:'An ancient virus explains why brains evolved',excerpt:'Welcome back to the Abstract. An ancient viral pandemic affected our relatives. International research continues.'});
+ const current=item('current',{title:'Parliament approves cross-border electricity treaty',excerpt:'Portugal and Spain approved an electricity treaty today, affecting energy supply.'});
+ const anniversary=item('anniversary',{title:'World Kangaroo Day: climate change and wildlife',excerpt:'Australia marks an anniversary with a feature on climate change.'});
+ assert.ok(editorialRelevance(current)>editorialRelevance(roundup)+30);
+ assert.ok(editorialRelevance(current)>editorialRelevance(anniversary)+30);
 });
