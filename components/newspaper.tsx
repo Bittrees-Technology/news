@@ -1,5 +1,4 @@
 "use client";
-import {TopThree} from "./top-three";
 import {loadReading,writeReading,watchReading} from "@/lib/reading-sync";
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import {matchesArticleSearch} from "@/lib/article-search";
@@ -259,7 +258,6 @@ export function Newspaper({
           </p>
         </div>
       </div>
-      {live&&mode==='public'&&!personal&&<TopThree signed={signed}/>}
       <div className="controls">
         <div className="tabs" aria-label="Content type">
           {mode !== "saved" && (

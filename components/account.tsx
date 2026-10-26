@@ -4,6 +4,7 @@ import {useSharedSignIn} from "../shared/sso/useSharedSignIn.jsx";
 import { LoginPanel, EmailSignIn, EthereumSignIn } from "./shared/login/LoginPanel.jsx";
 import {RoleSwitcher} from "./role-switcher";
 import { TopicSettings } from "./topic-settings";
+import { TopThree } from "./top-three";
 import { Subscriptions } from "./subscriptions";
 import { canAccountSection } from "@/lib/permissions";
 import { StaffPanel } from "./staff-panel";
@@ -362,7 +363,10 @@ useSharedSignIn(data?.account?.id);
         <Analytics role={data.account?.role || "member"} />
       )}
       {section === "ai" && <AiConnection />}
-      {section === "topics" && <TopicSettings initial={prefs} onSaved={setPrefs} />}
+      {section === "topics" && <>
+        <TopicSettings initial={prefs} onSaved={setPrefs} />
+        <TopThree signed={true} />
+      </>}
       {section === "sources" && (
         <form
           onSubmit={(e) => {
