@@ -88,7 +88,7 @@ export function BriefingReader({initial}:{initial:Batch}){
    </div>
   </div>
   {error&&<p role="alert">{error}</p>}
-  {!ready&&!initial.selectedId?<p role="status">Loading read status…</p>:<>
+  <>
    {current&&<div className="briefing-entry" key={current.id}>
     <StoryContent item={current}/>
     <div className="briefing-navigation briefing-controls">
@@ -100,6 +100,7 @@ export function BriefingReader({initial}:{initial:Batch}){
    {!current&&loading&&<p role="status">Loading older briefings…</p>}
    {loadError&&<p role="alert">{loadError}</p>}
    {loadError&&next&&<button disabled={loading} onClick={()=>void loadMore()}>Retry loading older briefings</button>}
-  </>}
+  </>
+  {initial.next&&<p><a href={'/briefings?before='+encodeURIComponent(initial.next)}>Older briefings</a></p>}
  </section>;
 }

@@ -1,0 +1,18 @@
+# TBN — The Bittrees News
+
+> Source-linked news briefings covering world affairs, economics, technology and science.
+
+Canonical website: https://news.bittrees.org/
+
+## Public pages
+- [Home](https://news.bittrees.org/): Global top three, with optional regional and city preferences. Rankings refresh hourly.
+- [Briefings](https://news.bittrees.org/briefings): Public briefings with publisher attribution, source links, key points and evidence limitations.
+- [Archive](https://news.bittrees.org/archive): Published newspaper editions.
+- [About](https://news.bittrees.org/about): Coverage and editorial approach.
+- [Sitemap](https://news.bittrees.org/sitemap.xml): Public editions, published newspapers and public story pages.
+- [RSS](https://news.bittrees.org/rss.xml): Public feed.
+
+## Reading guidance
+Briefings are AI-generated summaries and may not cover the full source article. Follow the original publisher links and retain attribution and uncertainty. Public rankings are editorial selections, not proof of factual accuracy.
+
+Account, sign-in, staff, settings and API routes are not public discovery surfaces. This file grants no access or action authority and does not override robots.txt, authentication or publisher rights.

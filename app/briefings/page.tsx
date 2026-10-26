@@ -7,7 +7,7 @@ export const metadata=pageMetadata('Briefings','Read TBN briefings from all publ
 export default async function Page({searchParams}:{searchParams:Promise<{story?:string;before?:string}>}){
  const {story,before}=await searchParams;
  const valid=(v?:string)=>v&&/^[a-f0-9]{64}$/.test(v)?v:null;
- if(story&&!valid(story))notFound();
+ if((story&&!valid(story))||(before&&!valid(before)))notFound();
  const batch=await briefingBatch(valid(before),valid(story));
  if(story&&batch.entries[0]?.id!==story)notFound();
  return <BriefingReader key={story||before||'latest'} initial={batch}/>;
