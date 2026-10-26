@@ -10,6 +10,7 @@ import {recentUniqueStories} from "@/lib/recent-stories";
 import {usePublicFeed} from "@/lib/use-public-feed";
 import type {FeedCategory} from "@/lib/public-feed";
 import {feedOrder} from "@/lib/feed-order";
+import {useLiveLeads} from '@/lib/use-live-leads';
 import Link from "next/link";
 import { call } from "./client";
 import { sourceName, topics as catalogTopics } from "@/lib/catalog";
@@ -38,7 +39,7 @@ export function Newspaper({
   health?: SourceHealth | null;
   live?: boolean;
 }) {
-  // Hold the reading window steady until the reader explicitly reloads.
+  // Hold the timeline steady; the public lead positions can refresh independently.
   const [now]=useState(()=>Date.now());
   const [storedItems, setItems] = useState<Item[]>(
       initialItems || edition?.data.items || [],
@@ -62,7 +63,11 @@ export function Newspaper({
   // Explicit topic/place/search choices show all matching updates, not a sample.
   const balancedView=balanced&&!filters.topics.length&&!filters.countries.length&&!filters.regions.length&&!search.trim();
   const feed=usePublicFeed(paged,tab,edition?.data.items||[],edition?.feedPage,balancedView);
-  const items=paged?feed.items:storedItems;
+  const showGlobalLeads=live&&mode==='public'&&!personal&&(tab==='all'||tab==='news');
+  const seedLeads=useMemo(()=>edition?.data.items.filter(i=>edition.feedPage?.leadIds.includes(i.id))||[],[edition]);
+  const liveLeads=useLiveLeads(showGlobalLeads,seedLeads);
+  const leadIds=liveLeads.map(i=>i.id);
+  const items=useMemo(()=>showGlobalLeads?feedOrder([...liveLeads,...(paged?feed.items:storedItems)],leadIds):paged?feed.items:storedItems,[showGlobalLeads,liveLeads,paged,feed.items,storedItems]);
   const nextPage=feed.next,loadingMore=feed.loading,pageError=feed.error;
   const loadMore=useCallback(async()=>{await feed.loadMore();setRenderCount(n=>n+30);},[feed.loadMore]);
   const hideRead=filters.hideRead;
@@ -78,10 +83,10 @@ export function Newspaper({
   const itemIds=items.map(i=>i.id).join(',');
   useEffect(()=>{
     let active=true;setRankOrder(null);
-    if(!signed||!itemIds||paged)return;
+    if(!signed||!itemIds||paged||showGlobalLeads)return;
     void call('reader-order',{ids:itemIds.split(',')}).then(ids=>{if(active)setRankOrder(ids);}).catch(()=>{if(active)setMessage('Could not apply your ranking preferences. Showing the edition order.');});
     return()=>{active=false;};
-  },[signed,itemIds,paged]);
+  },[signed,itemIds,paged,showGlobalLeads]);
   const refs = useRef(new Map<string, HTMLElement>());
   useEffect(() => {
     if (mode === "public" && !personal) {
@@ -134,18 +139,18 @@ export function Newspaper({
   const orderPositions=useMemo(()=>new Map((rankOrder||items.map(i=>i.id)).map((id,n)=>[id,n])),[rankOrder,items]);
   const visible = useMemo(
     () =>
-      (paged?feedOrder(items,edition?.feedPage?.leadIds||[]):live?recentUniqueStories(items,now):items).filter(
+      (paged?items:live?recentUniqueStories(items,showGlobalLeads?Date.now():now):items).filter(
         (i) =>
           (mode === "saved" || tab === "all" || (tab === "podcasts" ? i.kind === "podcast" : tab === "news" ? i.kind === "article" : !["article","podcast"].includes(i.kind))) &&
-          (!rankOrder||rankOrder.includes(i.id)) &&
+          (showGlobalLeads||!rankOrder||rankOrder.includes(i.id)) &&
           matchesReaderFilters(articleTags(i),geography.get(i.id)!,filters) &&
           matchesArticleSearch(i,search) &&
           (!hideRead || !readSnapshot[i.id]?.is_read),
       ).sort((a,b)=>{
-        if(paged)return 0;
+        if(paged||showGlobalLeads)return 0;
         return (orderPositions.get(a.id)??0)-(orderPositions.get(b.id)??0);
       }),
-    [items, tab, filters, hideRead, readSnapshot, mode, geography,rankOrder,orderPositions,paged,edition,live,now,search],
+    [items, tab, filters, hideRead, readSnapshot, mode, geography,rankOrder,orderPositions,paged,edition,live,now,search,showGlobalLeads],
   );
   useEffect(()=>{setRenderCount(30);},[tab,filters,search,personal,balancedView]);
   useEffect(()=>{
@@ -377,7 +382,7 @@ export function Newspaper({
                 if (el) refs.current.set(i.id, el);
                 else refs.current.delete(i.id);
               }}
-              className={`story ${(paged ? edition?.feedPage?.leadIds.includes(i.id) : n < 3) ? "lead" : ""} ${state[i.id]?.is_read ? "read" : ""} ${cursor === n ? "cursor" : ""}`}
+              className={`story ${(showGlobalLeads ? leadIds.includes(i.id) : paged ? edition?.feedPage?.leadIds.includes(i.id) : n < 3) ? "lead" : ""} ${state[i.id]?.is_read ? "read" : ""} ${cursor === n ? "cursor" : ""}`}
             >
               <ArticleEngagement id={i.id} signed={signed}/>
               <div className="story-meta">

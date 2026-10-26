@@ -16,3 +16,10 @@ test('appending older pages does not promote or repeat stories and preserves his
  const next=feedOrder([...first,item('copy',10,'https://example.org/lead?utm_source=rss'),item('old',50)],['lead']);
  assert.deepEqual(next.map(i=>i.id),['lead','new','old']);
 });
+test('replacing lead IDs promotes newly discovered winners and returns former leads to the timeline',()=>{
+ const first=feedOrder([item('a',8),item('b',5),item('c',3),item('recent',1)],['a','b','c']);
+ const updated=feedOrder([item('winner',0),...first],['winner','b','c']);
+ assert.deepEqual(updated.map(i=>i.id),['winner','b','c','recent','a']);
+ const older=feedOrder([...updated,item('history',50)],['winner','b','c']);
+ assert.deepEqual(older.map(i=>i.id),['winner','b','c','recent','a','history']);
+});

@@ -13,4 +13,4 @@ export const publicHome=unstable_cache(async():Promise<Edition|null>=>{
  const leads=ranked.items;
  const leadIds=leads.map(i=>i.id);
  return JSON.parse(JSON.stringify({...edition,data:{...edition.data,items:feedOrder([...leads,...batch.items],leadIds)},feedPage:{next:batch.next,snapshot,leadIds,balanced:true}}));
-},['public-home-v4'],{revalidate:30});
+},['public-home-v5'],{revalidate:30});

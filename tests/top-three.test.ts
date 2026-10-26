@@ -65,3 +65,15 @@ test('historical pandemic mentions and anniversary features cannot masquerade as
  assert.ok(editorialRelevance(current)>editorialRelevance(roundup)+30);
  assert.ok(editorialRelevance(current)>editorialRelevance(anniversary)+30);
 });
+
+test('a newly discovered useful development replaces a weaker lead without changing the 24-hour boundary',()=>{
+ const baseline=[item('a'),item('b',{title:'Public health vaccine trial reduces disease'}),item('c',{title:'Court ruling protects energy supply'})];
+ const fresh=item('fresh',{title:'International clinical trial discovers treatment that prevents disease',topic:'Science',excerpt:'A clinical study reports that a new treatment prevents disease in patients.',published_at:at.toISOString()});
+ const before=selectTopThree(baseline,undefined,at);
+ const after=selectTopThree([...baseline,fresh],undefined,at);
+ assert.ok(after.items.some(i=>i.id==='fresh'));
+ assert.equal(after.items.length,3);
+ assert.equal(before.items.some(i=>i.id==='fresh'),false);
+ assert.ok(editorialRelevance(fresh)>editorialRelevance({...fresh,title:'Sponsored game-changing product giveaway'}));
+ assert.equal(editorialRelevance({...fresh,topic:'Gaming',tags:[],title:'A new game launches',excerpt:'A new edition is available today.'})<editorialRelevance(fresh),true);
+});

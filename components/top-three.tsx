@@ -20,12 +20,12 @@ export function TopThree({signed=false}:{signed?:boolean}){
    const response=await fetch('/api/top-three?'+p,{signal:controller.signal});if(!response.ok)throw Error();
    const result=await response.json();if(!controller.signal.aborted)setData(result);
   }catch{if(!controller.signal.aborted)setError('Could not update top stories. Please refresh to retry.');}
-  finally{if(!controller.signal.aborted)timer=setTimeout(load,3600000-Date.now()%3600000+1000);}}
+  finally{if(!controller.signal.aborted)timer=setTimeout(load,60000);}}
   const debounce=setTimeout(load,350);return()=>{clearTimeout(debounce);clearTimeout(timer);controller.abort();};
  },[choice,ready]);
  return <section className="panel" aria-label="Top three stories">
  <h2>Top three · {choice.scope==='global'?'Global':choice.scope==='city'?choice.city||'City':choice.country||choice.region||'Region'}</h2>
- <p>Refreshed hourly from the past 24 hours of reporting. Global is the default; choose a place to focus your top stories.</p>
+ <p>Updated as new reporting arrives from the past 24 hours. Global is the default; choose a place to focus your top stories.</p>
  <EditionChoice value={choice} onChange={setChoice}/>
  {error&&<p role="status">{error}</p>}
  {!data&&!error&&<p>Loading top stories…</p>}
