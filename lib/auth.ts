@@ -1,3 +1,4 @@
+import {issueSessionProof,readSessionProof} from '../shared/sso/session-proof.mjs';
 import {availableRoles,effectiveRole} from './active-role';
 import { roleForAccount, type NewsRole } from "./roles";
 import {
@@ -19,6 +20,7 @@ export const sessionName =
   process.env.NODE_ENV === "production"
     ? "__Host-news-session"
     : "news-session";
+export const authenticationCookieName=process.env.NODE_ENV==='production'?'__Host-news-authentication':'news-authentication';
 const challengeName =
   process.env.NODE_ENV === "production"
     ? "__Host-news-challenge"
@@ -55,9 +57,16 @@ export async function currentAccount(r: Request, required = true) {
   if (!a && required)
     throw new HttpError(401, "Sign in to manage your newspaper.");
   if(!a)return undefined;
-  const highest=await roleForAccount(a.id);
+  const authentication=await currentAuthentication(r);
+  const highest=await roleForAccount(a.id,authentication?.kind==='ethereum'?authentication.identity:null);
   return {id:a.id,preferences:a.preferences,role:effectiveRole(highest,a.active_role),availableRoles:availableRoles(highest)};
 
+}
+// Proof must belong to a live session and a still-verified identity on its account.
+export async function currentAuthentication(r:Request){
+ const raw=cookie(r,sessionName),proof=readSessionProof(cookie(r,authenticationCookieName),{clientId:'news',session:raw,secret:process.env.AUTH_SECRET});if(!proof)return null;
+ const found=await pool().query('SELECT 1 FROM sessions s JOIN identities i ON i.account_id=s.account_id WHERE s.hash=$1 AND s.expires_at>now() AND i.kind=$2 AND i.value=$3 AND i.verified_at IS NOT NULL LIMIT 1',[hash(raw),proof.kind==='ethereum'?'wallet':'email',proof.identity]);
+ return found.rows.length?proof:null;
 }
 export async function rateLimit(key: string, max = 10) {
   const r = await pool().query(
@@ -168,6 +177,7 @@ export async function verifyChallenge(
   r: Request,
   b: { id: string; proof: string },
 ) {
+  if(!process.env.AUTH_SECRET||process.env.AUTH_SECRET.length<32)throw new HttpError(503,'Session authentication signing is unavailable.');
   const origin = checkOrigin(r),
     browser = cookie(r, challengeName),
     account = await currentAccount(r, false),
@@ -245,11 +255,12 @@ export async function verifyChallenge(
     await d.query("DELETE FROM sessions WHERE hash=$1", [
       hash(cookie(r, sessionName)),
     ]);
-    return { accountId };
+    return { accountId,authenticationIdentity:c.value as string,authenticatedAt:Date.now() };
   });
   if (result.error) throw new HttpError(400, result.error);
   return {
     body: { ok: true },
+    authenticationCookie:result.accountId?setCookie(authenticationCookieName,issueSessionProof({clientId:'news',session,identity:result.authenticationIdentity!,authTime:result.authenticatedAt!},process.env.AUTH_SECRET),79200):undefined,
     cookie: result.accountId
       ? setCookie(sessionName, session, 79200)
       : setCookie(challengeName, "", 0),
