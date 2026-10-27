@@ -17,9 +17,9 @@ export function roleFromSharedActions(actions: string[]): NewsRole {
     (role === 'admin' && actions.includes('project.admin'))
   ) || 'member';
 }
-export async function roleForAccount(id?: string): Promise<NewsRole> {
+export async function roleForAccount(id?: string,authenticatedWallet:string|null=null): Promise<NewsRole> {
   if (!id) return "member";
-  const shared=await sharedRolesForAccount(id).catch(()=>null);
+  const shared=await sharedRolesForAccount(id,authenticatedWallet).catch(()=>null);
   // A service failure removes staff authority while personal ownership remains.
   if(!shared)return 'member';
   if(shared.enrolled){
@@ -31,10 +31,11 @@ export async function roleForAccount(id?: string): Promise<NewsRole> {
   );
   return r.rows[0]?.role || "member";
 }
-export async function sharedRolesForAccount(id:string){
+export async function sharedRolesForAccount(id:string,authenticatedWallet:string|null=null){
   const identities=(await pool().query('SELECT kind,value FROM identities WHERE account_id=$1 AND verified_at IS NOT NULL ORDER BY kind,value LIMIT 21',[id])).rows;
   const subjects=identities.map(i=>ecosystemSubject('news',i.kind,i.value,process.env.ROLES_FEED_SUBJECT_SECRET));
-  return ecosystemAccess('news',subjects,{verifiedEmails:identities.flatMap((i,index)=>i.kind==='email'?[{subject:subjects[index],email:i.value}]:[])});
+  const wallet=authenticatedWallet&&identities.some(i=>i.kind==='wallet'&&i.value===authenticatedWallet)?authenticatedWallet:null;
+  return ecosystemAccess('news',subjects,{authenticatedWallet:wallet,verifiedEmails:identities.flatMap((i,index)=>i.kind==='email'?[{subject:subjects[index],email:i.value}]:[])});
 }
 export function requireScores(role?: string) {
   if (!canScores(role))

@@ -1,5 +1,8 @@
 name: MCP connection checks
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
 permissions:
   contents: read
 jobs:
@@ -23,6 +26,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - name: Session authentication and role isolation on disposable PostgreSQL
+        run: npx tsx --test tests/session-authentication.integration.ts
+        env:
+          DATABASE_URL: postgresql://integration:ci-only@127.0.0.1:5432/news_test
+          APP_URL: http://127.0.0.1:3070
+          AUTH_SECRET: ci-only-news-session-proof-test-secret
       - run: npm run build
       - run: npm run typecheck
       - name: Actual MCP credential isolation on disposable PostgreSQL

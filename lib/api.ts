@@ -1,3 +1,4 @@
+import {authenticationCookieName,currentAuthentication} from './auth';
 import {saveAccountPreferences} from './account-preferences';
 import {cookie as sharedCookie} from '../shared/sso/client.mjs';
 import {rankingColumns} from './ranking-projection';
@@ -321,7 +322,7 @@ export async function api(r: Request) {
         .object({ id: z.uuid(), proof: z.string().min(1).max(2000) })
         .parse(await body(r));
       const v = await verifyChallenge(r, b);
-      return json(v.body, 200, { "Set-Cookie": v.cookie });
+      const response=json(v.body,200,{"Set-Cookie":v.cookie});if(v.authenticationCookie)response.headers.append("Set-Cookie",v.authenticationCookie);return response;
     }
     if (path === "auth/logout" && method === "POST") {
       checkOrigin(r);
@@ -329,6 +330,7 @@ export async function api(r: Request) {
         hash(cookie(r, sessionName)),
       ]);
       const response=json({ok:true},200,{"Set-Cookie":setCookie(sessionName,"",0)});
+      response.headers.append('Set-Cookie',setCookie(authenticationCookieName,'',0));
       const sharedOrigin=process.env.APP_URL||new URL(r.url).origin;
       response.headers.append('Set-Cookie',sharedCookie('bt-sso-skip','1',604800,sharedOrigin));
       response.headers.append('Set-Cookie',sharedCookie('bt-sso-published','',0,sharedOrigin));
@@ -426,7 +428,8 @@ export async function api(r: Request) {
     }
 
     if (path === "staff/roles") {
-      const shared=await sharedRolesForAccount(a!.id);
+      const authentication=await currentAuthentication(r);
+      const shared=await sharedRolesForAccount(a!.id,authentication?.kind==='ethereum'?authentication.identity:null);
       if(shared.enrolled){if(!canManageAccess(a!.role))throw new HttpError(403,'Super-admin access required.');if(method==='GET')return json({centralized:true,managedAt:'https://roles.bittrees.org',grants:[]});throw new HttpError(409,'Manage shared staff assignments at https://roles.bittrees.org. Private newspaper ownership stays in News.');}
       if (!canManageAccess(a!.role))
         throw new HttpError(403, "Super-admin access required.");
