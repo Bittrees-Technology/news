@@ -56,6 +56,8 @@ export function Newspaper({
     [cursor, setCursor] = useState(-1),
     [personal, setPersonal] = useState(false),
     [help, setHelp] = useState(false);
+  const [toolsOpen,setToolsOpen]=useState(false);
+  const activeChoices=filters.topics.length+filters.countries.length+filters.regions.length;
   const [renderCount,setRenderCount]=useState(30);
   const moreRef=useRef<HTMLDivElement>(null);
   const paged=live&&!personal&&!!edition?.feedPage;
@@ -290,6 +292,15 @@ export function Newspaper({
             </>
           )}
         </div>
+      </div>
+      <div className="mobile-reader-toolbar">
+        <button aria-expanded={toolsOpen} aria-controls="newspaper-tools" onClick={()=>setToolsOpen(v=>!v)}>
+          <span>Search & filters{activeChoices>0?` · ${activeChoices} selected`:''}{search.trim()?' · Search active':''}</span>
+          <span aria-hidden="true">{toolsOpen?'−':'+'}</span>
+        </button>
+        {mode === "public" && <Link href="/account/delivery">Subscribe</Link>}
+      </div>
+      <div id="newspaper-tools" className={`newspaper-tools${toolsOpen?' is-open':''}`}>
         <div className="actions">
           <button onClick={()=>window.location.reload()}>Refresh stories</button>
           {paged&&(tab==='all'||tab==='news')&&<button aria-pressed={balanced} onClick={()=>setBalanced(v=>!v)}>{balanced?'Show all source updates':'Balance source coverage'}</button>}
@@ -308,7 +319,6 @@ export function Newspaper({
             ?
           </button>
         </div>
-      </div>
       <div className="article-search" role="search" aria-label="Search this newspaper" data-insights-ignore="true">
         <label className="article-search-input">Search articles
           <input type="search" placeholder="Search…" value={search} maxLength={200} onChange={e=>{setSearch(e.target.value);setCursor(-1);}} />
@@ -343,18 +353,19 @@ export function Newspaper({
         </p>
       )}
       {mode === "public" && (
-        <p>
+        <p className="newspaper-subscribe">
           <Link className="primary" href="/account/delivery">
             Subscribe — daily, weekly or monthly
           </Link>
         </p>
       )}
+      {live&&<p className="muted">Leading stories from the last 24 hours, then newest first. {paged&&balancedView&&(tab==='all'||tab==='news')?'Balanced timeline: up to two articles per publisher per UTC hour. ':''}Refresh stories to update.</p>}
+      </div>
       {message && (
         <p role="status" className="notice">
           {message} <Link href="/account">Your account</Link>
         </p>
       )}
-      {live&&<p className="muted">Leading stories from the last 24 hours, then newest first. {paged&&balancedView&&(tab==='all'||tab==='news')?'Balanced timeline: up to two articles per publisher per UTC hour. ':''}Refresh stories to update.</p>}
       {paged&&loadingMore&&!visible.length?<p role="status">Loading {tab==='all'?'stories':tab}…</p>:!visible.length ? (
         <div className="empty">
           <h2>
