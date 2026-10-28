@@ -1235,3 +1235,36 @@ a.primary { max-width: 100%; overflow-wrap: anywhere; }
 
 .topic-settings .topic-search { margin: 8px 0 12px; }
 .topic-settings > fieldset { margin-top: 0; }
+
+/* News theme adapter; keep the canonical shared login markup and metrics. */
+.site .bt-login-panel {
+  --bt-ink: var(--ink);
+  --bt-muted: var(--muted);
+  --bt-line: var(--rule);
+  --bt-green: #155b9a;
+  --bt-dark: var(--accent);
+  background: var(--paper);
+  box-shadow: none;
+  color-scheme: inherit;
+}
+.site .bt-login-panel input:not([type=checkbox]),
+.site .bt-login-panel select,
+.site .bt-login-panel .bt-login-wallet .bt-login-ethereum-submit { background: var(--paper); }
+.site .bt-login-panel input::placeholder { color: var(--muted); }
+.site .bt-login-panel input:disabled { background: var(--soft); }
+.site .bt-login-panel button:not(:disabled):hover { background: var(--soft); color: var(--ink); }
+.site .bt-login-panel .bt-login-email button:not([type=button]):not(:disabled):hover {
+  background: color-mix(in srgb, var(--bt-green), var(--ink) 15%);
+  color: #fff;
+}
+.site .bt-login-panel [role=alert] {
+  color: var(--error);
+  background: color-mix(in srgb, var(--error) 8%, var(--paper));
+  border-color: color-mix(in srgb, var(--error) 40%, var(--rule));
+}
+.site .bt-login-context { color: var(--muted); }
+.site .bt-login-context a { color: var(--accent); }
+@media (prefers-color-scheme: dark) {
+  .site .bt-login-panel { --bt-green: #245f93; }
+}
+.site .bt-login-panel :is(button, a, input, select, summary):focus-visible { outline-color: var(--accent); }
