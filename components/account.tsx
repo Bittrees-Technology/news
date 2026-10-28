@@ -139,7 +139,8 @@ export function Account({
     [deleteConfirm, setDeleteConfirm] = useState(false),
     [deletePhrase,setDeletePhrase]=useState(''),
     [deleteAcknowledged,setDeleteAcknowledged]=useState(false);
-useSharedSignIn(data?.account?.id);
+const [sessionReady,setSessionReady]=useState(false);
+useSharedSignIn(data?.account?.id, sessionReady);
   function cancelDeletion(){setDeleteConfirm(false);setDeletePhrase('');setDeleteAcknowledged(false);}
   useEffect(()=>{cancelDeletion();},[section,data?.account?.id]);
   async function load() {
@@ -148,7 +149,7 @@ useSharedSignIn(data?.account?.id);
     if (d.preferences) setPrefs(d.preferences);
   }
   useEffect(() => {
-    load().catch((e) => setStatus(e.message));
+    load().catch((e) => setStatus(e.message)).finally(()=>setSessionReady(true));
   }, []);
   useEffect(() => {
     if (section !== "sources" || !data?.account) return;
