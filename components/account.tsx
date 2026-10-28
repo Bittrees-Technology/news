@@ -111,6 +111,17 @@ const accountTabs: [AccountSection, string, string][] = [
   ["editorial", "Editorial review", "/account/editorial"],
   ["settings", "Sign-in methods", "/account/settings"],
 ];
+const sectionDescriptions: Record<AccountSection,string> = {
+  newspaper: "Name your newspaper and choose how it is published.",
+  topics: "Choose what to focus on, include or block in your reading and deliveries.",
+  sources: "Choose publishers and connect your own public feeds.",
+  delivery: "Manage your subscriptions, schedules and verified destinations.",
+  analytics: "Review recent newspaper and source activity.",
+  ai: "Manage the AI connection for your newspaper.",
+  access: "Review account access and permissions.",
+  editorial: "Review stories and publication decisions.",
+  settings: "Manage the email addresses and wallets you use to sign in.",
+};
 export function Account({
   section = "newspaper",
 }: {
@@ -319,14 +330,12 @@ useSharedSignIn(data?.account?.id, sessionReady);
     }));
   }
   return (
-    <>
-      <SharedProfileCard sessionRevision={data.account.id}/>
-      <div className="edition-head">
+    <div className="account-workspace">
+      <div className="edition-head account-heading">
         <div>
           <h1>{accountTabs.find((t) => t[0] === section)?.[1]}</h1>
           <p className="muted">
-            Your selections shape your edition and deliveries. The public
-            newspaper stays open to everyone.
+            {sectionDescriptions[section]}
           </p>
         </div>
       </div>
@@ -353,7 +362,8 @@ useSharedSignIn(data?.account?.id, sessionReady);
           </Link>
         ))}
       </nav>
-      {statusBox}
+      {section === "settings" && <SharedProfileCard sessionRevision={data.account.id}/>}
+      {section !== "sources" && statusBox}
       {(section === "access" || section === "editorial") && (
         <StaffPanel section={section} role={data.account?.role || "member"} />
       )}
@@ -410,6 +420,8 @@ useSharedSignIn(data?.account?.id, sessionReady);
                     : "All sources included"}
                 </span>
               </div>
+              <p className="muted" role="status">{filtered.length} {filtered.length === 1 ? 'source' : 'sources'}{search.trim() ? ' matching your search' : ' available'}</p>
+              {!filtered.length && <p className="notice">No sources match “{search}”. <button type="button" onClick={()=>setSearch('')}>Clear search</button></p>}
               <div className="source-picker">
                 {filtered.map((s) => (
                   <label className="source-option" key={s.id}>
@@ -440,6 +452,7 @@ useSharedSignIn(data?.account?.id, sessionReady);
               {busy ? "Working…" : "Save preferences"}
             </button>
             <a href="/">Read the newspaper</a>
+            {statusBox}
           </div>
         </form>
       )}
@@ -544,6 +557,8 @@ useSharedSignIn(data?.account?.id, sessionReady);
           />
           <section className="panel">
             <h2>Verified delivery destinations</h2>
+            <p>Verify destinations here, then choose a newspaper subscription above. New destinations start paused.</p>
+            <details className="settings-help"><summary>Delivery options & timing</summary>
             <p>
               Email comes from main@bittrees.org. Wallet delivery uses Chirpy /
               XMTP when the Bittrees sender is active. Each destination is
@@ -553,6 +568,7 @@ useSharedSignIn(data?.account?.id, sessionReady);
               Daily at 12:00 UTC. Weekly on Monday. Monthly on the first.
               Delivery follows the main 11:57 edition.
             </p>
+            </details>
             {!data.walletReady && (
               <p className="notice">
                 Chirpy delivery is awaiting sender authorization. You can verify
@@ -708,6 +724,6 @@ useSharedSignIn(data?.account?.id, sessionReady);
           </section>
         </section>
       )}
-    </>
+    </div>
   );
 }

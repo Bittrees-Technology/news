@@ -1188,3 +1188,50 @@ a.primary { max-width: 100%; overflow-wrap: anywhere; }
 
 /* Match the shared login canvas inset on narrow screens. */
 @media(max-width:480px){.site:has(.bt-login-panel){padding-inline:12px;}}
+
+/* Settings use the same paper, ink and blue controls as the reading view. */
+.account-heading { margin: 24px 0 16px; }
+.account-heading h1 { font-size: clamp(28px, 4vw, 36px); margin: 0 0 8px; }
+.account-heading p { font-size: 14px; margin: 0; }
+.account-workspace > [data-shared-profile] { max-width: none !important; font-size: 14px; }
+.account-workspace > [data-shared-profile] summary { cursor: pointer; min-height: 24px; }
+.account-workspace fieldset { min-width: 0; }
+.account-workspace label.field > :is(input, textarea, select) { width: 100%; min-width: 0; }
+.account-workspace :is(.destination, .connection) strong { overflow-wrap: anywhere; }
+.topic-search { max-width: 420px; }
+.topic-choice-toolbar { margin: 8px 0 12px; }
+.topic-choice-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.topic-choice-tabs button { font-size: 13px; }
+.topic-choice-tabs button[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.edition-preferences { margin-top: 20px; }
+.settings-save { position: sticky; bottom: 12px; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px; border: 1px solid var(--rule); border-radius: 8px; background: var(--paper); }
+.topic-save { margin-top: 16px; }
+.topic-save:not(.has-changes) { position: static; }
+.topic-choice-help summary { cursor: pointer; font-size: 14px; }
+.topic-save > span { flex: 1 1 180px; font-size: 13px; line-height: 1.5; }
+.sticky-save .notice { flex-basis: 100%; margin: 0; box-shadow: none; }
+@media screen and (max-width: 700px) {
+  .account-heading { margin: 16px 0 12px; }
+  .account-heading h1 { font-size: 28px; letter-spacing: -.6px; }
+  .account-workspace .account-section-picker { margin-bottom: 12px; }
+  .account-workspace > [data-shared-profile] { padding: 8px 12px !important; }
+  .account-workspace > [data-shared-profile] summary { min-height: 28px; padding-block: 4px; }
+  .account-workspace .panel { margin-block: 16px; }
+  .topic-settings fieldset { padding: 10px; }
+  .topic-choice-grid { max-height: 340px; overflow-y: auto; overscroll-behavior-y: contain; scrollbar-gutter: stable; padding: 0 6px 0 0; }
+  .topic-choice { padding-block: 6px; }
+  .topic-choice select { width: 112px; }
+  .topic-choice-tabs { flex-wrap: nowrap; }
+  .topic-choice-tabs button { flex: 1; padding-inline: 8px; font-size: 12px; }
+  .settings-save { bottom: max(8px, env(safe-area-inset-bottom)); padding: 10px; gap: 8px; }
+  .settings-save > button { flex: 1 1 100%; }
+  .settings-save > a { display: inline-flex; align-items: center; min-height: 44px; }
+  .topic-save > span { flex-basis: 100%; }
+}
+
+.settings-help { margin: 12px 0; font-size: 14px; }
+.settings-help summary { cursor: pointer; min-height: 32px; display: list-item; }
+@media screen and (max-width: 700px) { .settings-help summary { min-height: 44px; padding-block: 10px; } }
+
+.topic-settings .topic-search { margin: 8px 0 12px; }
+.topic-settings > fieldset { margin-top: 0; }
