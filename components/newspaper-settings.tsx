@@ -237,7 +237,7 @@ export function NewspaperSettings({
           </p>
         )}
         {paper.publish_error && <p className="notice">{paper.publish_error}</p>}
-        <div className="button-row">
+        <div className="button-row settings-save">
           <button className="primary" disabled={busy}>
             {busy
               ? "Saving…"

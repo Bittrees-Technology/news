@@ -67,10 +67,13 @@ export function Subscriptions({
   return (
     <section className="panel">
       <h2>Newspaper subscriptions</h2>
+      <p>Choose a newspaper, destination and schedule for each digest.</p>
+      <details className="settings-help"><summary>How delivery works</summary>
       <p>
         Subscribe to the main Bittrees newspaper, your personal edition, or a
         published newspaper or feed. Choose a delivery time and timezone. Deliveries queue on the next ten-minute dispatch cycle; arrival can take longer. Daily delivery sends one digest; weekly is on Monday and monthly on the first. Your main newspaper digest follows your Global, country/region or city choice.
       </p>
+      </details>
       {message && <p role="status">{message}</p>}
       {!data ? (
         <p>Loading subscriptions…</p>
