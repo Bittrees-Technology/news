@@ -1,3 +1,4 @@
+import type {PoolClient} from "pg";
 import {randomUUID} from "node:crypto";
 import {editionPreferenceSchema,matchesEdition} from './top-three';
 import {deliveryTimeSchema,timeZoneSchema,scheduledPeriod} from './delivery-schedule';
@@ -64,10 +65,11 @@ export async function subscriptionTarget(
     feed: f.id,
   };
 }
-export async function saveSubscription(accountId: string, input: unknown) {
+export async function saveSubscription(accountId: string, input: unknown, db?: PoolClient) {
+  const transact = db ? <T>(fn: (client: PoolClient) => Promise<T>) => fn(db) : tx;
   const b = subscriptionSchema.parse(input);
   if (b.id && !b.enabled)
-    return tx(async (d) => {
+    return transact(async (d) => {
       const r = await d.query(
         "UPDATE news_subscriptions SET enabled=false,cadence=$3,revision=revision+1 WHERE id=$1 AND account_id=$2 RETURNING *",
         [b.id, accountId, b.cadence],
@@ -80,7 +82,7 @@ export async function saveSubscription(accountId: string, input: unknown) {
       return r.rows[0];
     });
   const target = await subscriptionTarget(accountId, b);
-  return tx(async (d) => {
+  return transact(async (d) => {
     await d.query("SELECT id FROM accounts WHERE id=$1 FOR UPDATE", [
       accountId,
     ]);
