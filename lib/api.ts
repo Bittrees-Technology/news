@@ -1,3 +1,4 @@
+import {startEmailSubscription, verifyEmailSubscription} from "./email-subscription";
 import {authenticationCookieName,currentAuthentication} from './auth';
 import {saveAccountPreferences} from './account-preferences';
 import {cookie as sharedCookie} from '../shared/sso/client.mjs';
@@ -304,6 +305,10 @@ export async function api(r: Request) {
         .object({ id: z.uuid(), token: z.string().length(64) })
         .parse(b);
       return json({ ok: await unsubscribe(d.id, d.token) });
+    }
+    if ((path === "subscribe/start" || path === "subscribe/verify") && method === "POST") {
+      const v = path === "subscribe/start" ? await startEmailSubscription(r,await body(r)) : await verifyEmailSubscription(r,await body(r));
+      return json(v.body,200,{"Set-Cookie":v.cookie});
     }
     if (path === "auth/start" && method === "POST") {
       const b = z

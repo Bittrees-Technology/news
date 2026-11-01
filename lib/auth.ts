@@ -188,6 +188,7 @@ export async function verifyChallenge(
     ).rows[0];
     if (
       !c ||
+      !["login", "link", "destination"].includes(c.purpose) ||
       c.consumed ||
       new Date(c.expires_at) < new Date() ||
       c.attempts >= 5 ||

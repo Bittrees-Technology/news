@@ -62,7 +62,6 @@ export function Header() {
         TBN<span> / the bittrees news</span>
       </Link>
       <nav aria-label="Main navigation">
-        <Link href="/subscribe">Daily email</Link>
         {inBriefings?<a href="/briefings" aria-label="Refresh to the most recent unread briefing">Refresh</a>:<Link href="/briefings">Briefings</Link>}
         {signed && (
           <>
@@ -74,6 +73,7 @@ export function Header() {
           <div className="account-menu-options">
             <Link href="/account">My newspaper</Link>
             <Link href="/account/settings">Account settings</Link>
+            <Link href="/subscribe">Daily email</Link>
             <button disabled={loggingOut} onClick={()=>void logout()}>{loggingOut?'Logging out…':'Log out'}</button>
             {logoutError&&<span role="alert">{logoutError}</span>}
           </div>

@@ -64,3 +64,34 @@ test('daily email reuses verified identity, requires consent, and updates one ow
   assert.equal((await pool().query('SELECT enabled FROM destinations WHERE account_id=$1',[id])).rows[0].enabled,true);
  } finally {if(old===undefined)delete process.env.RESEND_API_KEY;else process.env.RESEND_API_KEY=old;}
 });
+
+test('public daily email verification activates delivery atomically without issuing or changing sign-in sessions',async()=>{
+ const {verifyEmailSubscription,emailSubscriptionCookie}=await import('../lib/email-subscription');
+ const old=process.env.RESEND_API_KEY;process.env.RESEND_API_KEY='synthetic-not-used-to-send';
+ const email='public-daily-'+randomUUID()+'@example.org',id=randomUUID(),browser='b'.repeat(64),code='87654321';
+ const signature=createHmac('sha256',process.env.AUTH_SECRET!).update('daily-email:'+id+':'+code).digest('hex');
+ const count=Number((await pool().query('SELECT count(*) n FROM sessions')).rows[0].n);
+ await pool().query("INSERT INTO challenges(id,kind,value,secret_hash,browser_hash,purpose,expires_at) VALUES($1,'email',$2,$3,$4,'daily_email',now()+interval '5 minutes')",[id,email,signature,hash(browser)]);
+ try {
+  await assert.rejects(verifyChallenge(request('news-challenge='+browser),{id,proof:code}),/Verification expired/);
+  await assert.rejects(verifyEmailSubscription(request(emailSubscriptionCookie+'=wrong'),{id,code}),/Verification expired/);
+  await assert.rejects(verifyEmailSubscription(request(emailSubscriptionCookie+'='+browser),{id,code:'11111111'}),/incorrect/);
+  assert.equal((await pool().query('SELECT attempts FROM challenges WHERE id=$1',[id])).rows[0].attempts,1);
+  const result=await verifyEmailSubscription(request(emailSubscriptionCookie+'='+browser),{id,code});
+  assert.equal(result.body.subscribed,true);assert.match(result.cookie,/Max-Age=0/);assert.equal('authenticationCookie' in result,false);
+  assert.equal(Number((await pool().query('SELECT count(*) n FROM sessions')).rows[0].n),count);
+  const rows=(await pool().query("SELECT s.* FROM news_subscriptions s JOIN destinations d ON d.id=s.destination_id WHERE d.kind='email' AND d.value=$1",[email])).rows;
+  assert.equal(rows.length,1);assert.equal(rows[0].enabled,true);assert.equal(rows[0].cadence,'daily');
+  assert.equal((await pool().query('SELECT count(*)::int n FROM deliveries WHERE account_id=$1',[rows[0].account_id])).rows[0].n,0);
+  await assert.rejects(verifyEmailSubscription(request(emailSubscriptionCookie+'='+browser),{id,code}),/Verification expired/);
+  const nextId=randomUUID(),nextHash=createHmac('sha256',process.env.AUTH_SECRET!).update('daily-email:'+nextId+':'+code).digest('hex');
+  await pool().query("INSERT INTO challenges(id,kind,value,secret_hash,browser_hash,purpose,expires_at,attempts) VALUES($1,'email',$2,$3,$4,'daily_email',now()-interval '1 second',0)",[nextId,email,nextHash,hash(browser)]);
+  await assert.rejects(verifyEmailSubscription(request(emailSubscriptionCookie+'='+browser),{id:nextId,code}),/Verification expired/);
+  await pool().query("UPDATE challenges SET expires_at=now()+interval '5 minutes',attempts=5 WHERE id=$1",[nextId]);
+  await assert.rejects(verifyEmailSubscription(request(emailSubscriptionCookie+'='+browser),{id:nextId,code}),/Verification expired/);
+  await pool().query('UPDATE challenges SET attempts=0 WHERE id=$1',[nextId]);
+  await verifyEmailSubscription(request(emailSubscriptionCookie+'='+browser),{id:nextId,code});
+  assert.equal((await pool().query("SELECT count(*)::int n FROM news_subscriptions s JOIN destinations d ON d.id=s.destination_id WHERE d.value=$1",[email])).rows[0].n,1);
+  assert.equal(Number((await pool().query('SELECT count(*) n FROM sessions')).rows[0].n),count);
+ }finally{if(old===undefined)delete process.env.RESEND_API_KEY;else process.env.RESEND_API_KEY=old;}
+});

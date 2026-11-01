@@ -3,14 +3,13 @@ import { useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { Account, type AccountSection } from "./account";
 import { browserApi } from "@/lib/browser-api";
-export function AccountWorkspace({dailyEmail = false}: {dailyEmail?: boolean} = {}) {
+export function AccountWorkspace() {
   const pathname = usePathname();
   const generation = useSyncExternalStore(
     browserApi.subscribe,
     browserApi.getGeneration,
     () => 0,
   );
-  if (dailyEmail) return <div data-insights-ignore="true"><Account key={generation} dailyEmail/></div>;
   const section =
     pathname === "/account" ? "newspaper" : pathname.split("/")[2];
   if (
