@@ -32,6 +32,6 @@ export function TopThree({signed=false}:{signed?:boolean}){
  {data&&<><p>Ranking as of {new Date(data.asOf).toLocaleString()}. Places are matched in source reporting; coverage may be incomplete.</p>
  {data.items.length<3&&<p>Only {data.items.length} matching {data.items.length===1?'story':'stories'} available. We do not substitute unrelated global stories.</p>}
  <ol>{data.items.map(i=><li key={i.id}><article><ArticleEngagement id={i.id} signed={signed}/><h3><a data-source-link href={i.url} rel="noopener noreferrer">{i.translation?.title||i.title}</a></h3><p>{compactSummary(i.translation?.summary||i.summary||i.excerpt)}</p><ArticleFeedback id={i.id}/></article></li>)}</ol></>}
- <p>Chosen using signals of public impact and freshness, with different publishers and stories. These signals do not prove factual accuracy. <a href="/account/delivery">Choose your daily delivery time and edition</a>.</p>
+ <p>Chosen using signals of public impact and freshness, with different publishers and stories. These signals do not prove factual accuracy. <a href="/subscribe">Get the daily TBN email</a>.</p>
  </section>;
 }

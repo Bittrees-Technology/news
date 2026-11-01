@@ -45,3 +45,22 @@ test('native verified email login never inherits a linked wallet',async()=>{
  await pool().query("INSERT INTO challenges(id,kind,value,secret_hash,browser_hash,purpose,expires_at) VALUES($1,'email',$2,$3,$4,'login',now()+interval '5 minutes')",[id,email,createHmac('sha256',process.env.AUTH_SECRET!).update(id+':'+code).digest('hex'),hash(browser)]);
  const result=await verifyChallenge(request('news-challenge='+browser),{id,proof:code}),cookies=[result.cookie,result.authenticationCookie!].map(pair).join('; ');assert.equal((await currentAccount(request(cookies)))!.id,account.id);assert.equal((await currentAccount(request(cookies)))!.role,'member');assert.equal((await currentAuthentication(request(cookies)))!.identity,email);
 });
+
+test('daily email reuses verified identity, requires consent, and updates one owned subscription without sending',async()=>{
+ const {subscribeDailyEmail}=await import('../lib/subscriptions');
+ const id=randomUUID(),other=randomUUID(),email='daily-'+randomUUID()+'@example.org';
+ await pool().query('INSERT INTO accounts(id) VALUES($1),($2)',[id,other]);
+ await pool().query("INSERT INTO identities(kind,value,account_id) VALUES('email',$1,$2)",[email,id]);
+ const old=process.env.RESEND_API_KEY;process.env.RESEND_API_KEY='synthetic-not-used-to-send';
+ try {
+  await assert.rejects(subscribeDailyEmail(id,{email,confirm:false}));
+  await assert.rejects(subscribeDailyEmail(other,{email,confirm:true}),/Verify this email/);
+  const first=await subscribeDailyEmail(id,{email,confirm:true});
+  const again=await subscribeDailyEmail(id,{email,confirm:true});
+  assert.equal(first.id,again.id);assert.equal(first.enabled,true);assert.equal(first.cadence,'daily');
+  assert.equal(first.delivery_time,'12:00');assert.equal(first.time_zone,'UTC');
+  assert.equal((await pool().query('SELECT count(*)::int n FROM news_subscriptions WHERE account_id=$1',[id])).rows[0].n,1);
+  assert.equal((await pool().query('SELECT count(*)::int n FROM deliveries WHERE account_id=$1',[id])).rows[0].n,0);
+  assert.equal((await pool().query('SELECT enabled FROM destinations WHERE account_id=$1',[id])).rows[0].enabled,true);
+ } finally {if(old===undefined)delete process.env.RESEND_API_KEY;else process.env.RESEND_API_KEY=old;}
+});
