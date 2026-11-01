@@ -5,6 +5,7 @@ import { LoginPanel, EmailSignIn, EthereumSignIn } from "./shared/login/LoginPan
 import {RoleSwitcher} from "./role-switcher";
 import { TopicSettings } from "./topic-settings";
 import { TopThree } from "./top-three";
+import { DailyEmailSignup } from "./daily-email-signup";
 import { Subscriptions } from "./subscriptions";
 import { canAccountSection } from "@/lib/permissions";
 import { StaffPanel } from "./staff-panel";
@@ -124,8 +125,10 @@ const sectionDescriptions: Record<AccountSection,string> = {
 };
 export function Account({
   section = "newspaper",
+  dailyEmail = false,
 }: {
   section?: AccountSection;
+  dailyEmail?: boolean;
 }) {
   const router = useRouter();
   const [data, setData] = useState<AccountData | null>(
@@ -301,10 +304,9 @@ useSharedSignIn(data?.account?.id, sessionReady);
       <>
         <div className="edition-head">
           <div>
-            <h1>Your newspaper, your way.</h1>
+            <h1>{dailyEmail ? "Get the daily TBN email" : "Your newspaper, your way."}</h1>
             <p className="account-intro muted">
-              Reading is free and needs no account. Sign up to choose your
-              sources, save stories across devices, and receive your own digest.
+              {dailyEmail ? "Enter your email, verify the code, then confirm your daily subscription. Free, with an unsubscribe link in every email." : "Reading is free and needs no account. Sign up to choose your sources, save stories across devices, and receive your own digest."}
             </p>
           </div>
         </div>
@@ -316,6 +318,11 @@ useSharedSignIn(data?.account?.id, sessionReady);
         />
       </>
     );
+  if (dailyEmail) return <DailyEmailSignup
+    emails={[...new Set([...(data.identities || []).filter(i=>i.kind==='email').map(i=>i.value), ...(data.destinations || []).filter(d=>d.kind==='email').map(d=>d.value)])]}
+    emailReady={data.emailReady}
+    addEmail={<>{emailForm("destination")}{statusBox}</>}
+  />;
   const filtered = sources.filter((s) =>
     (s.name + " " + s.topic + " " + s.type)
       .toLowerCase()

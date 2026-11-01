@@ -1,3 +1,4 @@
+import {randomUUID} from "node:crypto";
 import {editionPreferenceSchema,matchesEdition} from './top-three';
 import {deliveryTimeSchema,timeZoneSchema,scheduledPeriod} from './delivery-schedule';
 import { z } from "zod";
@@ -298,4 +299,35 @@ export async function subscriptionStillAllowed(
       [id, revision],
     )
   ).rowCount;
+}
+
+// A verified sign-in email can also be the reader's delivery address. Activation
+// still requires an explicit request and the normal subscription checks.
+export const dailyEmailSchema = z.object({
+  email: z.email().max(320).transform(value => value.toLowerCase()),
+  confirm: z.literal(true),
+}).strict();
+export async function dailyEmailDestination(db: Pick<ReturnType<typeof pool>, "query">, accountId: string, email: string) {
+  const verified = await db.query(
+    `SELECT value FROM identities WHERE account_id=$1 AND kind='email' AND value=$2 AND verified_at IS NOT NULL
+     UNION SELECT value FROM destinations WHERE account_id=$1 AND kind='email' AND value=$2 AND verified_at IS NOT NULL`,
+    [accountId, email],
+  );
+  if (!verified.rows.length) throw new HttpError(403, "Verify this email address before subscribing.");
+  const result = await db.query(
+    `INSERT INTO destinations(id,account_id,kind,value,unsubscribe_hash)
+     VALUES($1,$2,'email',$3,$4) ON CONFLICT(account_id,kind,value)
+     DO UPDATE SET value=EXCLUDED.value RETURNING id`,
+    [randomUUID(), accountId, email, randomUUID()],
+  );
+  return result.rows[0].id as string;
+}
+export async function subscribeDailyEmail(accountId: string, input: unknown) {
+  const b = dailyEmailSchema.parse(input);
+  if (!emailReady()) throw new HttpError(409, "Email delivery is unavailable.");
+  const destinationId = await dailyEmailDestination(pool(), accountId, b.email);
+  return saveSubscription(accountId, {
+    destinationId, target: "main", cadence: "daily", enabled: true,
+    deliveryTime: "12:00", timeZone: "UTC", editionPreference: {scope: "global"},
+  });
 }

@@ -298,7 +298,7 @@ export function Newspaper({
           <span>Search & filters{activeChoices>0?` · ${activeChoices} selected`:''}{search.trim()?' · Search active':''}</span>
           <span aria-hidden="true">{toolsOpen?'−':'+'}</span>
         </button>
-        {mode === "public" && <Link href="/account/delivery">Subscribe</Link>}
+        {mode === "public" && <Link href="/subscribe">Get the daily email</Link>}
       </div>
       <div id="newspaper-tools" className={`newspaper-tools${toolsOpen?' is-open':''}`}>
         <div className="actions">
@@ -354,8 +354,8 @@ export function Newspaper({
       )}
       {mode === "public" && (
         <p className="newspaper-subscribe">
-          <Link className="primary" href="/account/delivery">
-            Subscribe — daily, weekly or monthly
+          <Link className="primary" href="/subscribe">
+            Get the daily email
           </Link>
         </p>
       )}

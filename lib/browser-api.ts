@@ -123,7 +123,7 @@ export class BrowserApi {
               ? ["newspaper", "ranking"]
               : path.startsWith("connections")
                 ? ["account", "newspaper", "ranking", "sources"]
-                : path === "subscriptions"
+                : path.startsWith("subscriptions")
                   ? ["account"]
                   : path === "preferences" || path === "topic-settings"
                     ? ["account", "newspaper", "ranking"]

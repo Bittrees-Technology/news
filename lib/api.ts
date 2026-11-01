@@ -20,7 +20,7 @@ import {
   publishDraft,
   generationReady,
 } from "./drafts";
-import { deliverySettings, saveSubscription } from "./subscriptions";
+import { deliverySettings, saveSubscription, subscribeDailyEmail } from "./subscriptions";
 import { sourceHealth } from "./source-health";
 import {
   roles,
@@ -406,6 +406,8 @@ export async function api(r: Request) {
     }
     if(path === "engagement" && method === "POST"){await rateLimit("engagement:"+a!.id,600);return json(await recordEngagement(a!.id,await body(r)));}
     if(path === "staff/quality"){requireScores(a!.role);if(method === "GET")return json(await qualityQueue());if(method === "POST")return json(await saveQualityReview(a!.id,await body(r)));}
+    if (path === "subscriptions/email" && method === "POST")
+      return json(await subscribeDailyEmail(a!.id, await body(r)));
     if (path === "subscriptions" && method === "GET")
       return json(await deliverySettings(a!.id));
     if (path === "subscriptions" && method === "POST")

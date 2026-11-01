@@ -21,6 +21,7 @@ const reserved = new Set([
   "privacy",
   "terms",
   "unsubscribe",
+  "subscribe",
   "admin",
   "login",
   "signup",
