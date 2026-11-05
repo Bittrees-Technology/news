@@ -1,6 +1,7 @@
 import type {MetadataRoute} from 'next';
 import {pool} from '@/lib/db';
 import {siteUrl} from '@/lib/seo';
+import {briefingPath} from '@/lib/briefing-links';
 export const dynamic='force-dynamic';
 export default async function sitemap():Promise<MetadataRoute.Sitemap>{
  const entries:MetadataRoute.Sitemap=['','/about','/privacy','/terms','/archive','/briefings'].map(path=>({url:siteUrl+path}));
@@ -13,7 +14,7 @@ export default async function sitemap():Promise<MetadataRoute.Sitemap>{
  entries.push({url,lastModified:p.last_published_at||undefined});
  for(const slug of p.feed_slugs)if(p.snapshot_feed_slugs?.includes(slug))entries.push({url:url+'/'+encodeURIComponent(slug),lastModified:p.last_published_at||undefined});
  }
- const stories=(await pool().query("SELECT s.item_id,s.generated_at FROM story_documents s JOIN items i ON i.id=s.item_id WHERE s.document IS NOT NULL AND i.owner_id IS NULL ORDER BY s.generated_at DESC,s.item_id LIMIT 5000")).rows;
- for(const s of stories)entries.push({url:siteUrl+"/story/"+s.item_id,lastModified:s.generated_at});
+ const stories=(await pool().query("SELECT s.item_id,s.cid,s.generated_at FROM story_documents s JOIN items i ON i.id=s.item_id WHERE s.document IS NOT NULL AND i.owner_id IS NULL ORDER BY s.generated_at DESC,s.item_id LIMIT 5000")).rows;
+ for(const s of stories)entries.push({url:siteUrl+briefingPath({id:s.item_id,cid:s.cid}),lastModified:s.generated_at});
  return entries;
 }

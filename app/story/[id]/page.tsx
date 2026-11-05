@@ -1,3 +1,5 @@
+import {BriefingLinks} from '@/components/briefing-links';
+import {briefingPath} from '@/lib/briefing-links';
 import {BriefingReader} from '@/components/briefing-reader';
 import {briefingBatch} from '@/lib/briefing-feed';
 import {notFound} from 'next/navigation';
@@ -7,10 +9,10 @@ export const dynamic='force-dynamic';
 const story=cache(async(id:string)=>/^[a-f0-9]{64}$/.test(id)?briefingBatch(null,id):null);
 export async function generateMetadata({params}:{params:Promise<{id:string}>}){
  const {id}=await params;const batch=await story(id);const item=batch?.entries.find(i=>i.id===id);
- return item?briefingMetadata(item,`/story/${id}`):{title:'Story unavailable',robots:{index:false}};
+ return item?briefingMetadata(item,briefingPath(item)):{title:'Story unavailable',robots:{index:false}};
 }
 export default async function Page({params}:{params:Promise<{id:string}>}){
  const {id}=await params;const batch=await story(id);const item=batch?.entries.find(i=>i.id===id);
- if(!batch||!item)notFound();const schema=briefingSchema(item,`/story/${id}`);
- return <>{schema&&<script type="application/ld+json" dangerouslySetInnerHTML={{__html:schemaJson(schema)}}/>}<BriefingReader key={id} initial={{...batch,selectedId:id}}/></>;
+ if(!batch||!item)notFound();const schema=briefingSchema(item,briefingPath(item));
+ return <>{schema&&<script type="application/ld+json" dangerouslySetInnerHTML={{__html:schemaJson(schema)}}/>}<BriefingReader key={id} initial={{...batch,selectedId:id}}/><BriefingLinks entries={batch.entries} next={batch.next} currentId={id}/></>;
 }
