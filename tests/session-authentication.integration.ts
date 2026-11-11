@@ -8,6 +8,7 @@ import {sharedSignIn} from '../lib/sso';import {roleForAccount} from '../lib/rol
 import {ecosystemDecisionMessage} from '../shared/ecosystem-authority.mjs';
 const origin='http://127.0.0.1:3070',issuer='https://roles.test',keys=generateKeyPairSync('ed25519'),source=generateKeyPairSync('ed25519');
 let sharedIdentity='',sharedTime=0;const requests:any[]=[];
+const emailSenders: string[] = [];
 const pair=(s:string)=>s.split(';')[0];
 const request=(cookies='',path='/api/auth/verify')=>new Request(origin+path,{headers:{cookie:cookies,origin}});
 before(async()=>{
@@ -17,6 +18,10 @@ before(async()=>{
  const u=new URL(process.env.DATABASE_URL!);u.searchParams.set('options','-csearch_path='+schemaName);process.env.DATABASE_URL=u.toString();await pool().query(schema);
  Object.assign(process.env,{BITTREES_SSO_ENABLED:'1',BITTREES_SSO_ISSUER:issuer,BITTREES_SSO_CLIENT_SECRET:'synthetic-sso-test-secret-news-only',ROLES_ECOSYSTEM_REQUEST_PRIVATE_KEY:source.privateKey.export({type:'pkcs8',format:'pem'}),ROLES_ECOSYSTEM_DECISION_PUBLIC_KEY:keys.publicKey.export({type:'spki',format:'pem'}),ROLES_FEED_SUBJECT_SECRET:'synthetic-news-subject-secret-only'});
  mock.method(globalThis,'fetch',async(url:any,options:any)=>{
+  if (String(url) === 'https://api.resend.com/emails') {
+    emailSenders.push(JSON.parse(options.body).from);
+    return Response.json({ id: 'synthetic-send' });
+  }
   if(String(url)===issuer+'/api/sso/redeem')return Response.json({issuer,audience:'news',identity:sharedIdentity,auth_time:sharedTime});
   assert.equal(String(url),'https://roles.bittrees.org/api/authority/ecosystem-decision');
   const r=JSON.parse(options.body).request;requests.push(r);const now=Date.now(),decision={version:1,issuer:'https://roles.bittrees.org',audience:r.source,request:r,authoritative:true,enrolled:true,policyRevision:29,actions:r.authenticatedWallet?['project.admin','role.super-admin']:[],checkedAt:now,expiresAt:now+5000,requiresPrivateOwnership:true};
@@ -24,6 +29,26 @@ before(async()=>{
  });
 });
 after(async()=>{mock.restoreAll();await pool().end();});
+test('login email uses its own sender while destination verification uses the existing sender', async () => {
+  const settings = {
+    RESEND_API_KEY: 'synthetic-test-key',
+    EMAIL_FROM: 'News delivery <news@example.org>',
+    SIGNIN_EMAIL_FROM: 'Bittrees News <signin@bittrees.org>',
+  };
+  const previous = Object.keys(settings).map(key => [key, process.env[key]] as const);
+  Object.assign(process.env, settings);
+  try {
+    const signedIn = await wallet();
+    await startChallenge(request(), { kind: 'email', value: 'login@example.org', purpose: 'login' });
+    await startChallenge(request(signedIn.cookies), { kind: 'email', value: 'delivery@example.org', purpose: 'destination' });
+    assert.deepEqual(emailSenders.slice(-2), [settings.SIGNIN_EMAIL_FROM, settings.EMAIL_FROM]);
+  } finally {
+    for (const [key, value] of previous) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+});
 async function wallet(){const w=Wallet.createRandom(),c=await startChallenge(request(),{kind:'wallet',value:w.address,purpose:'login'}),r=await verifyChallenge(request(pair(c.cookie)),{id:c.body.id,proof:await w.signMessage(c.body.message!)});assert(r.authenticationCookie);return {w,r,cookies:[r.cookie,r.authenticationCookie!].map(pair).join('; ')};}
 async function resume(identity:string,authTime:number){sharedIdentity=identity;sharedTime=authTime;const start=await sharedSignIn(request('','/api/sso/start?mode=resume')),state=new URL(start.headers.get('location')!).searchParams.get('state'),cookies=start.headers.getSetCookie().map(pair).join('; '),done=await sharedSignIn(request(cookies,'/api/sso/callback?code=synthetic&state='+encodeURIComponent(state!)));assert.equal(done.status,303);return done.headers.getSetCookie().map(pair).join('; ');}
 test('native wallet gets current Superadmin while explicit lower active role and MCP boundary remain intact',async()=>{

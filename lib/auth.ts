@@ -163,6 +163,7 @@ export async function startChallenge(
         "TBN — Your Bittrees News verification code",
         `Your verification code is ${message}. It expires in ten minutes.\n\nUse it only at ${origin}. If you did not request this, ignore this email.`,
         id,
+        { from: b.purpose === "login" ? process.env.SIGNIN_EMAIL_FROM : undefined },
       );
     } catch (e) {
       await pool().query("DELETE FROM challenges WHERE id=$1", [id]);

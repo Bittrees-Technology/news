@@ -8,8 +8,7 @@ export async function sendEmail(
   subject: string,
   text: string,
   id: string,
-  unsubscribe?: string,
-  html?: string,
+  { unsubscribe, html, from }: { unsubscribe?: string; html?: string; from?: string } = {},
 ) {
   if (!emailReady())
     throw new HttpError(
@@ -34,7 +33,7 @@ export async function sendEmail(
       "Idempotency-Key": id,
     },
     body: JSON.stringify({
-      from: process.env.EMAIL_FROM || "Bittrees News <main@bittrees.org>",
+      from: from || process.env.EMAIL_FROM || "Bittrees News <main@bittrees.org>",
       to: [to],
       subject,
       text,
