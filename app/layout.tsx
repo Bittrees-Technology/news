@@ -1,4 +1,4 @@
-import {siteUrl,siteName,siteDescription,pageMetadata} from "@/lib/seo";
+import {siteUrl,siteName,siteDescription,pageMetadata,homeTitle} from "@/lib/seo";
 import Script from "next/script";
 import type { Metadata } from "next";
 import { Header, Footer } from "@/components/client";
@@ -6,7 +6,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   ...pageMetadata(siteName,siteDescription,"/"),
   metadataBase: new URL(siteUrl),
-  title: {default:"TBN",template:"%s | TBN"},
+  title: {default:homeTitle,template:"%s | TBN"},
   alternates: undefined,
   applicationName:"TBN",
   icons:{icon:[{url:"/brand/tbn-mark.svg",type:"image/svg+xml"}],apple:[{url:"/brand/tbn-180.png",sizes:"180x180"}]},

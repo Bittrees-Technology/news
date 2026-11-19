@@ -87,6 +87,8 @@ export function Footer() {
     <footer className="footer">
       <span>A Bittrees newspaper. Three editions a day.</span>
       <div>
+        <a href="https://bittrees.org/">Bittrees</a>
+        <a href="https://index.bittrees.org/">Ecosystem</a>
         <a href="/rss.xml">RSS</a>
         <Link href="/about">About & sources</Link>
         <Link href="/privacy">Privacy</Link>

@@ -1,11 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {briefingMetadata,briefingSchema,schemaJson} from '../lib/briefing-seo';
-import {pageMetadata,siteDescription} from '../lib/seo';
+import {pageMetadata,siteDescription,homeTitle} from '../lib/seo';
 import sitemap from '../app/sitemap';
 const item={title:'Original title',translation:{title:'English title'},url:'https://example.org/report',authors:['Source reporter'],publication:'Source publication',published_at:'2026-09-27T12:00:00Z',document:{generatedAt:'2026-09-28T10:00:00Z',briefing:{overview:'A grounded overview.'}}};
-test('public previews use TBN and translated briefing titles and creation dates',()=>{
- assert.equal(pageMetadata('The Bittrees News',siteDescription,'/').title,'TBN');
+test('public previews use the full home identity, TBN child titles and translated briefing titles and creation dates',()=>{
+ const home=pageMetadata(homeTitle,siteDescription,'/');
+ assert.equal(home.title,homeTitle);
+ assert.equal(home.openGraph?.title,homeTitle);
+ assert.equal(home.twitter?.title,homeTitle);
+ assert.equal(home.alternates?.canonical,'https://news.bittrees.org/');
+ assert.equal(pageMetadata('The Bittrees News',siteDescription,'/').twitter?.title,'TBN');
+ const about=pageMetadata('About & sources',siteDescription,'/about');
+ assert.equal(about.title,'About & sources');
+ assert.equal(pageMetadata('The Bittrees News archive',siteDescription,'/archive').title,'TBN archive');
  const metadata=briefingMetadata(item,'/story/example');
  assert.equal(metadata.title,'English title');
  assert.equal((metadata.openGraph as any).publishedTime,item.document.generatedAt);

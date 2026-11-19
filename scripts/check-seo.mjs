@@ -21,7 +21,12 @@ for(const [path,status] of checks){
 }
 const home=await (await fetchPage(base+'/')).text();
 assert.match(home,/<meta name="viewport"/);
-assert.match(home,/<title>TBN(?: \| TBN)?<\/title>/);
+assert.match(home,/<title>The Bittrees News \(TBN\) \| World, Economy, Technology &amp; Science<\/title>/);
+assert.match(home,/<meta property="og:title" content="The Bittrees News \(TBN\) \| World, Economy, Technology &amp; Science"/);
+assert.match(home,/<meta name="twitter:title" content="The Bittrees News \(TBN\) \| World, Economy, Technology &amp; Science"/);
+const footer=home.match(/<footer\b[^>]*>[\s\S]*?<\/footer>/)?.[0]||'';
+assert.match(footer,/<a href="https:\/\/bittrees\.org\/">Bittrees<\/a>/);
+assert.match(footer,/<a href="https:\/\/index\.bittrees\.org\/">Ecosystem<\/a>/);
 const schemas=[...home.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map(m=>JSON.parse(m[1]));
 assert.ok(schemas.some(s=>s['@type']==='CollectionPage'),'edition collection schema');
 assert.ok(schemas.some(s=>s['@graph']?.some(x=>x['@type']==='Organization')),'organization schema');

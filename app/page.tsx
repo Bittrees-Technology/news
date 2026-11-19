@@ -1,7 +1,7 @@
 import { EditionSchema } from "@/components/edition-schema";
-import { pageMetadata, siteName, siteDescription, siteUrl } from "@/lib/seo";
-const baseMetadata=pageMetadata(siteName,siteDescription,"/");
-export const metadata = {...baseMetadata,alternates:{...baseMetadata.alternates,types:{"application/rss+xml":"/rss.xml"}}};
+import { pageMetadata, siteName, siteDescription, siteUrl, homeTitle } from "@/lib/seo";
+const baseMetadata=pageMetadata(homeTitle,siteDescription,"/");
+export const metadata = {...baseMetadata,title:{absolute:homeTitle},alternates:{...baseMetadata.alternates,types:{"application/rss+xml":"/rss.xml"}}};
 import { viewer } from "@/lib/viewer";
 import { scoreVisibility } from "@/lib/roles";
 import { publicHome } from "@/lib/public-home";
