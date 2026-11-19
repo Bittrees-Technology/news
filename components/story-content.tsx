@@ -1,9 +1,12 @@
 import {briefingPath} from '@/lib/briefing-links';
+import {briefingSearchNote} from '@/lib/briefing-search-review';
 import {sourceName} from '@/lib/catalog';
 import {articleTags,tagStyle} from '@/lib/tags';
 import {ShareStory} from '@/components/share-story';
-export function StoryContent({item:i}:{item:any}){const d=i.document;const evidence=i.evidence;
-return <article className="standalone-story"><p>{articleTags(i).map(t=><span className="topic colored-tag" key={t} style={tagStyle(t)}>{t}</span>)}</p><h1>{i.translation?.title || i.title}</h1><div className="briefing-attribution">
+export function StoryContent({item:i}:{item:any}){const d=i.document;const evidence=i.evidence;const note=briefingSearchNote(i.cid);
+return <article className="standalone-story"><p>{articleTags(i).map(t=><span className="topic colored-tag" key={t} style={tagStyle(t)}>{t}</span>)}</p><h1>{i.translation?.title || i.title}</h1>
+{note&&<aside className="notice" aria-label="Editorial note"><strong>Editorial note.</strong> {note}</aside>}
+<div className="briefing-attribution">
 <p><strong>Publication:</strong> {i.publication||sourceName(i.source_id)}</p>
 <p><strong>{i.authors?.length>1?'Authors':'Author'}:</strong> {i.authors?.length?i.authors.join(', '):'Not available in collected metadata'}</p>
 {d?.source?.attribution?.affiliation&&<p><strong>Affiliation:</strong> {d.source.attribution.affiliation}</p>}

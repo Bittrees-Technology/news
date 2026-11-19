@@ -15,5 +15,6 @@ export async function generateMetadata({params}:{params:Promise<{shortId:string}
 export default async function Page({params}:{params:Promise<{shortId:string}>}){
  const {shortId}=await params;const item=await version(shortId);if(!item)notFound();
  const older=await briefingBatch(item.id);
- return <><script type="application/ld+json" dangerouslySetInnerHTML={{__html:schemaJson(briefingSchema(item,briefingPath(item)))}}/><BriefingReader key={shortId} initial={{...older,entries:[item,...older.entries],selectedId:item.id}}/><BriefingLinks entries={older.entries} next={older.next} currentId={item.id}/></>;
+ const schema=briefingSchema(item,briefingPath(item));
+ return <>{schema&&<script type="application/ld+json" dangerouslySetInnerHTML={{__html:schemaJson(schema)}}/>}<BriefingReader key={shortId} initial={{...older,entries:[item,...older.entries],selectedId:item.id}}/><BriefingLinks entries={older.entries} next={older.next} currentId={item.id}/></>;
 }
