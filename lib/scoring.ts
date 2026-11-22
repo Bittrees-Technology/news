@@ -49,6 +49,15 @@ export type Score = {
 };
 export const scoreVersion = "tbn-global-v3";
 const clean = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
+export function metadataCompleteness(i:Item) {
+  return Math.min(
+      100,
+      (i.title.length >= 10 ? 20 : 0) +
+        (i.url.startsWith("https://") ? 20 : 0) +
+        (Number.isFinite(Date.parse(i.published_at)) ? 20 : 0) +
+        Math.min(40, i.excerpt.length / 8),
+    );
+}
 export function scoreArticle(
   i: Item,
   p: Preferences,
@@ -86,13 +95,7 @@ export function scoreArticle(
       : evidence
         ? 65
         : 0,
-    completeness: Math.min(
-      100,
-      (i.title.length >= 10 ? 20 : 0) +
-        (i.url.startsWith("https://") ? 20 : 0) +
-        (Number.isFinite(age) ? 20 : 0) +
-        Math.min(40, i.excerpt.length / 8),
-    ),
+    completeness: metadataCompleteness(i),
   };
   const sum = Object.values(config.weights).reduce((a, b) => a + b, 0);
   const value =

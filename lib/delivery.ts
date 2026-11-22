@@ -98,7 +98,8 @@ export async function queueSubscriptions(now = new Date()) {
     const email = s.kind === "email";
     const prefs = preferencesSchema.parse(s.preferences);
     const profile = rankingSchema.parse(s.ranking);
-    const selected = s.target==='main'&&s.cadence==='daily' ? (email ? englishDigestItems(await withTranslations(edition.items)).slice(0,3) : edition.items) : email
+    const mainDaily=s.target==='main'&&s.cadence==='daily';
+    const selected = mainDaily ? edition.items : email
       ? englishDigestItems(await withTranslations(digestArticles(edition.items, prefs, profile, now, 50))).slice(0, 3)
       : edition.items;
     if (!selected.length) continue;
@@ -108,8 +109,8 @@ export async function queueSubscriptions(now = new Date()) {
       `${edition.name} — ${s.cadence} edition\n${edition.period.start.toISOString().slice(0, 10)} to ${edition.period.end.toISOString().slice(0, 10)} (UTC)\n\n` +
       selected
         .map(
-          (i) =>
-            `${i.title}\n${email ? compactSummary(i.summary || i.excerpt) : i.summary || i.excerpt}\n${i.user_edited ? "Edited by the newspaper owner.\n" : ""}${i.url}`,
+          (i,index) =>
+            `${mainDaily && index===0 ? "Lead story\n" : ""}${i.title}\n${email ? compactSummary(i.summary || i.excerpt) : i.summary || i.excerpt}\n${i.user_edited ? "Edited by the newspaper owner.\n" : ""}${i.url}`,
         )
         .join("\n\n") +
       `\n\nRead more: ${readMore}\nManage subscriptions: ${process.env.APP_URL}/account/delivery\nPause this subscription: ${unsubscribe}`;
@@ -130,6 +131,7 @@ export async function queueSubscriptions(now = new Date()) {
             edition.period.end.toISOString().slice(0, 10),
             unsubscribe,
             readMore,
+            mainDaily,
           ),
         }),
       ],

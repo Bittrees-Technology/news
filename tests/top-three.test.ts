@@ -77,3 +77,30 @@ test('a newly discovered useful development replaces a weaker lead without chang
  assert.ok(editorialRelevance(fresh)>editorialRelevance({...fresh,title:'Sponsored game-changing product giveaway'}));
  assert.equal(editorialRelevance({...fresh,topic:'Gaming',tags:[],title:'A new game launches',excerpt:'A new edition is available today.'})<editorialRelevance(fresh),true);
 });
+
+test('an evidenced public safety order receives the same base priority independent of display ranking',async()=>{
+ const {editorialBase,editorialScore,editorialFreshness}=await import('../lib/editorial-priority');
+ const order=item('order',{title:'Governo declara situação de alerta',excerpt:'A Proteção Civil publicou o aviso de emergência.'});
+ const drill={...order,id:'drill',title:'Simulacro: Governo declara situação de alerta'};
+ const result=selectTopThree([drill,order],undefined,at);
+ assert.ok(editorialBase(order)>editorialBase(drill));
+ assert.equal(result.items[0].id,'order');
+ assert.equal(result.items[0].ranking.value,editorialScore(editorialBase(order),editorialFreshness(order.published_at,at)));
+ assert.equal(editorialBase({...order,summary:'An invented public emergency'}),editorialBase(order));
+});
+
+test('daily email backfills within the ranked shortlist after verifying exact English copy',async()=>{
+ const {readyDailyLeads}=await import('../lib/top-three-public');
+ const {translationKey}=await import('../lib/translation');
+ const from=(id:string,title:string)=>item(id,{source_id:id,title});
+ const stale=from('no','County issues red alert');
+ const first=from('bbc-world','Hospital opens emergency ward');
+ const sibling=from('bbc-europe','Schools resume after closures');
+ const repeat=from('copy',first.title);
+ const second=from('two','Reservoir provides safe drinking water');
+ const third=from('three','Health agency approves new vaccine');
+ const rows=[stale,first,sibling,repeat,second,third];
+ const receipts=new Map(rows.slice(1).map(i=>[translationKey(i),{status:'done',result:{language:'en',model:'test'}}]));
+ receipts.set(translationKey({...stale,title:'Superseded title'}),{status:'done',result:{language:'en',model:'test'}});
+ assert.deepEqual(readyDailyLeads(rows,receipts).map(i=>i.id),[first.id,second.id,third.id]);
+});

@@ -1,3 +1,4 @@
+import {queueScoreSql} from './editorial-priority';
 import {recordClaim,recordOutcome} from "./job-ledger";
 import {sourceEvidence} from "./source-evidence";
 import {publicJob} from "./job-contract";
@@ -7,11 +8,26 @@ import {HttpError} from './model';
 import {sourceName} from './catalog';
 export const briefingSchema=z.object({overview:z.string().min(40).max(2200),points:z.array(z.string().min(10).max(500)).min(1).max(4),context:z.string().min(10).max(600),limitations:z.string().min(10).max(600)}).refine(b=>b.context.trim().toLowerCase()!==b.limitations.trim().toLowerCase(),{message:'Context and limitations must be distinct'});
 export async function claimStory(input:unknown={}){const {phase}=z.object({phase:z.enum(['generation','archive','both']).default('both')}).parse(input);return tx(async d=>{
- const turn=(await d.query("INSERT INTO worker_state(id,data) VALUES('scheduler-briefing','{\"claims\":1}') ON CONFLICT(id) DO UPDATE SET data=jsonb_build_object('claims',coalesce((worker_state.data->>'claims')::bigint,0)+1),updated_at=now() RETURNING (data->>'claims')::bigint AS n")).rows[0].n;
- const row=(await d.query("SELECT s.*,i.title,i.url,i.kind,i.source_id,i.published_at,i.authors,i.publication,i.source_context,i.excerpt FROM story_documents s JOIN items i ON i.id=s.item_id WHERE i.owner_id IS NULL AND s.cid IS NULL AND (s.document IS NOT NULL OR s.attempts<3 OR s.claimed_at<now()-interval '30 minutes') AND ($2='both' OR ($2='generation' AND s.document IS NULL) OR ($2='archive' AND s.document IS NOT NULL)) AND s.available_at<=now() AND (s.claimed_at IS NULL OR s.claimed_at<now()-interval '30 minutes') ORDER BY (s.document IS NOT NULL) DESC,CASE WHEN $1 THEN coalesce(s.enqueued_at,i.fetched_at) END ASC NULLS LAST,(i.published_at>=now()-interval '24 hours') DESC,s.priority DESC,i.published_at DESC FOR UPDATE OF s SKIP LOCKED LIMIT 1",[Number(turn)%10===0,phase])).rows[0];
+ // Serialize the slot decision and advance only after a real claim in this transaction.
+ const scheduler='scheduler-briefing-slots';
+ await d.query("INSERT INTO worker_state(id) VALUES($1) ON CONFLICT DO NOTHING",[scheduler]);
+ const slots=(await d.query('SELECT data FROM worker_state WHERE id=$1 FOR UPDATE',[scheduler])).rows[0].data;
+ const row=(await d.query(`SELECT s.*,${queueScoreSql('briefing')} AS dispatch_priority,i.title,i.url,i.kind,i.source_id,i.published_at,i.authors,i.publication,i.source_context,i.excerpt
+   FROM story_documents s JOIN items i ON i.id=s.item_id
+   WHERE i.owner_id IS NULL AND s.cid IS NULL
+   AND (s.document IS NOT NULL OR s.attempts<3 OR s.claimed_at<now()-interval '30 minutes')
+   AND ($2='both' OR ($2='generation' AND s.document IS NULL) OR ($2='archive' AND s.document IS NOT NULL))
+   AND s.available_at<=now() AND (s.claimed_at IS NULL OR s.claimed_at<now()-interval '30 minutes')
+   ORDER BY (s.document IS NOT NULL) DESC,
+     CASE WHEN (s.document IS NULL AND $1) OR (s.document IS NOT NULL AND $3) THEN coalesce(s.enqueued_at,i.fetched_at) END ASC NULLS LAST,
+     (i.published_at>=now()-interval '24 hours') DESC,dispatch_priority DESC,i.published_at DESC,s.item_id
+   FOR UPDATE OF s SKIP LOCKED LIMIT 1`,[slots.generation===9,phase,slots.archive===9])).rows[0];
  if(!row)return null;
+ const lane=row.document?'archive':'generation';
+ slots[lane]=((slots[lane]||0)+1)%10;
+ await d.query('UPDATE worker_state SET data=$2,updated_at=now() WHERE id=$1',[scheduler,JSON.stringify(slots)]);
  const claim=(await d.query('UPDATE story_documents SET claimed_at=now(),lease=gen_random_uuid(),attempts=CASE WHEN claimed_at<now()-interval \'30 minutes\' THEN attempts ELSE least(attempts+1,12) END WHERE item_id=$1 RETURNING lease',[row.item_id])).rows[0];
- const job=await recordClaim(d,publicJob('briefing',row.item_id,[row.title,row.source_context||row.excerpt],claim.lease,row.priority),row.document?'archive':'generation');
+ const job=await recordClaim(d,publicJob('briefing',row.item_id,[row.title,row.source_context||row.excerpt],claim.lease,row.dispatch_priority),row.document?'archive':'generation');
  return {...row,queue_wait_ms:row.enqueued_at?Math.max(0,Date.now()-new Date(row.enqueued_at).getTime()):null,lease:claim.lease,job};
  });}
 export async function retryStory(input:unknown){return tx(async d=>{

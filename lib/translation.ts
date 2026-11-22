@@ -1,3 +1,5 @@
+import {editorialBase,queueScoreSql} from './editorial-priority';
+import {rankingColumns} from './ranking-projection';
 import {recordClaim,recordOutcome} from "./job-ledger";
 import {publicJob} from "./job-contract";
 import { createHash } from "node:crypto";
@@ -69,12 +71,13 @@ async function attachTranslations(items: Item[]): Promise<Item[]> {
   if (!candidates.length) return items;
   const originals = (
     await pool().query(
-      "SELECT id,title,summary,excerpt FROM items WHERE id=ANY($1::text[]) AND owner_id IS NULL",
+      `SELECT ${rankingColumns} FROM items WHERE id=ANY($1::text[]) AND owner_id IS NULL`,
       [candidates.map((i) => i.id)],
     )
   ).rows;
+  const byId = new Map<string,Item>(originals.map(o => [o.id,o]));
   const publicItems = candidates.filter((i) => {
-    const original = originals.find((o) => o.id === i.id),
+    const original = byId.get(i.id),
       text = i.summary || i.excerpt;
     return (
       original &&
@@ -95,8 +98,8 @@ async function attachTranslations(items: Item[]): Promise<Item[]> {
         JSON.stringify(
           publicItems.map((i) => ({
             key: translationKey(i),
-            priority: i.ranking?.value || 0,
-            item_published_at: i.published_at,
+            priority: editorialBase(byId.get(i.id)!),
+            item_published_at: byId.get(i.id)!.published_at,
             payload: { title: i.title, summary: i.summary || i.excerpt },
           })),
         ),
@@ -120,8 +123,8 @@ export async function claimTranslation() {return tx(async d=>{
     "UPDATE translations SET status='failed' WHERE status='working' AND attempts>=3 AND claimed_at<now()-interval '40 minutes'",
   );
   const r = await d.query(`WITH turn AS (INSERT INTO worker_state(id,data) VALUES('scheduler-translation','{"claims":1}') ON CONFLICT(id) DO UPDATE SET data=jsonb_build_object('claims',coalesce((worker_state.data->>'claims')::bigint,0)+1),updated_at=now() RETURNING (data->>'claims')::bigint AS n), candidate AS (
-    SELECT key FROM translations WHERE (status='pending' OR status='working' AND claimed_at<now()-interval '40 minutes') AND attempts<3 AND available_at<=now() ORDER BY CASE WHEN (SELECT n%10=0 FROM turn) THEN created_at END ASC NULLS LAST,(coalesce(item_published_at,created_at)>=now()-interval '24 hours') DESC,priority DESC,created_at DESC FOR UPDATE SKIP LOCKED LIMIT 1
-  ) UPDATE translations t SET status='working',claimed_at=now(),lease=gen_random_uuid(),attempts=attempts+1 FROM candidate c WHERE t.key=c.key RETURNING t.key,t.lease,t.payload,t.priority,t.created_at`);
+    SELECT key,${queueScoreSql("translation")} AS dispatch_priority FROM translations WHERE (status='pending' OR status='working' AND claimed_at<now()-interval '40 minutes') AND attempts<3 AND available_at<=now() ORDER BY CASE WHEN (SELECT n%10=0 FROM turn) THEN created_at END ASC NULLS LAST,(coalesce(item_published_at,created_at)>=now()-interval '24 hours') DESC,dispatch_priority DESC,created_at DESC,key FOR UPDATE SKIP LOCKED LIMIT 1
+  ) UPDATE translations t SET status='working',claimed_at=now(),lease=gen_random_uuid(),attempts=attempts+1 FROM candidate c WHERE t.key=c.key RETURNING t.key,t.lease,t.payload,c.dispatch_priority AS priority,t.created_at`);
   const row=r.rows[0];if(!row)return null;
   const job=await recordClaim(d,publicJob('translation',row.key,row.payload,row.lease,row.priority));
   return {...row,queue_wait_ms:Math.max(0,Date.now()-new Date(row.created_at).getTime()),job};

@@ -1,6 +1,6 @@
 import {rankingColumns,uniqueChangedIds} from "./ranking-projection";
 import {annualObservation} from "./data-dates";
-import {publicRanked} from "./ranking";
+import {editorialBase} from "./editorial-priority";
 import {articleTags,normalizeTopic} from "./tags";
 import {feedParser,feedAuthors} from "./feed-attribution";
 import { createHash } from "node:crypto";
@@ -8,7 +8,7 @@ import {collectionMinutes,retryMinutes,nextSourcePoll} from "./collection-policy
 import {withTranslations} from "./translation";
 import { safeFetchResponse,type FetchValidators,SourceFetchError } from "./safe-fetch";
 import { sources, type Source } from "./catalog";
-import { pool } from "./db";
+import { pool, tx } from "./db";
 import type { Item } from "./model";
 const parser = feedParser;
 export const clean = (t: string = "", max = 600) =>
@@ -146,30 +146,39 @@ export async function fetchSourceSnapshot(s: Source, owner?: string, previousHas
     )};
 }
 export async function storeItems(items: Item[]) {
-  for (const i of items)
-    await pool().query(
-      `INSERT INTO items(id,source_id,topic,kind,title,url,excerpt,published_at,owner_id,tags,authors,publication,source_context,observation_period,released_at,retrieved_at,date_basis) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) ON CONFLICT(id) DO UPDATE SET observation_period=EXCLUDED.observation_period,released_at=EXCLUDED.released_at,retrieved_at=EXCLUDED.retrieved_at,date_basis=EXCLUDED.date_basis,published_at=CASE WHEN EXCLUDED.date_basis='observation' THEN EXCLUDED.published_at ELSE items.published_at END,fetched_at=CASE WHEN (items.title,items.excerpt,items.source_context) IS DISTINCT FROM (EXCLUDED.title,EXCLUDED.excerpt,EXCLUDED.source_context) THEN now() ELSE items.fetched_at END,summary=CASE WHEN (items.title,items.excerpt) IS DISTINCT FROM (EXCLUDED.title,EXCLUDED.excerpt) THEN NULL ELSE items.summary END,excerpt=EXCLUDED.excerpt,title=EXCLUDED.title,tags=EXCLUDED.tags,topic=EXCLUDED.topic,authors=CASE WHEN items.attribution IS NOT NULL THEN items.authors ELSE EXCLUDED.authors END,publication=EXCLUDED.publication,source_context=EXCLUDED.source_context`,
-      [
-        i.id,
-        i.source_id,
-        normalizeTopic(i.topic),
-        i.kind,
-        i.title,
-        i.url,
-        i.excerpt,
-        i.published_at,
-        i.owner_id,
-        articleTags(i),i.authors||[],i.publication||null,i.source_context||i.excerpt,i.observation_period||null,i.released_at||null,i.retrieved_at||null,i.date_basis||'publication',
-      ],
-    );
-  await pool().query(`INSERT INTO story_documents(item_id,content_key) SELECT id,md5(title||'|'||coalesce(source_context,excerpt)) FROM items WHERE id=ANY($1::text[]) AND owner_id IS NULL ON CONFLICT(item_id) DO UPDATE SET content_key=EXCLUDED.content_key,enqueued_at=CASE WHEN story_documents.content_key IS NULL THEN story_documents.enqueued_at ELSE now() END,document=CASE WHEN story_documents.content_key IS NULL THEN story_documents.document ELSE NULL END,cid=CASE WHEN story_documents.content_key IS NULL THEN story_documents.cid ELSE NULL END,generated_at=CASE WHEN story_documents.content_key IS NULL THEN story_documents.generated_at ELSE NULL END,pinned_at=CASE WHEN story_documents.content_key IS NULL THEN story_documents.pinned_at ELSE NULL END,claimed_at=NULL,lease=NULL,attempts=0,available_at=now(),error=NULL WHERE story_documents.content_key IS DISTINCT FROM EXCLUDED.content_key`,[items.map(i=>i.id)]);
+  if (!items.length) return;
+  await tx(async db => {
+    const priorities = new Map<string, number>();
+    // Lock shared article URLs in the same order across concurrent source batches.
+    for (const i of [...items].sort((a,b) => a.id.localeCompare(b.id))) {
+      const stored = await db.query<Item>(
+        `INSERT INTO items(id,source_id,topic,kind,title,url,excerpt,published_at,owner_id,tags,authors,publication,source_context,observation_period,released_at,retrieved_at,date_basis) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) ON CONFLICT(id) DO UPDATE SET observation_period=EXCLUDED.observation_period,released_at=EXCLUDED.released_at,retrieved_at=EXCLUDED.retrieved_at,date_basis=EXCLUDED.date_basis,published_at=CASE WHEN EXCLUDED.date_basis='observation' THEN EXCLUDED.published_at ELSE items.published_at END,fetched_at=CASE WHEN (items.title,items.excerpt,items.source_context) IS DISTINCT FROM (EXCLUDED.title,EXCLUDED.excerpt,EXCLUDED.source_context) THEN now() ELSE items.fetched_at END,summary=CASE WHEN (items.title,items.excerpt) IS DISTINCT FROM (EXCLUDED.title,EXCLUDED.excerpt) THEN NULL ELSE items.summary END,excerpt=EXCLUDED.excerpt,title=EXCLUDED.title,tags=EXCLUDED.tags,topic=EXCLUDED.topic,authors=CASE WHEN items.attribution IS NOT NULL THEN items.authors ELSE EXCLUDED.authors END,publication=EXCLUDED.publication,source_context=EXCLUDED.source_context RETURNING ${rankingColumns}`,
+        [
+          i.id,
+          i.source_id,
+          normalizeTopic(i.topic),
+          i.kind,
+          i.title,
+          i.url,
+          i.excerpt,
+          i.published_at,
+          i.owner_id,
+          articleTags(i),i.authors||[],i.publication||null,i.source_context||i.excerpt,i.observation_period||null,i.released_at||null,i.retrieved_at||null,i.date_basis||'publication',
+        ],
+      );
+      const original = stored.rows[0];
+      if (!original.owner_id) priorities.set(original.id,editorialBase(original));
+    }
+    if (!priorities.size) return;
+    await db.query(`INSERT INTO story_documents(item_id,priority,content_key) SELECT i.id,p.score,md5(i.title||'|'||coalesce(i.source_context,i.excerpt)) FROM unnest($1::text[],$2::numeric[]) AS p(id,score) JOIN items i ON i.id=p.id WHERE i.owner_id IS NULL ON CONFLICT(item_id) DO UPDATE SET priority=EXCLUDED.priority,content_key=EXCLUDED.content_key,enqueued_at=CASE WHEN story_documents.content_key IS NULL THEN story_documents.enqueued_at ELSE now() END,document=CASE WHEN story_documents.content_key IS NULL THEN story_documents.document ELSE NULL END,cid=CASE WHEN story_documents.content_key IS NULL THEN story_documents.cid ELSE NULL END,generated_at=CASE WHEN story_documents.content_key IS NULL THEN story_documents.generated_at ELSE NULL END,pinned_at=CASE WHEN story_documents.content_key IS NULL THEN story_documents.pinned_at ELSE NULL END,claimed_at=NULL,lease=NULL,attempts=0,available_at=now(),error=NULL WHERE story_documents.content_key IS DISTINCT FROM EXCLUDED.content_key`,[[...priorities.keys()],[...priorities.values()]]);
+    // A re-seen item can adopt the new score without resetting its lease or content.
+    await db.query(`UPDATE story_documents s SET priority=p.score FROM unnest($1::text[],$2::numeric[]) AS p(id,score) WHERE s.item_id=p.id AND s.cid IS NULL AND s.priority IS DISTINCT FROM p.score`,[[...priorities.keys()],[...priorities.values()]]);
+  });
 }
-export async function prioritizePublicWork(ids:string[]){
+async function recentPublicWork(ids:string[]){
  if(!ids.length)return [];
  const rows=(await pool().query(`SELECT ${rankingColumns} FROM items WHERE id=ANY($1::text[]) AND owner_id IS NULL AND published_at>=now()-interval '24 hours' AND published_at<=now() ORDER BY published_at DESC LIMIT 2000`,[uniqueChangedIds(ids)])).rows as Item[];
- const ranked=await publicRanked(rows);
- await pool().query("UPDATE story_documents s SET priority=x.score FROM jsonb_to_recordset($1::jsonb) AS x(id text,score numeric) WHERE s.item_id=x.id",[JSON.stringify(ranked.map(i=>({id:i.id,score:i.ranking.value})))]);
- return ranked;
+ return rows;
 }
 export async function claimSource(ids:string[]){
  return (await pool().query(`WITH candidate AS (
@@ -201,7 +210,7 @@ export async function collect() {
    }
   }
  }));
- if(changedIds.length)await withTranslations(await prioritizePublicWork(changedIds));
+ if(changedIds.length)await withTranslations(await recentPublicWork(changedIds));
  const stats={ok,failed,unchanged,seconds:Math.round((Date.now()-started)/1000)};
  await pool().query("INSERT INTO worker_state(id,data) VALUES('collection',$1) ON CONFLICT(id) DO UPDATE SET updated_at=now(),data=EXCLUDED.data",[JSON.stringify(stats)]);
  return stats;

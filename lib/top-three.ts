@@ -1,7 +1,8 @@
+import {editorialBase,editorialFreshness,editorialRelevance,editorialScore} from './editorial-priority';
 import {z} from 'zod';
 import {countries,regions,geographyFor,matchesGeography} from './geography';
 import {publisherFamily,sameEvent} from './diversity-shadow';
-import {rankArticles,rankingSchema} from './scoring';
+import {scoreArticle,rankingSchema} from './scoring';
 import {defaults,type Item} from './model';
 import {interestAdjustment,type TopThreeLearning} from './top-three-learning';
 export const editionPreferenceSchema=z.object({
@@ -28,49 +29,40 @@ export function matchesEdition(i:Item,p:EditionPreference){
  const escaped=city.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
  return new RegExp('(?:^|[^\\p{L}\\p{N}])'+escaped+'(?=$|[^\\p{L}\\p{N}])','u').test(text);
 }
-export const topThreeVersion='tbn-top-three-v3';
-// Capped public-interest signals, not a fact check or an estimate of lives/money affected.
-// A global-sounding headline, repetition or publisher volume cannot supply impact evidence.
-export function editorialRelevance(i:Item,scope:EditionPreference['scope']='global'){
- const title=i.title,lead=i.excerpt.slice(0,360),text=title+' '+lead;
- // Match the central headline, not a keyword anywhere in an excerpt/newsletter.
- const central=/\b(emergency|evacuat\w*|outbreak|earthquake|flood\w*|wildfire\w*|ceasefire|war|armed conflict|civilian\w*|election\w*|parliament|court|ruling|regulation\w*|treaty|sanctions?|inflation|interest rates?|trade|food security|water supply|electricity|energy supply|climate change|emissions?|public health|clinical trial|vaccine)\b/i.test(title);
- const background=/\b(public health|clinical trial|vaccine|evacuat\w*|ceasefire|court ruling|public policy|regulation\w*|treaty|sanctions?|inflation|interest rates?|trade agreement|food security|water supply|electricity|energy supply|climate change|emissions?)\b/i.test(lead);
- const feature=/\b(ancient|anniversary|roundup|newsletter|opinion|explains why|according to.{0,30}expert|world [\p{L} -]{2,35} day)\b/iu.test(title)||/^(?:welcome back|here are the studies|in this week)/i.test(lead);
- const promotional=/\b(unconfirmed|rumou?r|could revolutioni[sz]e|game.changing|promotional|sponsored|giveaway)\b/i.test(text);
- const usefulDevelopment=/\b(discover\w*|breakthrough|approv\w*|launch\w*|repair\w*|restor\w*|reduc\w*|protect\w*|prevent\w*|cuts? deaths|results?|vulnerabilit\w*|recall\w*)\b/i.test(title);
- const supportedTopic=['Health','Science','Biotech','Tech','AI','Security','Energy','Climate','Economy'].includes(i.topic)||(i.tags||[]).some(t=>['Health','Science','Security','Energy','Climate','Economy'].includes(t));
- const consequence=/\b(patient\w*|treatment\w*|clinical|trial|disease|deaths?|research|study|electricity|energy|water|jobs?|prices?|security|vulnerabilit\w*|emissions?|transport|public)\b/i.test(text);
- const development=usefulDevelopment&&supportedTopic&&consequence;
- const impact=(feature?35:central?90:development?80:background?65:45)-(promotional?15:0);
- const geo=geographyFor({title,excerpt:lead,summary:'',topic:''});
- const crossBorder=/\b(international|worldwide|cross[- ]border|multinational|global (?:economy|trade|health|markets?|climate)|united nations|world health organization)\b/i.test(text);
- const breadth=feature?45:crossBorder&&central?95:geo.countries.length>=2&&central?90:central?75:55;
- return scope==='global'?Math.round(breadth*.4+impact*.6):impact;
-}
-
+export const topThreeVersion='tbn-top-three-v4';
+export {editorialRelevance} from './editorial-priority';
 // Availability is operational evidence, not reliability. No clicks/popularity multiplier.
 const profile=rankingSchema.parse({weights:{freshness:30,relevance:50,source:0,grounding:0,completeness:20},maxAgeDays:1,kinds:['article']});
-export function selectTopThree(items:Item[],preference=globalEdition,at=new Date(),learning?:TopThreeLearning){
+export function rankEditorialCandidates(items:Item[],preference=globalEdition,at=new Date(),learning?:TopThreeLearning){
  const eligible=items.filter(i=>!i.owner_id&&i.kind==='article'&&Date.parse(i.published_at)<=+at&&Date.parse(i.published_at)>+at-86400000&&!!i.excerpt.trim()&&matchesEdition(i,preference));
- const ranked=rankArticles(eligible,defaults,profile,{},eligible.length,at);
+ const ranked=eligible.map(i=>({...i,ranking:scoreArticle(i,defaults,profile,50,at)}));
  // Geography filters eligibility. Relevance then combines breadth and supported public-interest signals.
  for(const i of ranked){
   i.ranking.version=topThreeVersion;
   i.ranking.factors.relevance=editorialRelevance(i,preference.scope);
   // Recent developments should displace yesterday's coverage, not just headlines with buzzwords.
-  i.ranking.factors.freshness=Math.round(100*Math.pow(.5,(+at-Date.parse(i.published_at))/43200000));
+  i.ranking.factors.freshness=editorialFreshness(i.published_at,at);
   i.ranking.feedbackAdjustment=interestAdjustment(i.topic,i.id,learning);
-  i.ranking.value=Math.round(Math.max(0,Math.min(100,i.ranking.factors.freshness*.3+i.ranking.factors.relevance*.5+i.ranking.factors.completeness*.2+i.ranking.feedbackAdjustment))*10)/10;
+  i.ranking.value=editorialScore(editorialBase(i,i.ranking.factors.relevance),i.ranking.factors.freshness,i.ranking.feedbackAdjustment);
  }
  ranked.sort((a,b)=>b.ranking.value-a.ranking.value||Date.parse(b.published_at)-Date.parse(a.published_at)||a.id.localeCompare(b.id));
+ return ranked;
+}
+
+export function chooseEditorialLeads<T extends Item>(ranked:T[]) {
  let publisherRepeatsSkipped=0,eventRepeatsSkipped=0;
- const selected:typeof ranked=[];
+ const selected:T[]=[];
  for(const i of ranked){
   if(selected.some(p=>publisherFamily(p)===publisherFamily(i))){publisherRepeatsSkipped++;continue;}
-  if(selected.some(p=>sameEvent(p,i))){eventRepeatsSkipped++;continue;}
+  if(selected.some(p=>p.title.trim().toLowerCase()===i.title.trim().toLowerCase() || sameEvent(p,i))){eventRepeatsSkipped++;continue;}
   selected.push(i);if(selected.length===3)break;
  }
+ return {selected,publisherRepeatsSkipped,eventRepeatsSkipped};
+}
+
+export function selectTopThree(items:Item[],preference=globalEdition,at=new Date(),learning?:TopThreeLearning) {
+ const eligible=rankEditorialCandidates(items,preference,at,learning);
+ const {selected,publisherRepeatsSkipped,eventRepeatsSkipped}=chooseEditorialLeads(eligible);
  return {version:topThreeVersion,asOf:at.toISOString(),preference,items:selected,
   metrics:{candidates:eligible.length,selected:selected.length,publisherRepeatsSkipped,eventRepeatsSkipped,selectedMeanAgeHours:selected.length?Math.round(selected.reduce((n,i)=>n+(+at-Date.parse(i.published_at))/3600000,0)/selected.length*10)/10:null,selectedMeanRelevance:selected.length?Math.round(selected.reduce((n,i)=>n+i.ranking.factors.relevance,0)/selected.length):null,publishers:new Set(selected.map(publisherFamily)).size,limitedEvidence:eligible.filter(i=>i.excerpt.trim().length<160).length,unknownGeography:eligible.filter(i=>!geographyFor({...i,summary:'',topic:''}).countries.length).length},
   note:'Editorial ranking, not a claim of factual accuracy. Places are source-text matches; availability and clicks do not establish reliability. Fewer than three stories means insufficient matching coverage.'};

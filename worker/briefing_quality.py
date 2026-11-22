@@ -1,5 +1,5 @@
 """Lightweight key-point checks; no extra inference or publisher requests."""
-import re, json
+import re, json, unicodedata
 
 KEY_POINT_GUIDANCE = (' Key points must be distinct, self-contained facts supported by the evidence. '
  'Prefer the central finding and its most consequential supporting fact: include named actors, '
@@ -42,3 +42,34 @@ def validate_briefing_content(content):
     if result['context'].strip().casefold()==result['limitations'].strip().casefold():
         raise KeyPointQualityError('Context and limitations must be distinct')
     return result
+
+
+def normalize(text):
+    return ''.join(c for c in unicodedata.normalize('NFKD', text.casefold()) if not unicodedata.combining(c))
+
+
+DAYS = [('monday','segunda-feira'), ('tuesday','terca-feira'), ('wednesday','quarta-feira'),
+        ('thursday','quinta-feira'), ('friday','sexta-feira'), ('saturday','sabado'), ('sunday','domingo')]
+
+
+def weekdays(text):
+    return {en for en, pt in DAYS if re.search(r'\b(?:' + en + '|' + pt + r')\b', text)}
+
+
+def evidence_review_signals(title, evidence, briefing):
+    """Advisory signals for validated output. These never gate or retry publication."""
+    text = normalize(title + ' ' + evidence)
+    source_days = weekdays(text)
+    price = re.search(r'(?:€/mwh|eur/mwh|\b(?:precos?|prices?|car[oa]s?)\b)', text)
+    demand = re.search(r'\b(demand|procura|consumo|consumption)\b', text)
+    reasons = set()
+    for field in [briefing['overview'], *briefing['points'], briefing['context']]:
+        for clause in re.split(r'[.!?;\n]+', normalize(field)):
+            if source_days and weekdays(clause) - source_days:
+                reasons.add('weekday_absent')
+            if price and not demand and re.search(r'\b(?:electricity|power|energy) demand\b', clause) and re.search(r'\b(?:highs?|record|rose|surged|rising|increase[ds]?)\b', clause):
+                reasons.add('price_to_demand')
+            for year in re.findall(r'\b(?:first|only)\b.{0,100}\bsince (\d{4})\b', clause):
+                if not re.search(r'\b' + year + r'\b', text):
+                    reasons.add('unsupported_historical_first')
+    return sorted(reasons)

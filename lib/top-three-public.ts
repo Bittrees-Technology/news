@@ -1,8 +1,11 @@
 import {unstable_cache} from 'next/cache';
 import {pool} from './db';
+import type {Item} from './model';
+import {translationKey,translationStatus} from './translation';
+import {englishDigestItems} from './digest-language';
 import {rankingColumns} from './ranking-projection';
 import {feedDisplay} from './public-feed';
-import {selectTopThree,type EditionPreference} from './top-three';
+import {chooseEditorialLeads,rankEditorialCandidates,selectTopThree,type EditionPreference} from './top-three';
 import {readInterestLearning} from './top-three-learning-db';
 export const hourlyTopCandidates=unstable_cache(async(hour:string)=>{
  const at=new Date(hour);
@@ -18,4 +21,22 @@ export async function publicTopThree(preference:EditionPreference,at=new Date())
  const [items,learning]=await Promise.all([liveCandidates(snapshot),publicInterestLearning().catch(()=>undefined)]);
  const result=selectTopThree(items,preference,new Date(snapshot),learning);
  return {...result,learning:{available:!!learning,windowDays:30,minReaders:5,minTopicVotes:20,maxAdjustment:6},items:await feedDisplay(result.items)};
+}
+
+export async function publicDailyEmailLeads(preference:EditionPreference,at:Date) {
+ const snapshot=new Date(Math.floor(+at/60000)*60000).toISOString();
+ const [items,learning]=await Promise.all([liveCandidates(snapshot),publicInterestLearning().catch(()=>undefined)]);
+ const shortlist=rankEditorialCandidates(items,preference,new Date(snapshot),learning).slice(0,50);
+ const receipts=new Map((await translationStatus(shortlist.map(translationKey))).map(r=>[r.key,r]));
+ return readyDailyLeads(shortlist,receipts);
+}
+
+export function readyDailyLeads(shortlist:Item[],receipts:Map<string,{status:string,result:Item['translation']}>) {
+ const ready=shortlist.flatMap(i=>{
+  const key=translationKey(i), receipt=receipts.get(key);
+  const [display]=englishDigestItems([{...i,translation_key:key,translation_status:receipt?.status,translation:receipt?.result}]);
+  return display?[{...i,display}]:[];
+ });
+ // Compare publishers and events on original evidence before returning English copy.
+ return chooseEditorialLeads(ready).selected.map(i=>i.display);
 }

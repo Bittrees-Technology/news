@@ -205,10 +205,10 @@ export async function subscriptionContent(
   if (!period) return null;
   if (s.target === "main") {
     const preference=editionPreferenceSchema.parse(s.edition_preference||{});
-    // Daily top three uses the same hourly snapshot as the public website.
-    const {publicTopThree}=await import('./top-three-public');
+    // Daily top three uses the same period-end snapshot as the public website.
+    const {publicTopThree,publicDailyEmailLeads}=await import('./top-three-public');
     let items:Item[];
-    if(s.cadence==='daily')items=(await publicTopThree(preference,period.end)).items;
+    if(s.cadence==='daily')items=s.kind==='email' ? await publicDailyEmailLeads(preference,period.end) : (await publicTopThree(preference,period.end)).items;
     else {
       const editions=(await pool().query("SELECT data FROM editions WHERE published_at IS NOT NULL AND publish_at >= $1 AND publish_at < $2 ORDER BY publish_at DESC LIMIT 100",[period.start,period.end])).rows;
       items=[...new Map<string,Item>(editions.flatMap(e=>e.data.items).map((i:Item)=>[i.id,i] as [string,Item])).values()].filter(i=>matchesEdition(i,preference));
