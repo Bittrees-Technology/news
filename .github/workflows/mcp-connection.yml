@@ -26,6 +26,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - name: Signed daily brief receipts and account delivery history
+        run: npx tsx scripts/checks/delivery-webhook.ts
+        env:
+          DATABASE_URL: postgresql://integration:ci-only@127.0.0.1:5432/news_test
       - name: Session authentication and role isolation on disposable PostgreSQL
         run: npx tsx --test tests/session-authentication.integration.ts
         env:

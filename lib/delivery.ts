@@ -213,7 +213,7 @@ export async function dispatchEmails() {
         q.payload.subject,
         q.payload.text,
         q.id,
-        { unsubscribe: q.payload.unsubscribe, html: q.payload.html },
+        { unsubscribe: q.payload.unsubscribe, html: q.payload.html, briefDelivery: true },
       );
       await pool().query(
         "UPDATE deliveries SET status='sent',sent_at=now(),provider_id=$2 WHERE id=$1",

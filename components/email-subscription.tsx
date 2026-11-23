@@ -13,7 +13,7 @@ export function EmailSubscription() {
         e.preventDefault();if(busy)return;setBusy(true);setMessage('');
         try {
           if(id){await call('subscribe/verify',{id,code});setSubscribed(true);}
-          else {const result=await call('subscribe/start',{email,confirm:true});setId(result.id);setMessage('Check your inbox for an eight-digit code.');}
+          else {const result=await call('subscribe/start',{email,confirm:true});setId(result.id);setMessage('Keep this page open. Enter the eight-digit code from your latest TBN confirmation email here within ten minutes.');}
         }catch(e){setMessage((e as Error).message);}finally{setBusy(false);}
       }}>
         <label className="field">Email address<input name="email" type="email" autoComplete="email" autoCapitalize="none" spellCheck={false} required maxLength={254} value={email} readOnly={!!id} disabled={busy} onChange={e=>setEmail(e.target.value)}/></label>

@@ -23,7 +23,7 @@ export async function startEmailSubscription(r:Request,input:unknown) {
   const id=randomUUID(),browser=token(),code=String(randomInt(10000000,100000000));
   await pool().query("INSERT INTO challenges(id,kind,value,secret_hash,browser_hash,purpose,expires_at) VALUES($1,'email',$2,$3,$4,'daily_email',now()+interval '10 minutes')",[id,b.email,proofHash(id,code),hash(browser)]);
   try {
-    await sendEmail(b.email,'TBN — Confirm your daily news email',`Your verification code is ${code}. It expires in ten minutes.\n\nEnter it at ${origin}/subscribe to subscribe to the daily Global news email at 12:00 UTC. Every daily email includes an unsubscribe link. This code does not sign you in.\n\nIf you did not request this, ignore this email.`,id);
+    await sendEmail(b.email,'TBN — Confirm your daily news email',`Your verification code is ${code}. It expires in ten minutes.\n\nReturn to the same browser tab where you requested this code and enter it there. If you closed that tab, request a new code at ${origin}/subscribe and use the newest code. The daily Global news email is sent at 12:00 UTC. Every daily email includes an unsubscribe link. This code does not sign you in.\n\nIf you did not request this, ignore this email.`,id);
   } catch(e) {await pool().query('DELETE FROM challenges WHERE id=$1',[id]);throw e;}
   return {body:{id},cookie:setCookie(emailSubscriptionCookie,browser,600)};
 }

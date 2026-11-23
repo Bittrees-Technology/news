@@ -8,7 +8,7 @@ export async function sendEmail(
   subject: string,
   text: string,
   id: string,
-  { unsubscribe, html, from }: { unsubscribe?: string; html?: string; from?: string } = {},
+  { unsubscribe, html, from, briefDelivery }: { unsubscribe?: string; html?: string; from?: string; briefDelivery?: boolean } = {},
 ) {
   if (!emailReady())
     throw new HttpError(
@@ -37,6 +37,7 @@ export async function sendEmail(
       to: [to],
       subject,
       text,
+      ...(briefDelivery ? {tags: [{name: "news_delivery_id", value: id}]} : {}),
       ...(html ? {html} : {}),
       ...(unsubscribe
         ? {

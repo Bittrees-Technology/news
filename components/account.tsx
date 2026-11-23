@@ -9,6 +9,7 @@ import { Subscriptions } from "./subscriptions";
 import { canAccountSection } from "@/lib/permissions";
 import { StaffPanel } from "./staff-panel";
 import { Analytics } from "./analytics";
+import {deliveryHistoryLabel} from "@/lib/delivery-events";
 import { AiConnection } from "./ai-connection";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -41,6 +42,9 @@ type Delivery = {
   period: string;
   status: string;
   value: string;
+  kind: string;
+  provider_status?: string | null;
+  provider_status_at?: string | null;
   error?: string;
 };
 type AccountData = {
@@ -666,9 +670,12 @@ useSharedSignIn(data?.account?.id, sessionReady);
                 <div className="connection" key={d.id}>
                   <strong>{d.period}</strong>
                   <p>
-                    {d.value} · {d.status}
+                    {d.value} · {deliveryHistoryLabel(d.kind, d.status, d.provider_status)}
+                    {d.provider_status_at && <> · <time dateTime={d.provider_status_at}>
+                      {new Date(d.provider_status_at).toLocaleString("en-GB", {timeZone: "UTC"})} UTC
+                    </time></>}
                   </p>
-                  {d.error && <p>{d.error}</p>}
+                  {d.error && !d.provider_status && <p>{d.error}</p>}
                 </div>
               ))
             )}

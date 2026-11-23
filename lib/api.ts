@@ -10,6 +10,7 @@ import {qualityQueue,saveQualityReview} from "./quality-review";
 import {recordStage} from "./stage-metrics";
 import {recordEngagement} from "./engagement";
 import {analyticsAudit} from "./analytics-audit";
+import {accountDeliveryHistory} from "./delivery-history";
 import {processingSnapshot,recordProcessingSample} from "./processing";
 import {collect} from "./collect";
 import {retryStory,claimStory,saveStory,saveStoryCid} from './story-documents';
@@ -367,10 +368,7 @@ export async function api(r: Request) {
           [a.id],
         ),
         pool().query("SELECT * FROM connections WHERE account_id=$1", [a.id]),
-        pool().query(
-          "SELECT q.id,q.period,q.status,q.created_at,q.sent_at,q.error,d.kind,d.value FROM deliveries q JOIN destinations d ON d.id=q.destination_id WHERE q.account_id=$1 ORDER BY q.created_at DESC LIMIT 30",
-          [a.id],
-        ),
+        accountDeliveryHistory(a.id),
         walletReady(),
       ]);
       return json({
