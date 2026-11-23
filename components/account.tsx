@@ -1,5 +1,4 @@
 "use client";
-import {SharedProfileCard} from "../shared/sso/SharedProfileCard.jsx";
 import {useSharedSignIn} from "../shared/sso/useSharedSignIn.jsx";
 import { LoginPanel, EmailSignIn, EthereumSignIn } from "./shared/login/LoginPanel.jsx";
 import {RoleSwitcher} from "./role-switcher";
@@ -366,7 +365,6 @@ useSharedSignIn(data?.account?.id, sessionReady);
           </Link>
         ))}
       </nav>
-      {section === "settings" && <SharedProfileCard sessionRevision={data.account.id}/>}
       {section !== "sources" && statusBox}
       {(section === "access" || section === "editorial") && (
         <StaffPanel section={section} role={data.account?.role || "member"} />
