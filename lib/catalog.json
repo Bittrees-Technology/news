@@ -82,6 +82,7 @@
   },
   {
     "id": "ars-technica",
+    "publisherFamily": "ars",
     "name": "Ars Technica",
     "url": "https://feeds.arstechnica.com/arstechnica/index",
     "homepage": "https://arstechnica.com/",
@@ -271,6 +272,7 @@
   },
   {
     "id": "power-magazine",
+    "publisherFamily": "power",
     "name": "POWER Magazine",
     "url": "https://www.powermag.com/feed/",
     "homepage": "https://www.powermag.com/",
@@ -352,6 +354,7 @@
   },
   {
     "id": "ars-technica-space",
+    "publisherFamily": "ars",
     "name": "Ars Technica Space",
     "url": "https://arstechnica.com/space/feed/",
     "homepage": "https://arstechnica.com/space/",
@@ -415,6 +418,7 @@
   },
   {
     "id": "power-magazine-fusion",
+    "publisherFamily": "power",
     "name": "POWER Magazine \u2014 Fusion",
     "url": "https://www.powermag.com/tag/fusion/feed/",
     "homepage": "https://www.powermag.com/tag/fusion/",
@@ -856,6 +860,7 @@
   },
   {
     "id": "bbc-world",
+    "publisherFamily": "bbc",
     "name": "BBC World",
     "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
     "homepage": "https://feeds.bbci.co.uk",
@@ -865,6 +870,7 @@
   },
   {
     "id": "bbc-business",
+    "publisherFamily": "bbc",
     "name": "BBC Business",
     "url": "https://feeds.bbci.co.uk/news/business/rss.xml",
     "homepage": "https://feeds.bbci.co.uk",
@@ -874,6 +880,7 @@
   },
   {
     "id": "bbc-europe",
+    "publisherFamily": "bbc",
     "name": "BBC Europe",
     "url": "https://feeds.bbci.co.uk/news/world/europe/rss.xml",
     "homepage": "https://feeds.bbci.co.uk",
@@ -1045,6 +1052,7 @@
   },
   {
     "id": "p-blico",
+    "publisherFamily": "publico.pt",
     "name": "P\u00fablico",
     "url": "https://feeds.feedburner.com/PublicoRSS",
     "homepage": "https://feeds.feedburner.com",

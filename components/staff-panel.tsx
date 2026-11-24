@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { canManageAccess, canReview, canApprove, canAccountSection } from "@/lib/permissions";
 import {briefingPath,briefingShortId} from "@/lib/briefing-links";
+import {CoverageDesk} from './coverage-desk';
 import {ReviewHistory} from "./review-history";
 import { call } from "./client";
 export function StaffPanel({ role, section }: { role: string; section: "access" | "editorial" }) {
@@ -100,6 +101,7 @@ export function StaffPanel({ role, section }: { role: string; section: "access" 
       )}
       {section === "editorial" && staff && (
         <>
+          <CoverageDesk approve={canApprove(role)}/>
           <h3>Article review</h3>
           <p>
             Look up an article ID, briefing ID, full CID or TBN briefing link.

@@ -1,3 +1,4 @@
+import {coverageSchema} from './coverage-schema';
 import { Pool, type PoolClient } from "pg";
 const globalDb = globalThis as unknown as { newsPool?: Pool };
 export function pool() {
@@ -24,6 +25,7 @@ export async function tx<T>(fn: (db: PoolClient) => Promise<T>) {
   }
 }
 export const schema = `
+${coverageSchema}
 CREATE TABLE IF NOT EXISTS public_job_claims(lease uuid PRIMARY KEY,task text NOT NULL CHECK(task IN ('briefing','translation')),artifact_id text NOT NULL,content_revision text NOT NULL,phase text NOT NULL CHECK(phase IN ('generation','archive')),deadline timestamptz NOT NULL,envelope jsonb NOT NULL,claimed_at timestamptz NOT NULL DEFAULT now());
 CREATE INDEX IF NOT EXISTS public_job_claims_artifact ON public_job_claims(task,artifact_id,claimed_at);
 CREATE TABLE IF NOT EXISTS public_job_events(lease uuid NOT NULL REFERENCES public_job_claims(lease) ON DELETE CASCADE,event text NOT NULL CHECK(event IN ('generated','archived','translated','deferred','retry','review')),recorded_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(lease,event));

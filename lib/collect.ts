@@ -1,3 +1,4 @@
+import {saveAnnotations} from './persist-annotations';
 import {rankingColumns,uniqueChangedIds} from "./ranking-projection";
 import {annualObservation} from "./data-dates";
 import {editorialBase} from "./editorial-priority";
@@ -148,6 +149,7 @@ export async function fetchSourceSnapshot(s: Source, owner?: string, previousHas
 export async function storeItems(items: Item[]) {
   if (!items.length) return;
   await tx(async db => {
+    const annotations = new Map<string,Item>();
     const priorities = new Map<string, number>();
     // Lock shared article URLs in the same order across concurrent source batches.
     for (const i of [...items].sort((a,b) => a.id.localeCompare(b.id))) {
@@ -167,8 +169,11 @@ export async function storeItems(items: Item[]) {
         ],
       );
       const original = stored.rows[0];
+      if (process.env.NEWS_SHADOW_ANNOTATIONS==='1' && !original.owner_id && original.kind==='article')
+        annotations.set(original.id,{...original,source_context:i.source_context||i.excerpt});
       if (!original.owner_id) priorities.set(original.id,editorialBase(original));
     }
+    if (annotations.size) await saveAnnotations(db,[...annotations.values()]);
     if (!priorities.size) return;
     await db.query(`INSERT INTO story_documents(item_id,priority,content_key) SELECT i.id,p.score,md5(i.title||'|'||coalesce(i.source_context,i.excerpt)) FROM unnest($1::text[],$2::numeric[]) AS p(id,score) JOIN items i ON i.id=p.id WHERE i.owner_id IS NULL ON CONFLICT(item_id) DO UPDATE SET priority=EXCLUDED.priority,content_key=EXCLUDED.content_key,enqueued_at=CASE WHEN story_documents.content_key IS NULL THEN story_documents.enqueued_at ELSE now() END,document=CASE WHEN story_documents.content_key IS NULL THEN story_documents.document ELSE NULL END,cid=CASE WHEN story_documents.content_key IS NULL THEN story_documents.cid ELSE NULL END,generated_at=CASE WHEN story_documents.content_key IS NULL THEN story_documents.generated_at ELSE NULL END,pinned_at=CASE WHEN story_documents.content_key IS NULL THEN story_documents.pinned_at ELSE NULL END,claimed_at=NULL,lease=NULL,attempts=0,available_at=now(),error=NULL WHERE story_documents.content_key IS DISTINCT FROM EXCLUDED.content_key`,[[...priorities.keys()],[...priorities.values()]]);
     // A re-seen item can adopt the new score without resetting its lease or content.

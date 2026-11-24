@@ -9,6 +9,7 @@ export class HttpError extends Error {
   }
 }
 export type Item = {
+  coverage?: import("./coverage").Coverage;
   id: string;
   source_id: string;
   topic: string;

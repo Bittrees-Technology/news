@@ -1,5 +1,6 @@
+import {subjectEvidence,subjectLabels} from './story-subjects';
 import type {Item} from './model';
-export const addedTopics=['Bitcoin','Crypto','Politics','DAOs'];
+export const addedTopics=['Bitcoin','Crypto','Politics','DAOs',...(process.env.NEXT_PUBLIC_NEWS_SPECIFIC_TOPICS==='1'?subjectLabels:[])];
 export const normalizeTopic=(topic:string)=>topic==='Apple'?'Tech':topic==='Nintendo'?'Gaming':topic;
 const rules:[string,RegExp][]=[
  ['Bitcoin',/\b(bitcoin|btc|lightning network|satoshi)\b/i],
@@ -9,7 +10,7 @@ const rules:[string,RegExp][]=[
 ];
 export function articleTags(i:Pick<Item,'topic'|'title'|'excerpt'|'summary'|'tags'|'translation'>){
  const text=[i.title,i.excerpt,i.summary,i.translation?.title,i.translation?.summary].filter(Boolean).join(' ');
- return [...new Set([normalizeTopic(i.topic),...(i.tags||[]).map(normalizeTopic),...rules.filter(([,re])=>re.test(text)).map(([tag])=>tag)])].filter(Boolean);
+ return [...new Set([normalizeTopic(i.topic),...(i.tags||[]).map(normalizeTopic),...(process.env.NEXT_PUBLIC_NEWS_SPECIFIC_TOPICS==='1'?subjectEvidence(i).flatMap(s=>[s.label,s.parent]):[]),...rules.filter(([,re])=>re.test(text)).map(([tag])=>tag)])].filter(Boolean);
 }
 export function tagStyle(tag:string){
  const fixed:Record<string,number>={Bitcoin:32,Crypto:265,Blockchain:265,DAOs:160,Governance:160,Politics:210,World:210,Economy:32,Tech:220,AI:220,Security:220,Science:175,Quantum:175,Space:175,Health:150,Biotech:150,Climate:145,Energy:145,Nuclear:145,Gaming:315};

@@ -46,7 +46,7 @@ export default async function Page() {
           items={edition.data.items.filter((i) => i.kind !== "podcast")}
         />
       )}
-      <Newspaper
+      <Newspaper key={account?.id||"guest"} initiallySignedIn={!!account}
         live
         edition={
           edition

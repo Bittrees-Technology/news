@@ -1,3 +1,4 @@
+import {coverageHistory,reviewDesk,saveCoverage} from './coverage-store';
 import {startEmailSubscription, verifyEmailSubscription} from "./email-subscription";
 import {authenticationCookieName,currentAuthentication} from './auth';
 import {saveAccountPreferences} from './account-preferences';
@@ -408,6 +409,18 @@ export async function api(r: Request) {
       return json({ok:true,role:b.role});
     }
     if(path === "engagement" && method === "POST"){await rateLimit("engagement:"+a!.id,600);return json(await recordEngagement(a!.id,await body(r)));}
+    if(path === "staff/coverage"){
+      if(!canReview(a!.role))throw new HttpError(403,"Editorial review access required.");
+      if(method==="GET"){
+        const params=new URL(r.url).searchParams;
+        const id=params.get('event');
+        return json(id?await coverageHistory(id):await reviewDesk(params.get('sample')==='1'));
+      }
+      if(method==="POST"){
+        if(!canApprove(a!.role))throw new HttpError(403,"Editorial approval required.");
+        return json(await saveCoverage(a!.id,await body(r)));
+      }
+    }
     if(path === "staff/quality"){requireScores(a!.role);if(method === "GET")return json(await qualityQueue());if(method === "POST")return json(await saveQualityReview(a!.id,await body(r)));}
     if (path === "subscriptions/email" && method === "POST")
       return json(await subscribeDailyEmail(a!.id, await body(r)));
@@ -675,6 +688,14 @@ export async function api(r: Request) {
       return json(ranked.map(i=>i.id));
     }
     if(path === "reader-filters" && method === "GET")return json(readerFiltersSchema.parse((await pool().query("SELECT reader_filters FROM accounts WHERE id=$1",[a!.id])).rows[0].reader_filters));
+    if(path === "reader-view-default" && method === "POST"){
+      const view = readerFiltersSchema.pick({topics:true,countries:true,regions:true,hideRead:true})
+        .extend({accountId:z.uuid()}).strict().parse(await body(r));
+      if(view.accountId !== a!.id) throw new HttpError(409,"Your account changed. Refresh this view.");
+      const {accountId,...choices}=view;
+      await pool().query("UPDATE accounts SET reader_filters=coalesce(reader_filters,'{}'::jsonb)||$2::jsonb WHERE id=$1",[accountId,JSON.stringify(choices)]);
+      return json({ok:true});
+    }
     if(path === "reader-filters" && method === "POST"){
       const filters=readerFiltersSchema.parse(await body(r));
       await pool().query("UPDATE accounts SET reader_filters=$2 WHERE id=$1",[a!.id,JSON.stringify(filters)]);

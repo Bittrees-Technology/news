@@ -112,7 +112,6 @@ export function geographyFor(
     item.title,
     item.excerpt,
     item.summary || "",
-    item.topic,
   ].join(" ");
   const text = normalize(original);
   const found = matchers.filter(
@@ -123,6 +122,19 @@ export function geographyFor(
     if (match.test(text)) regional.add(name);
   if (found.some((c) => middleEast.has(c.code))) regional.add("Middle East");
   return { countries: found.map((c) => c.code), regions: [...regional] };
+}
+// Conservative event-place hints for editorial review. Demonyms and a publisher's
+// origin are insufficient, and multiple explicit locations require a reviewer.
+const cityCountry:Record<string,string>={Lisbon:'PT',Lisboa:'PT',Porto:'PT','Moçambique':'MZ',Maputo:'MZ',Brasil:'BR',Tokyo:'JP'};
+const locationCodes=new Map([...countries.map(c=>[c.name.toLowerCase(),c.code] as const),
+  ...Object.entries(cityCountry).map(([name,code])=>[name.toLowerCase(),code] as const)]);
+const locationCue=new RegExp('(?:^|\\s)(?:in|across|near|em|no|na|nos|nas)\\s+('+
+  [...locationCodes.keys()].sort((a,b)=>b.length-a.length).map(escape).join('|')+')(?=$|[^\\p{L}])','giu');
+export function locationEvidence(item: Pick<Item,'title'|'excerpt'>) {
+  return [...item.title.matchAll(locationCue)].map(match=>{
+    const end=match.index!+match[0].length;
+    return {country:locationCodes.get(match[1].toLowerCase())!,field:'title',start:end-match[1].length,end};
+  });
 }
 export function matchesGeography(
   geo: ReturnType<typeof geographyFor>,

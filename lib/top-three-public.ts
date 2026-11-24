@@ -1,3 +1,5 @@
+import {reviewedCoverage} from './coverage-store';
+import {groupCoverage} from './coverage';
 import {unstable_cache} from 'next/cache';
 import {pool} from './db';
 import type {Item} from './model';
@@ -28,7 +30,7 @@ export async function publicDailyEmailLeads(preference:EditionPreference,at:Date
  const [items,learning]=await Promise.all([liveCandidates(snapshot),publicInterestLearning().catch(()=>undefined)]);
  const shortlist=rankEditorialCandidates(items,preference,new Date(snapshot),learning).slice(0,50);
  const receipts=new Map((await translationStatus(shortlist.map(translationKey))).map(r=>[r.key,r]));
- return readyDailyLeads(shortlist,receipts);
+ return readyDailyLeads(await reviewedCoverage(shortlist,'email'),receipts);
 }
 
 export function readyDailyLeads(shortlist:Item[],receipts:Map<string,{status:string,result:Item['translation']}>) {
@@ -38,5 +40,5 @@ export function readyDailyLeads(shortlist:Item[],receipts:Map<string,{status:str
   return display?[{...i,display}]:[];
  });
  // Compare publishers and events on original evidence before returning English copy.
- return chooseEditorialLeads(ready).selected.map(i=>i.display);
+ return chooseEditorialLeads(groupCoverage(ready)).selected.map(i=>({...i.display,coverage:i.coverage}));
 }

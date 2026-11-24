@@ -1,6 +1,6 @@
 import { withTranslations } from "./translation";
 import { englishDigestItems } from "./digest-language";
-import { newspaperEmail, compactSummary, digestArticles } from "./newspaper-email";
+import { newspaperEmail, coverageText, compactSummary, digestArticles } from "./newspaper-email";
 import { subscriptionContent,
   subscriptionPreferenceColumns, subscriptionStillAllowed } from "./subscriptions";
 import {scheduledPeriod} from './delivery-schedule';
@@ -109,7 +109,7 @@ export async function queueSubscriptions(now = new Date()) {
       `${edition.name} — ${s.cadence} edition\n${edition.period.start.toISOString().slice(0, 10)} to ${edition.period.end.toISOString().slice(0, 10)} (UTC)\n\n` +
       selected
         .map(
-          (i,index) =>
+          (i,index) => mainDaily && email && i.coverage ? (index===0?'Lead story\n':'')+coverageText(i) :
             `${mainDaily && index===0 ? "Lead story\n" : ""}${i.title}\n${email ? compactSummary(i.summary || i.excerpt) : i.summary || i.excerpt}\n${i.user_edited ? "Edited by the newspaper owner.\n" : ""}${i.url}`,
         )
         .join("\n\n") +

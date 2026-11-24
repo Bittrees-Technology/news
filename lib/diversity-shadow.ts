@@ -1,10 +1,11 @@
 import type {Item} from './model';
 import {sources} from './catalog';
 import {geographyFor} from './geography';
-export function publisherFamily(i:Pick<Item,'source_id'>){
- const explicit:Record<string,string>={'bbc-world':'bbc','bbc-business':'bbc','bbc-europe':'bbc','ars-technica':'ars','ars-technica-space':'ars','power-magazine':'power','power-magazine-fusion':'power'};
- if(explicit[i.source_id])return explicit[i.source_id];
- const s=sources.find(s=>s.id===i.source_id);return s?new URL(s.homepage).hostname.replace(/^www\./,''):i.source_id;
+const families = new Map(sources.map(source => [
+  source.id, source.publisherFamily || new URL(source.homepage).hostname.replace(/^www\./, ''),
+]));
+export function publisherFamily(item: Pick<Item, 'source_id'>) {
+  return families.get(item.source_id) || item.source_id;
 }
 function words(i:Item){return new Set(i.title.toLowerCase().match(/[\p{L}\p{N}]{4,}/gu)||[]);}
 export function sameEvent(a:Item,b:Item){const x=words(a),y=words(b);const shared=[...x].filter(t=>y.has(t)).length;return !!x.size&&shared/(x.size+y.size-shared)>=0.6;}

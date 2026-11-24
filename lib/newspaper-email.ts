@@ -15,6 +15,19 @@ const escape = (value: string) =>
         c
       ]!,
   );
+function coverageHtml(item:Item) {
+  const event=item.coverage!;
+  const claims=event.claims.map(c=>`<p>${escape(c.text)} ${c.reports.map(id=>{
+    const r=event.reports.find(r=>r.id===id)!;
+    return `<a href="${escape(r.url)}">${escape(r.outlet)}</a>`;
+  }).join(' · ')}</p>`).join('');
+  return `<h2>${escape(event.title)}</h2>${claims}<p>Coverage from ${new Set(event.reports.map(r=>r.outlet)).size} sources</p><ul>${event.reports.map(r=>`<li>${escape(r.outlet)} · <a href="${escape(r.url)}">${escape(r.title)}</a></li>`).join('')}</ul>`;
+}
+export function coverageText(item:Item) {
+  const event=item.coverage!;
+  return [event.title,...event.claims.map(c=>c.text+' '+c.reports.map(id=>'['+(event.reports.findIndex(r=>r.id===id)+1)+']').join(' ')),
+    ...event.reports.map((r,n)=>`[${n+1}] ${r.outlet} · ${r.title} · ${r.url}`)].join('\n');
+}
 export function newspaperEmail(
   name: string,
   items: Item[],
@@ -25,7 +38,7 @@ export function newspaperEmail(
 ) {
   const stories = items.slice(0, 3)
     .map(
-      (i,index) =>
+      (i,index) => highlightLead && i.coverage ? `<article>${index===0?'<p>Lead story</p>':''}${coverageHtml(i)}</article>` :
         `<article style="padding:12px 0;border-bottom:1px solid #999">${highlightLead && index===0 ? '<p style="font-weight:bold">Lead story</p>' : ""}<p style="font-size:12px">${escape(i.topic)} · ${escape(sourceName(i.source_id))}</p><h2 style="font-family:Georgia,serif;font-size:${highlightLead && index===0 ? 26 : 20}px;line-height:1.2;margin:8px 0"><a style="color:#181818" href="${escape(i.url)}">${escape(i.title)}</a></h2><p style="font-size:12px;color:#555">${escape(new Date(i.published_at).toISOString().slice(0, 10))}</p><p style="font-size:14px;line-height:1.45">${escape(compactSummary(i.summary || i.excerpt))}</p>${i.user_edited ? '<p style="font-size:12px">Edited by the newspaper owner. The headline links to the original source.</p>' : ""}</article>`,
     )
     .join("");

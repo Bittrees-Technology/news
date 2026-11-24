@@ -9,7 +9,10 @@ import {defaultReaderFilters,readerFiltersSchema,matchesReaderFilters,guestReade
 import {recentUniqueStories} from "@/lib/recent-stories";
 import {usePublicFeed} from "@/lib/use-public-feed";
 import type {FeedCategory} from "@/lib/public-feed";
-import {feedOrder} from "@/lib/feed-order";
+import {publisherFamily} from '@/lib/diversity-shadow';
+import {CoverageCard} from './coverage-card';
+import {groupCoverage} from '@/lib/coverage';
+import {feedOrder,variedPages} from "@/lib/feed-order";
 import {useLiveLeads} from '@/lib/use-live-leads';
 import Link from "next/link";
 import { call } from "./client";
@@ -25,6 +28,7 @@ type State = Record<string, { is_read: boolean; saved: boolean }>;
 export function Newspaper({
   edition,
   initialItems,
+  initiallySignedIn=false,
   mode = "public",
   title,
   description,
@@ -33,6 +37,7 @@ export function Newspaper({
 }: {
   edition?: Edition | null;
   initialItems?: Item[];
+  initiallySignedIn?: boolean;
   mode?: "public" | "saved" | "named";
   title?: string;
   description?: string;
@@ -56,6 +61,13 @@ export function Newspaper({
     [cursor, setCursor] = useState(-1),
     [personal, setPersonal] = useState(false),
     [help, setHelp] = useState(false);
+  const [loadingAccount,setLoadingAccount] = useState(initiallySignedIn);
+  const identity = useRef<string|null>(null);
+  const authGeneration = useRef(0);
+  const [preferencesReady,setPreferencesReady] = useState(false);
+  const [savedFilters,setSavedFilters] = useState<ReaderFilters>(defaultReaderFilters);
+  const [varied,setVaried] = useState(false);
+  const [saving,setSaving] = useState(false);
   const [toolsOpen,setToolsOpen]=useState(false);
   const activeChoices=filters.topics.length+filters.countries.length+filters.regions.length;
   const [renderCount,setRenderCount]=useState(30);
@@ -73,11 +85,26 @@ export function Newspaper({
   const nextPage=feed.next,loadingMore=feed.loading,pageError=feed.error;
   const loadMore=useCallback(async()=>{await feed.loadMore();setRenderCount(n=>n+30);},[feed.loadMore]);
   const hideRead=filters.hideRead;
-  const saveQueue=useRef(Promise.resolve());
-  function updateFilters(next:ReaderFilters){
-    setFilters(next);setCursor(-1);
-    if(signed){saveQueue.current=saveQueue.current.catch(()=>{}).then(async()=>{await call('reader-filters',next);setMessage('Filters saved to your account.');}).catch(e=>setMessage('Could not save filters: '+e.message));}
-    else {try{localStorage.setItem('tbn-guest-filters',JSON.stringify(next));}catch{}}
+  function updateFilters(next: ReaderFilters) {
+    setFilters(next); setCursor(-1); setMessage('');
+  }
+  async function saveView() {
+    const generation = authGeneration.current;
+    if (!preferencesReady || saving) return;
+    setSaving(true);
+    try {
+      const {topics,countries,regions,hideRead} = filters;
+      if (signed) await call('reader-view-default',{accountId:identity.current,topics,countries,regions,hideRead});
+      else localStorage.setItem('tbn-guest-filters', JSON.stringify(guestReaderFilters(filters)));
+      if (authGeneration.current === generation) {
+        setSavedFilters(filters);
+        setMessage(signed ? 'Default view saved to your account.' : 'Default view saved on this device.');
+      }
+    } catch {
+      if (authGeneration.current === generation) setMessage('Could not save this view. Try again.');
+    } finally {
+      if (authGeneration.current === generation) setSaving(false);
+    }
   }
   function selectFilter(key:'topics'|'countries'|'regions',value:string){
     updateFilters(selectReaderFilter(filters,key,value));
@@ -99,31 +126,45 @@ export function Newspaper({
   useEffect(() => {
     let active=true;
     async function load(){
-      try{
-        const a=await call('session');if(!active)return;
-        setSigned(!!a.account);
-        if(a.account){
-          const [rows,f]=await Promise.all([call('reading'),call('reader-filters')]);if(!active)return;
-          const reading=Object.fromEntries(rows.map((r:{item_id:string;is_read:boolean;saved:boolean})=>[r.item_id,r]));
-          setState(reading);setReadSnapshot(reading);
-          setFilters(readerFiltersSchema.parse(f));
-          if(mode==='saved'){const saved=await call('saved');if(active)setItems(saved);}
-        }else{
-          const reading=JSON.parse(localStorage.getItem('bittrees-news-reading')||'{}');
-          setState(reading);setReadSnapshot(reading);
-          setFilters(guestReaderFilters(readerFiltersSchema.parse(JSON.parse(localStorage.getItem('tbn-guest-filters')||'{}'))));
+      const generation = ++authGeneration.current;
+      const current = () => active && generation === authGeneration.current;
+      if(identity.current)setLoadingAccount(true);
+      identity.current=null; setPreferencesReady(false); setSigned(false); setPersonal(false);
+      setState({}); setReadSnapshot({}); setRankOrder(null); setSaving(false); setMessage('');
+      setFilters(defaultReaderFilters); setSavedFilters(defaultReaderFilters); setCursor(-1);
+      setItems(mode==='public' ? edition?.data.items || [] : mode==='named' ? initialItems || [] : []);
+      try {
+        const a=await call('session');
+        if(!current()) return;
+        const signedIn = !!a.account;
+        setLoadingAccount(signedIn);
+        const [reading,rawFilters] = await Promise.all([
+          loadReading(signedIn),
+          signedIn ? call('reader-filters') : JSON.parse(localStorage.getItem('tbn-guest-filters')||'{}')
+        ]);
+        if(!current()) return;
+        const parsed=readerFiltersSchema.parse(rawFilters);
+        const view=signedIn ? parsed : guestReaderFilters(parsed);
+        identity.current=a.account?.id || null; setSigned(signedIn);
+        setState(reading); setReadSnapshot(reading); setFilters(view); setSavedFilters(view);
+        setPreferencesReady(true);setLoadingAccount(false);
+        if(signedIn && mode==='saved'){
+          const saved=await call('saved');
+          if(current()) setItems(saved);
         }
-      }catch(e){if(active)setMessage('Could not load your preferences. Please refresh to retry.');}
+      } catch {
+        if(current()) setMessage('Could not load your preferences. Refresh to retry.');
+      }
     }
     void load();window.addEventListener('news-auth',load);
     return()=>{active=false;window.removeEventListener('news-auth',load);};
-  }, [mode]);
+  }, [mode,edition,initialItems]);
   useEffect(()=>{
     let active=true;
-    const refresh=()=>{void loadReading(signed).then(reading=>{if(active){setState(reading);setReadSnapshot(reading);}}).catch(()=>{});};
+    const refresh=()=>{const generation=authGeneration.current;if(!preferencesReady)return;void loadReading(signed).then(reading=>{if(active && generation===authGeneration.current){setState(reading);setReadSnapshot(reading);}}).catch(()=>{});};
     const stop=watchReading(refresh);
     return()=>{active=false;stop();};
-  },[signed]);
+  },[signed,preferencesReady]);
   const geography = useMemo(
     () =>
       new Map(
@@ -139,7 +180,7 @@ export function Newspaper({
     [items],
   );
   const orderPositions=useMemo(()=>new Map((rankOrder||items.map(i=>i.id)).map((id,n)=>[id,n])),[rankOrder,items]);
-  const visible = useMemo(
+  const matching = useMemo(
     () =>
       (paged?items:live?recentUniqueStories(items,showGlobalLeads?Date.now():now):items).filter(
         (i) =>
@@ -154,14 +195,25 @@ export function Newspaper({
       }),
     [items, tab, filters, hideRead, readSnapshot, mode, geography,rankOrder,orderPositions,paged,edition,live,now,search,showGlobalLeads],
   );
+  const ordered = useMemo(()=>paged && varied && feed.batches
+    ? variedPages(matching, showGlobalLeads ? leadIds : [], feed.batches, publisherFamily)
+    : matching, [matching,paged,varied,feed.batches,showGlobalLeads,leadIds]);
+  const visible = useMemo(()=>paged && mode==='public' ? groupCoverage(ordered,feed.batches) : ordered,[ordered,paged,mode,feed.batches]);
   useEffect(()=>{setRenderCount(30);},[tab,filters,search,personal,balancedView]);
   useEffect(()=>{
-    if(!moreRef.current||loadingMore||pageError)return;
+    if(!moreRef.current||loadingMore||pageError||visible.length===0)return;
     if(renderCount>=visible.length&&(!paged||!nextPage))return;
-    const observer=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)){
+    const marker=moreRef.current;
+    let token=false;
+    function advance(){
+      if(!token || !marker || marker.getBoundingClientRect().top>window.innerHeight+400)return;
+      token=false;
       if(renderCount<visible.length)setRenderCount(n=>n+30);else void loadMore();
-    }},{rootMargin:'400px'});
-    observer.observe(moreRef.current);return()=>observer.disconnect();
+    }
+    function onScroll(){token=true;advance();}
+    const observer=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting))advance();},{rootMargin:'400px'});
+    observer.observe(marker);window.addEventListener('scroll',onScroll,{passive:true});
+    return()=>{observer.disconnect();window.removeEventListener('scroll',onScroll);};
   },[renderCount,visible.length,paged,nextPage,loadingMore,pageError,loadMore]);
   useEffect(()=>{if(cursor>=0){setRenderCount(n=>Math.max(n,cursor+1));requestAnimationFrame(()=>refs.current.get(visible[cursor]?.id)?.focus());}},[cursor]);
   const topics = [...new Set([...items.flatMap(articleTags),...catalogTopics,...addedTopics,...filters.topics,...filters.excludedTopics])]
@@ -187,9 +239,12 @@ export function Newspaper({
     }
   }
   async function chooseFeed() {
+    const generation=authGeneration.current;
     try {
       if (!personal) {
-        setItems(await call("feed"));
+        const personalItems=await call("feed");
+        if(generation!==authGeneration.current)return;
+        setItems(personalItems);
         setPersonal(true);
       } else {
         setItems(edition?.data.items || []);
@@ -303,7 +358,8 @@ export function Newspaper({
       <div id="newspaper-tools" className={`newspaper-tools${toolsOpen?' is-open':''}`}>
         <div className="actions">
           <button onClick={()=>window.location.reload()}>Refresh stories</button>
-          {paged&&(tab==='all'||tab==='news')&&<button aria-pressed={balanced} onClick={()=>setBalanced(v=>!v)}>{balanced?'Show all source updates':'Balance source coverage'}</button>}
+          {paged&&(tab==='all'||tab==='news')&&<button aria-pressed={balancedView} disabled={!!activeChoices||!!search.trim()} onClick={()=>setBalanced(v=>!v)}>{activeChoices||search.trim()?'All matching source updates':balanced?'Show all source updates':'Balance source coverage'}</button>}
+          {paged && (tab==='all'||tab==='news') && <button aria-pressed={varied} onClick={()=>setVaried(v=>!v)}>Vary publisher order</button>}
           {signed && mode === "public" && (
             <button onClick={chooseFeed}>
               {personal ? "Public newspaper" : "My edition"}
@@ -361,12 +417,19 @@ export function Newspaper({
       )}
       {live&&<p className="muted">Leading stories from the last 24 hours, then newest first. {paged&&balancedView&&(tab==='all'||tab==='news')?'Balanced timeline: up to two articles per publisher per UTC hour. ':''}Refresh stories to update.</p>}
       </div>
+      {mode==='public' && preferencesReady && <div className="actions" aria-label="Current reader view">
+        <span>{personal?'My edition':'Public newspaper'} · {[...filters.topics,...filters.countries,...filters.regions].join(', ')||'All topics and places'}{hideRead?' · Unread only':''}{filters.excludedTopics.length+filters.excludedCountries.length+filters.excludedRegions.length?' · Account blocks apply':''}</span>
+        {JSON.stringify(filters)!==JSON.stringify(savedFilters) && <>
+          <button disabled={saving} onClick={saveView}>Save as default</button>
+          <button onClick={()=>updateFilters(savedFilters)}>Restore saved view</button>
+        </>}
+      </div>}
       {message && (
         <p role="status" className="notice">
           {message} <Link href="/account">Your account</Link>
         </p>
       )}
-      {paged&&loadingMore&&!visible.length?<p role="status">Loading {tab==='all'?'stories':tab}…</p>:!visible.length ? (
+      {(!preferencesReady&&(mode==="saved"||loadingAccount))||(paged&&loadingMore&&!visible.length)?<p role="status">Loading {tab==='all'?'stories':tab}…</p>:!visible.length ? (
         <div className="empty">
           <h2>
             {mode === "saved"
@@ -397,8 +460,8 @@ export function Newspaper({
             >
               <ArticleEngagement id={i.id} signed={signed}/>
               <div className="story-meta">
-                {articleTags(i).map(tag=><span className="topic colored-tag" style={tagStyle(tag)} key={tag}>{tag}</span>)}
-                <span>{sourceName(i.source_id)}</span>
+                {articleTags(i).slice(0,3).map(tag=><span className="topic colored-tag" style={tagStyle(tag)} key={tag}>{tag}</span>)}
+                <span>{paged && i.coverage ? "Multi-source coverage" : sourceName(i.source_id)}</span>
                 <span>
                   {i.observation_period ? `Observation: ${i.observation_period} · Release date unknown` : new Date(i.published_at).toLocaleDateString("en-GB", {
                     month: "short",
@@ -407,7 +470,7 @@ export function Newspaper({
                   })}
                 </span>
               </div>
-              <h2>
+              {paged && mode==='public' && i.coverage ? <CoverageCard event={i.coverage}/> : <><h2>
                 <a
                   data-source-link="true"
                   href={i.url}
@@ -418,7 +481,7 @@ export function Newspaper({
                   {i.translation?.title || i.title}
                 </a>
               </h2>
-              <p>{i.translation?.summary ?? i.summary ?? i.excerpt}</p>
+              <p>{i.translation?.summary ?? i.summary ?? i.excerpt}</p></>}
               {i.translation?.language && i.translation.language !== "en" && (
                 <details className="translation-original">
                   <summary>Translated to English · View original</summary>
