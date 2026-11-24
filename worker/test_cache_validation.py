@@ -25,3 +25,15 @@ class CacheValidation(unittest.TestCase):
     completion(config,state,{},'briefing',validator=validate_briefing_content)
     completion(config,state,{},'briefing',validator=validate_briefing_content)
     self.assertEqual(request.call_count,2)
+
+class CachePruning(unittest.TestCase):
+ def test_expired_and_oldest_removed_without_touching_other_files(self):
+  import os
+  from model_runtime import prune_cache
+  with tempfile.TemporaryDirectory() as tmp:
+   root=pathlib.Path(tmp)
+   for name,stamp in [('expired.json',1),('older.json',3000000),('newer.json',3000001),('keep.log',1)]:
+    f=root/name;f.write_text('evidence');os.utime(f,(stamp,stamp))
+   (root/'linked.json').symlink_to(root/'keep.log')
+   prune_cache(root,3000002,limit=1)
+   self.assertEqual(sorted(p.name for p in root.iterdir()),['keep.log','linked.json','newer.json'])

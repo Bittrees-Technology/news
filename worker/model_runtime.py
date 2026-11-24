@@ -34,6 +34,26 @@ def add_inference_timings(timings, result):
         if isinstance(value,(int,float)) and not isinstance(value,bool) and math.isfinite(value) and 0<=value<=10000:
             timings[stage]=timings.get(stage,0)+value*1000
 
+def prune_cache(cache, now, limit=5000):
+    # One metadata read per file. Order only the surplus after checking expiry.
+    cutoff = now - 30 * 86400
+    recent = []
+    with os.scandir(cache) as entries:
+        for entry in entries:
+            if not entry.name.endswith('.json') or not entry.is_file(follow_symlinks=False):
+                continue
+            try:
+                modified = entry.stat(follow_symlinks=False).st_mtime
+                if modified < cutoff:
+                    os.unlink(entry.path)
+                else:
+                    recent.append((modified, entry.path))
+            except FileNotFoundError:
+                continue
+    if len(recent) > limit:
+        for _, path in sorted(recent)[:len(recent)-limit]:
+            pathlib.Path(path).unlink(missing_ok=True)
+
 def completion(config, state, data, priority, timeout=900, timings=None, validator=None):
     gateway=config.get('model_gateway')
     if gateway:
@@ -71,16 +91,13 @@ def completion(config, state, data, priority, timeout=900, timings=None, validat
         add_inference_timings(timings,result)
         if result['choices'][0].get('finish_reason') == 'length':
             raise ValueError('Truncated model output')
-        if data.get('response_format'):
+        if validator:
+            validator(result['choices'][0]['message']['content'])
+        elif data.get('response_format'):
             json.loads(result['choices'][0]['message']['content'])
-        if validator:validator(result['choices'][0]['message']['content'])
         tmp = path.with_suffix('.tmp')
         tmp.write_text(json.dumps(result)); os.replace(tmp, path)
         # Bound only disposable inference cache; published artifacts are stored separately.
-        files=sorted(cache.glob('*.json'),key=lambda p:p.stat().st_mtime)
-        for old in files:
-            if len(files)>5000 or time.time()-old.stat().st_mtime>30*86400:
-                old.unlink(missing_ok=True)
-                if len(files)>5000:files=files[1:]
+        prune_cache(cache, time.time())
         logging.info('Inference complete task=%s seconds=%.1f tokens=%s', priority, time.monotonic()-start, result.get('usage',{}).get('completion_tokens'))
         return result

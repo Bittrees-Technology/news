@@ -56,6 +56,8 @@ class Recovery(unittest.TestCase):
    (cfg/'editor.json').write_text(json.dumps({'site':'http://fixture','token':'fixture','model_url':'http://model/v1','model':'fixture'}))
    briefing={'overview':'The study enrolled 120 adults during 2025 and reported results for the specified observation period.', 'points':['The study enrolled 120 adults during 2025.'],'context':'The reported study examined adults during 2025.','limitations':'Long-term outcomes were not supplied in the source.'}
    job={'item_id':'a'*64,'lease':'fixture','kind':'article','source_id':'fixture','title':'A study','published_at':'2026-01-01','excerpt':'A study enrolled 120 adults during 2025.'}
+   import hashlib
+   job['job']={'version':1,'schemaVersion':1,'promptVersion':1,'scope':'public','task':'briefing','dependencies':['public-source-evidence'],'artifactId':job['item_id'],'lease':job['lease'],'deadline':'2099-01-01T00:00:00Z','contentRevision':hashlib.sha256(json.dumps([job['title'],job['excerpt']],separators=(',',':')).encode()).hexdigest()}
    events=[];claims=0;writes=0;finished=False
    def request(req,**kw):
     nonlocal claims,writes,finished
