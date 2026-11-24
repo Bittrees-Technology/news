@@ -19,6 +19,21 @@ type Edit=z.infer<typeof coverageEdit>;
 type Saved=Edit & {version:number};
 const columns=rankingColumns+',source_context';
 function sameMembers(ids:string[]) {return ids.length===new Set(ids).size;}
+const wireCredits=new Map([
+  ['ap','associated press'],['the associated press','associated press'],
+  ['afp','agence france presse'],['thomson reuters','reuters'],
+]);
+const missingCredits=new Set(['unknown','unconfirmed','unverified','not known','not specified',
+  'not provided','not available','n a','na','none','tbd','staff','wire','desconhecido','desconhecida']);
+function reportingOrigin(credit:string|null) {
+  if(!credit)return null;
+  const name=credit.normalize('NFKD').replace(/\p{M}/gu,'').toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu,' ').trim();
+  if(!name || missingCredits.has(name))return null;
+  const initials=name.replace(/ /g,'');
+  if(initials==='ap'||initials==='afp')return wireCredits.get(initials);
+  return wireCredits.get(name)||name;
+}
 export function checkedCoverage(edit:Edit,rows:Item[],version:number):Coverage {
   const lookup=new Map(rows.map(i=>[i.id,i]));
   if(!sameMembers(edit.reports.map(r=>r.id)))throw new HttpError(400,'Duplicate report.');
@@ -32,11 +47,8 @@ export function checkedCoverage(edit:Edit,rows:Item[],version:number):Coverage {
       publishedAt:new Date(item.published_at).toISOString(),authors:item.authors||[]};
   });
   if(new Set(edit.reports.map(r=>publisherFamily(lookup.get(r.id)!))).size<2)throw new HttpError(400,'Select reporting from at least two outlets.');
-  const origin=(value:string)=>{
-    const v=value.trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ');
-    return ({ap:'associated press',afp:'agence france presse','thomson reuters':'reuters'} as Record<string,string>)[v]||v;
-  };
-  if(edit.claims.length && new Set(edit.reports.flatMap(r=>r.origin?[origin(r.origin)]:[])).size<2)
+  const origins=new Set(edit.reports.map(r=>reportingOrigin(r.origin)).filter(Boolean));
+  if(edit.claims.length && origins.size<2)
     throw new HttpError(400,'A unified briefing requires two confirmed reporting origins.');
   const ids=new Set(reports.map(r=>r.id));
   const claims=edit.claims.map(claim=>{

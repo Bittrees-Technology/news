@@ -46,3 +46,16 @@ test('bounded variation preserves leads, page history, read choices and excluded
   for(const f of [defaultReaderFilters,guestReaderFilters(defaultReaderFilters)])assert(matchesReaderFilters([],geographyFor(a),f));
   assert(!matchesReaderFilters([],geographyFor(a),{...defaultReaderFilters,excludedCountries:['MZ']}));
 });
+
+test('a wire credit variant or unconfirmed origin cannot corroborate a unified briefing',()=>{
+  const withCredits=(first:string|null,second:string|null)=>({...edit,reports:edit.reports.map((r,n)=>({...r,origin:n===0?first:second}))});
+  for(const [first,second] of [
+    ['A.P.','The Associated Press'],['Reuters','Reuters.'],['A. F. P.','Agence France-Presse'],
+    ['Reuters','Unknown'],['BBC','N/A'],['BBC','—'],['Lusa','Desconhecida'],
+  ]){
+    const oneOrigin=withCredits(first,second);
+    assert.throws(()=>checkedCoverage(oneOrigin,rows,1),/two confirmed reporting origins/);
+    assert.equal(checkedCoverage({...oneOrigin,claims:[]},rows,1).reports.length,2);
+  }
+  assert.equal(checkedCoverage(withCredits('Reuters','Associated Press'),rows,1).claims.length,1);
+});
