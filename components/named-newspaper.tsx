@@ -1,3 +1,4 @@
+import {englishReaderItems} from '@/lib/english-reader';
 import { scoreVisibility } from "@/lib/roles";
 import { withTranslations } from "@/lib/translation";
 import Link from "next/link";
@@ -63,7 +64,7 @@ export async function NamedNewspaper({
         date={paper.publishedAt || new Date().toISOString()}
         items={JSON.parse(
           JSON.stringify(
-            scoreVisibility(await withTranslations(paper.items), account?.role),
+            scoreVisibility(englishReaderItems(await withTranslations(paper.items)), account?.role),
           ),
         )}
       />

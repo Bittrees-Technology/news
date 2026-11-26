@@ -498,10 +498,10 @@ export function Newspaper({
                   </small>
                 </details>
               )}
-              {i.translation_status === "review" && <small className="muted">Translation awaiting editorial review · Showing source text</small>}
+              {i.translation_status === "review" && <small className="muted">English translation awaiting editorial review</small>}
               {i.translation_status === "failed" && (
                 <small className="muted">
-                  Original text · English translation unavailable
+                  English translation unavailable
                 </small>
               )}
 
