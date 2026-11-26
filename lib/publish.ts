@@ -122,5 +122,11 @@ export async function latestEdition(id?: string): Promise<Edition | null> {
     : await pool().query(
         "SELECT * FROM editions WHERE published_at IS NOT NULL ORDER BY publish_at DESC LIMIT 1",
       );
-  return r.rows[0] || null;
+  const edition = r.rows[0];
+  if (!edition) return null;
+  // Stored edition snapshots may predate translation review.
+  return {...edition,data:{...edition.data,items:edition.data.items.map((item:Item)=>({
+    ...item,translation:undefined,translation_key:undefined,
+    translation_status:undefined,translation_reviewed:false,
+  }))}};
 }

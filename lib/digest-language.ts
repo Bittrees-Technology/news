@@ -12,7 +12,7 @@ export function englishDigestItems(items: Item[]): Item[] {
     if (item.translation_status !== "done" ||
         item.translation_key !== translationKey(item) || !translated) return [];
     if (translated.language === "en") return [item];
-    if (!translated.title?.trim() || !translated.summary?.trim() ||
+    if (!item.translation_reviewed || !translated.title?.trim() || !translated.summary?.trim() ||
         !translationNumbersSupported({title:item.title,summary:item.summary||item.excerpt},translated)) return [];
     return [{ ...item, title: translated.title, summary: translated.summary,
       excerpt: translated.summary }];

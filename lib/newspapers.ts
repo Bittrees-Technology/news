@@ -1,3 +1,4 @@
+import {withTranslations} from './translation';
 import {
   buildPersonalEdition,
   nextPublication,
@@ -219,7 +220,7 @@ export async function newspaperPage(
     published: paper.published,
     feedName: feed?.name,
     feeds: feeds.map((f) => ({ name: f.name, slug: f.slug })),
-    items: selected,
+    items: await withTranslations(selected),
     publishedAt: paper.last_published_at,
   };
 }

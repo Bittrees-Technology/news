@@ -36,7 +36,7 @@ export async function publicDailyEmailLeads(preference:EditionPreference,at:Date
 export function readyDailyLeads(shortlist:Item[],receipts:Map<string,{status:string,result:Item['translation']}>) {
  const ready=shortlist.flatMap(i=>{
   const key=translationKey(i), receipt=receipts.get(key);
-  const [display]=englishDigestItems([{...i,translation_key:key,translation_status:receipt?.status,translation:receipt?.result}]);
+  const [display]=englishDigestItems([{...i,translation_key:key,translation_status:receipt?.status,translation:receipt?.result,translation_reviewed:receipt?.status==='done' && !!receipt?.result}]);
   return display?[{...i,display}]:[];
  });
  // Compare publishers and events on original evidence before returning English copy.

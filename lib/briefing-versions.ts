@@ -1,5 +1,5 @@
 import {failedEvidence,cleanFailureText} from './feed-safeguards';
-import {sourceIsEnglish,translationKey,translationNumbersSupported} from './translation';
+import {sourceIsEnglish,translationKey,translationNumbersSupported,translationStatus} from './translation';
 import {prostStoryId,prostBriefingCid,correctProstDisplay} from './briefing-search-review';
 import {pool} from './db';
 import {evidenceLabel,sourceEvidence} from './source-evidence';
@@ -11,7 +11,7 @@ export async function briefingVersion(shortId:string){
  const failed=failedEvidence(row);
  const item=cleanFailureText(correctProstDisplay(archivedBriefingDisplay(row)));
  // Match the frozen title, never a newer item title. Read cached output only.
- const translated=(await pool().query(`SELECT result FROM translations WHERE status='done' AND key=$1 LIMIT 1`,[translationKey(item)])).rows[0];
+ const translated=(await translationStatus([translationKey(item)])).find(row=>row.status==='done');
  if(item.id!==prostStoryId && !sourceIsEnglish(item) && translated?.result?.title && translationNumbersSupported({title:item.title,summary:item.summary||item.excerpt},translated.result))item.translation={title:translated.result.title,language:translated.result.language};
  if(failed) item.quality_issue="The source feed returned an error message. This briefing is withheld pending review.";
  if(failed || item.cid===prostBriefingCid) item.document=undefined;
