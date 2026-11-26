@@ -1,0 +1,31 @@
+import {Pool} from 'pg';
+import assert from 'node:assert/strict';
+import {briefingSemanticReviewQueue,reviewBriefingSemantics,reviewedBriefingItems,briefingApprovedSql,englishSourceIds} from '../../lib/briefing-semantic-review';
+if(!process.env.DATABASE_URL)throw new Error('DATABASE_URL must point to a disposable local PostgreSQL instance');
+const p=new Pool({connectionString:process.env.DATABASE_URL});const c=await p.connect();
+(globalThis as any).newsPool={query:c.query.bind(c),connect:async()=>({query:(sql:string,args?:any[])=>c.query(sql==='BEGIN'?'SAVEPOINT review_test':sql==='COMMIT'?'RELEASE SAVEPOINT review_test':sql==='ROLLBACK'?'ROLLBACK TO SAVEPOINT review_test':sql,args),release:()=>{}})};
+try{
+ await c.query('BEGIN');
+ await c.query('CREATE TEMP TABLE items(id text,source_id text,title text,source_context text,excerpt text,url text,owner_id uuid)');
+ await c.query('CREATE TEMP TABLE story_documents(item_id text,document jsonb,generated_at timestamptz)');
+ await c.query('CREATE TEMP TABLE quality_reviews(task text,artifact_id text,actor uuid,category text,note text,reviewed_at timestamptz DEFAULT now(),PRIMARY KEY(task,artifact_id))');
+ await c.query('CREATE TEMP TABLE news_staff_audit(id uuid,actor uuid,action text,detail jsonb)');
+ const id='a'.repeat(64),actor='11111111-1111-1111-1111-111111111111',doc={briefing:{overview:'Unsupported generated claim',points:[],context:'context',limitations:'limited'}};
+ await c.query('INSERT INTO items VALUES($1,$2,$3,$4,$5,$6,NULL)',[id,'unknown-source','Original','Original evidence','Original evidence','https://example.com']);
+ await c.query('INSERT INTO story_documents VALUES($1,$2,now())',[id,JSON.stringify(doc)]);
+ const rows=await briefingSemanticReviewQueue();assert.equal(rows.length,1);
+ const input={id,source_id:'unknown-source',title:'Original',source_context:'Original evidence',excerpt:'Original evidence',document:doc};
+ assert.equal((await reviewedBriefingItems([input]))[0].briefing_semantic_approved,false);
+ await reviewBriefingSemantics(actor,{id,fingerprint:rows[0].fingerprint,decision:'approve',note:'Compared the exact source and briefing.'});
+ assert.equal((await reviewedBriefingItems([input]))[0].briefing_semantic_approved,true);
+ const sql=`SELECT ${briefingApprovedSql('i','s.document','$1')} AS approved FROM items i JOIN story_documents s ON s.item_id=i.id`;
+ assert.equal((await c.query(sql,[englishSourceIds])).rows[0].approved,true);
+ assert.equal((await reviewedBriefingItems([{...input,document:{briefing:{overview:'Changed'}}}]))[0].briefing_semantic_approved,false);
+ await c.query("UPDATE items SET source_context='Changed evidence' WHERE id=$1",[id]);
+ assert.equal((await c.query(sql,[englishSourceIds])).rows[0].approved,false);
+ await assert.rejects(reviewBriefingSemantics(actor,{id,fingerprint:rows[0].fingerprint,decision:'approve',note:'Compared the exact source and briefing.'}));
+ await c.query("UPDATE items SET source_context='Apps not working' WHERE id=$1",[id]);
+ const errorRow=(await briefingSemanticReviewQueue())[0];assert.equal(errorRow.failed,true);
+ await assert.rejects(reviewBriefingSemantics(actor,{id,fingerprint:errorRow.fingerprint,decision:'approve',note:'Reviewed the source evidence carefully.'}));
+ console.log('PASS: briefing held, approval accepted, and document/source changes invalidate review and archive eligibility.');
+} finally {await c.query('ROLLBACK');c.release();await p.end();delete (globalThis as any).newsPool;}

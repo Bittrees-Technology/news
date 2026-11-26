@@ -1,3 +1,4 @@
+import {briefingSemanticReviewQueue,reviewBriefingSemantics} from './briefing-semantic-review';
 import {translationReviewQueue,reviewTranslation} from './translation-review';
 import {coverageHistory,reviewDesk,saveCoverage} from './coverage-store';
 import {startEmailSubscription, verifyEmailSubscription} from "./email-subscription";
@@ -421,6 +422,11 @@ export async function api(r: Request) {
         if(!canApprove(a!.role))throw new HttpError(403,"Editorial approval required.");
         return json(await saveCoverage(a!.id,await body(r)));
       }
+    }
+    if(path === "staff/briefing-semantic-reviews") {
+      requireScores(a!.role);
+      if(method === "GET") return json(await briefingSemanticReviewQueue());
+      if(method === "POST") return json(await reviewBriefingSemantics(a!.id,await body(r)));
     }
     if(path === "staff/translation-reviews") {
       requireScores(a!.role);
