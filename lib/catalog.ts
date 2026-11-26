@@ -2,6 +2,7 @@ import {addedTopics,normalizeTopic} from "./tags";
 import raw from "./catalog.json";
 export type Source = {
   retired?: boolean;
+  language?: string;
   pollMinutes?: number;
   maxResponseBytes?: number;
   maxItems?: number;
@@ -26,3 +27,5 @@ export const sourceName = (id: string) =>
 
 const licenses = new Map(allSources.filter(s => s.license).map(s => [s.id, s.license!]));
 export const sourceLicense = (id?: string) => id ? licenses.get(id) : undefined;
+
+export const sourceLanguage = (id: string) => allSources.find(s => s.id === id)?.language;

@@ -1,3 +1,4 @@
+import {isFeedFailure} from './feed-safeguards';
 import {saveAnnotations} from './persist-annotations';
 import {rankingColumns,uniqueChangedIds} from "./ranking-projection";
 import {annualObservation} from "./data-dates";
@@ -163,7 +164,7 @@ export async function rssItems(s: Source, body: string, now: string, owner?: str
       ? clean(syndicated || "", 1200)
       : entry["content:encodedSnippet"] || entry.contentSnippet || entry.summary || entry.content || "";
     const row = item(s, entry.title, entry.link, evidence, date || now, owner);
-    if (!row) continue;
+    if (!row || isFeedFailure(row.excerpt)) continue;
     row.authors = feedAuthors(entry);
     if (catalogued?.feedDescriptionOnly && !row.excerpt) continue;
     if (catalogued?.requiresByline && !row.authors.length) continue;
