@@ -243,10 +243,11 @@ export function Newspaper({
     const generation=authGeneration.current;
     try {
       if (!personal) {
-        const personalItems=await call("feed");
+        const personalItems=await call("personal-feed");
         if(generation!==authGeneration.current)return;
         setItems(personalItems);
         setPersonal(true);
+        setMessage('');
       } else {
         setItems(edition?.data.items || []);
         setPersonal(false);
@@ -443,7 +444,9 @@ export function Newspaper({
             {mode === "saved"
               ? "Use Save beside any story."
               : edition
-                ? "No stories match this search and filters. Try different words, clear the search, select All topics & places, or show read stories."
+                ? paged && nextPage
+                  ? "No stories on the loaded pages match these filters. Load more stories to continue looking."
+                  : "No stories match this search and filters. Try different words, clear the search, select All topics & places, or show read stories."
                 : "The newspaper will appear here when the first collection completes. Reading never requires an account."}
           </p>
         </div>
