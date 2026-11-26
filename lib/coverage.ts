@@ -2,7 +2,7 @@ import type {Item} from './model';
 
 export type Coverage = {
   id:string; version:number; title:string;
-  reports:{id:string;outlet:string;title:string;url:string;publishedAt:string;authors:string[]}[];
+  reports:{id:string;sourceId?:string;outlet:string;title:string;url:string;publishedAt:string;authors:string[]}[];
   claims:{text:string;reports:string[]}[];
 };
 

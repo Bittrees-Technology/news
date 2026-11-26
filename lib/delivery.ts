@@ -1,6 +1,6 @@
 import { withTranslations } from "./translation";
 import { englishDigestItems } from "./digest-language";
-import { newspaperEmail, coverageText, compactSummary, digestArticles } from "./newspaper-email";
+import { newspaperEmail, coverageText, creditText, compactSummary, digestArticles } from "./newspaper-email";
 import { subscriptionContent,
   subscriptionPreferenceColumns, subscriptionStillAllowed } from "./subscriptions";
 import {scheduledPeriod} from './delivery-schedule';
@@ -56,7 +56,7 @@ export async function queueDigests(now = new Date()) {
       selected
         .map(
           (i) =>
-            `${i.title}\n${d.kind === "email" ? compactSummary(i.summary || i.excerpt) : i.summary || i.excerpt}\n${i.url}`,
+            `${i.title}\n${d.kind === "email" ? compactSummary(i.summary || i.excerpt) : i.summary || i.excerpt}\n${i.url}${creditText(i.source_id,i.authors)}`,
         )
         .join("\n\n") +
       `\n\nRead more: ${readMore}\nManage your sources: ${process.env.APP_URL}/account\nPause these deliveries: ${unsubscribe}`;
@@ -110,7 +110,7 @@ export async function queueSubscriptions(now = new Date()) {
       selected
         .map(
           (i,index) => mainDaily && email && i.coverage ? (index===0?'Lead story\n':'')+coverageText(i) :
-            `${mainDaily && index===0 ? "Lead story\n" : ""}${i.title}\n${email ? compactSummary(i.summary || i.excerpt) : i.summary || i.excerpt}\n${i.user_edited ? "Edited by the newspaper owner.\n" : ""}${i.url}`,
+            `${mainDaily && index===0 ? "Lead story\n" : ""}${i.title}\n${email ? compactSummary(i.summary || i.excerpt) : i.summary || i.excerpt}\n${i.user_edited ? "Edited by the newspaper owner.\n" : ""}${i.url}${creditText(i.source_id,i.authors)}`,
         )
         .join("\n\n") +
       `\n\nRead more: ${readMore}\nManage subscriptions: ${process.env.APP_URL}/account/delivery\nPause this subscription: ${unsubscribe}`;

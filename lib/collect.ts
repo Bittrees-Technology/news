@@ -148,18 +148,22 @@ export async function rssItems(s: Source, body: string, now: string, owner?: str
   for (const entry of (feed.items || []).slice(0, 15)) {
     if (!entry.link || !entry.title) continue;
     const date = entry.isoDate || entry.pubDate;
-    const row = item(s, entry.title, entry.link, entry["content:encodedSnippet"] ||
-      entry.contentSnippet || entry.summary || entry.content || "", date || now, owner);
+    const evidence = catalogued?.feedDescriptionOnly
+      ? clean((entry.tbnDescription ? entry.contentSnippet : entry.summary) || "", 1200)
+      : entry["content:encodedSnippet"] || entry.contentSnippet || entry.summary || entry.content || "";
+    const row = item(s, entry.title, entry.link, evidence, date || now, owner);
     if (!row) continue;
     row.authors = feedAuthors(entry);
-    row.publication = clean(feed.title || s.name, 200);
+    if (catalogued?.feedDescriptionOnly && !row.excerpt) continue;
+    if (catalogued?.requiresByline && !row.authors.length) continue;
+    row.publication = catalogued?.publication || (catalogued?.maxItems || catalogued?.feedDescriptionOnly
+      ? catalogued.name : clean(typeof feed.title === 'string' && feed.title || s.name, 200));
     if (catalogued?.maxItems) {
       const link = new URL(row.url);
       const age = Date.parse(now) - Date.parse(row.published_at);
       if (!date || age < 0 || age >= 14 * 86400000 || !row.excerpt ||
         link.username || link.password || link.origin !== new URL(catalogued.homepage).origin) continue;
       if (catalogued.id === 'agencia-brasil-education' && !isBrazilEducationReport(link, row.authors)) continue;
-      row.publication = catalogued.name;
       if (items.some(i => i.id === row.id)) continue;
     }
     items.push(row);

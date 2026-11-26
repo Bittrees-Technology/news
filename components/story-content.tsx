@@ -1,3 +1,4 @@
+import {SourceCredit} from './source-credit';
 import {briefingPath} from '@/lib/briefing-links';
 import {briefingSearchNote} from '@/lib/briefing-search-review';
 import {sourceName} from '@/lib/catalog';
@@ -9,6 +10,7 @@ return <article className="standalone-story"><p>{articleTags(i).map(t=><span cla
 <div className="briefing-attribution">
 <p><strong>Publication:</strong> {i.publication||sourceName(i.source_id)}</p>
 <p><strong>{i.authors?.length>1?'Authors':'Author'}:</strong> {i.authors?.length?i.authors.join(', '):'Not available in collected metadata'}</p>
+<SourceCredit sourceId={i.source_id}/>
 {d?.source?.attribution?.affiliation&&<p><strong>Affiliation:</strong> {d.source.attribution.affiliation}</p>}
 {i.date_basis==='observation'?<p><strong>Observation period:</strong> {i.observation_period||'Not supplied'} · <strong>Source released:</strong> {i.released_at?new Date(i.released_at).toLocaleString('en-GB',{timeZone:'UTC'})+' UTC':'Not available in collected metadata'}</p>:<p><strong>Source published:</strong> {new Date(i.published_at).toLocaleString('en-GB',{timeZone:'UTC'})} UTC</p>}
 {d?.generatedAt&&<p><strong>Briefing created:</strong> {new Date(d.generatedAt).toLocaleString('en-GB',{timeZone:'UTC'})} UTC</p>}

@@ -2,6 +2,7 @@ import {articleTags,tagStyle} from "@/lib/tags";
 import {ArticleFeedback} from "./article-feedback";
 import type { Item } from "@/lib/model";
 import { newspaperPages } from "@/lib/pagination";
+import {SourceCredit} from "./source-credit";
 import { sourceName } from "@/lib/catalog";
 export function Broadsheet({
   name,
@@ -94,6 +95,7 @@ export function Broadsheet({
                     timeZone: "UTC",
                   })}
                 </p>
+                <SourceCredit sourceId={i.source_id} authors={i.authors}/>
                 <p className="paper-copy">
                   {i.translation?.summary ?? i.summary ?? i.excerpt}
                 </p>

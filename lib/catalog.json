@@ -944,6 +944,7 @@
   },
   {
     "id": "european-commission",
+    "pollMinutes": 16,
     "name": "European Commission",
     "url": "https://ec.europa.eu/commission/presscorner/api/rss?language=en",
     "homepage": "https://ec.europa.eu",
@@ -1207,6 +1208,10 @@
   },
   {
     "id": "global-voices",
+    "requiresByline": true,
+    "pollMinutes": 16,
+    "feedDescriptionOnly": true,
+    "license": {"name": "CC BY 3.0", "url": "https://creativecommons.org/licenses/by/3.0/"},
     "name": "Global Voices",
     "url": "https://globalvoices.org/feed/",
     "homepage": "https://globalvoices.org/",
@@ -1355,5 +1360,71 @@
     "pollMinutes": 60,
     "kind": "rss",
     "type": "article"
+  },
+  {
+    "id": "eia-today-in-energy",
+    "name": "U.S. Energy Information Administration — Today in Energy",
+    "url": "https://www.eia.gov/rss/todayinenergy.xml",
+    "homepage": "https://www.eia.gov/",
+    "topic": "Energy",
+    "pollMinutes": 720,
+    "maxResponseBytes": 262144,
+    "maxItems": 4,
+    "feedDescriptionOnly": true,
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "taiwan-mofa-releases",
+    "name": "Taiwan Ministry of Foreign Affairs — Press Releases",
+    "url": "https://en.mofa.gov.tw/OpenData.aspx?SN=3273AA376FB01416",
+    "homepage": "https://en.mofa.gov.tw/",
+    "topic": "Politics",
+    "pollMinutes": 720,
+    "maxResponseBytes": 262144,
+    "maxItems": 4,
+    "feedDescriptionOnly": true,
+    "kind": "rss",
+    "type": "article",
+    "license": {
+      "name": "OGDL-Taiwan 1.0",
+      "url": "https://data.gov.tw/en/license"
+    }
+  },
+  {
+    "id": "eurostat-news",
+    "name": "Eurostat — European Commission",
+    "url": "https://ec.europa.eu/eurostat/en/search?p_p_id=estatsearchportlet_WAR_estatsearchportlet&p_p_lifecycle=2&p_p_state=maximized&p_p_mode=view&p_p_resource_id=atom&_estatsearchportlet_WAR_estatsearchportlet_collection=CAT_EURNEW",
+    "homepage": "https://ec.europa.eu/eurostat/",
+    "topic": "General",
+    "pollMinutes": 720,
+    "maxResponseBytes": 262144,
+    "maxItems": 4,
+    "feedDescriptionOnly": true,
+    "kind": "rss",
+    "type": "article",
+    "license": {
+      "name": "CC BY 4.0",
+      "url": "https://creativecommons.org/licenses/by/4.0/"
+    }
+  },
+  {
+    "id": "global-voices-mena",
+    "publication": "Global Voices",
+    "name": "Global Voices — Middle East & North Africa",
+    "url": "https://globalvoices.org/-/world/middle-east-north-africa/feed/",
+    "homepage": "https://globalvoices.org/",
+    "topic": "World",
+    "pollMinutes": 1440,
+    "maxResponseBytes": 393216,
+    "maxItems": 4,
+    "feedDescriptionOnly": true,
+    "kind": "rss",
+    "type": "article",
+    "license": {
+      "name": "CC BY 3.0",
+      "url": "https://creativecommons.org/licenses/by/3.0/"
+    },
+    "requiresByline": true
   }
 ]
