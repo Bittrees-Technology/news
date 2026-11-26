@@ -1,7 +1,7 @@
 import type {Item} from './model';
-import {sources} from './catalog';
+import {allSources} from './catalog';
 import {geographyFor} from './geography';
-const families = new Map(sources.map(source => [
+const families = new Map(allSources.map(source => [
   source.id, source.publisherFamily || new URL(source.homepage).hostname.replace(/^www\./, ''),
 ]));
 export function publisherFamily(item: Pick<Item, 'source_id'>) {

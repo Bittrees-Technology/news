@@ -1,6 +1,6 @@
 import {reviewedCoverage} from './coverage-store';
 import {articleTags} from './tags';
-import {sources} from './catalog';
+import {allSources} from './catalog';
 import {publisherFamily} from './diversity-shadow';
 import {pool} from './db';
 import type {Item} from './model';
@@ -17,7 +17,7 @@ export async function feedDisplay(items:Item[]){
  });
 }
 export async function publicFeedBatch(snapshot:string,before:string|null=null,category:FeedCategory='all',balanced=false){
- const families=Object.fromEntries(sources.map(s=>[s.id,publisherFamily({source_id:s.id})]));
+ const families=Object.fromEntries(allSources.map(s=>[s.id,publisherFamily({source_id:s.id})]));
  // Apply publisher selection to the frozen window BEFORE the cursor, so a new
  // page cannot reset a publisher's allowance. This changes presentation, not scores.
  const rows=(await pool().query(`WITH candidates AS (
