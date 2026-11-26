@@ -22,3 +22,14 @@ test('feedback needs five distinct voters and stays bounded',()=>{
  const base=rankArticles([item],defaults,defaultRanking,{},10,now)[0].ranking.value;
  assert.equal(rankArticles([item],defaults,defaultRanking,{},10,now,{x:-5})[0].ranking.value,Math.round((base-5)*10)/10);
 });
+
+test('public publisher labels require Portuguese story evidence, including on saved articles', () => {
+ const article = {...item, source_id:'observador', topic:'Portugal', tags:['Portugal','Economy'],
+   title:'Porto Alegre expands its rail network', excerpt:'Construction starts next year.',
+   summary:'A columnist in Portugal commented.', translation:undefined};
+ assert.deepEqual(articleTags(article), ['Economy']);
+ assert.equal(matches(article, {...defaults,topics:['Portugal']}), false);
+ assert.deepEqual(articleTags({...article,tags:[]}), ['General']);
+ assert.deepEqual(articleTags({...article,title:'Porto Alegre and Lisbon expand their rail networks'}), ['Portugal','Economy']);
+ assert.deepEqual(articleTags({...article,owner_id:'private-reader'}), ['Portugal','Economy']);
+});

@@ -58,3 +58,14 @@ test("public WordPress publisher addresses are allowed, while neighboring specia
   for (const ip of ["192.0.0.1", "192.0.0.8", "192.168.1.1"])
     assert(!publicAddress(ip), ip);
 });
+
+test("Brazilian place names and South African cities resolve independently of the outlet", () => {
+  for (const place of ["Porto Alegre", "Porto Velho", "São Paulo", "Brasília"]) {
+    const geo = geographyFor(story("Transport investment in " + place, "Portugal"));
+    assert(geo.countries.includes("BR"), place);
+    assert(!geo.countries.includes("PT"), place);
+  }
+  assert(geographyFor(story("Relatório do governo português em Lisboa")).countries.includes("PT"));
+  assert(geographyFor(story("Transit changes in Pretoria")).countries.includes("ZA"));
+  assert.deepEqual(geographyFor(story("Rail links between Porto and Porto Alegre")).countries.sort(), ["BR","PT"]);
+});

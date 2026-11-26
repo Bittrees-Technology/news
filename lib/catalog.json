@@ -1062,6 +1062,7 @@
   },
   {
     "id": "observador",
+    "pollMinutes": 16,
     "name": "Observador",
     "url": "https://observador.pt/feed/",
     "homepage": "https://observador.pt",
@@ -1272,12 +1273,36 @@
     "type": "article"
   },
   {
+    "id": "sanews-south-africa",
+    "name": "SAnews (South African Government News Agency)",
+    "url": "https://www.sanews.gov.za/south-africa-news-stories.xml",
+    "homepage": "https://www.sanews.gov.za/",
+    "topic": "General",
+    "pollMinutes": 360,
+    "maxResponseBytes": 262144,
+    "maxItems": 4,
+    "kind": "rss",
+    "type": "article"
+  },
+  {
+    "id": "agencia-brasil-education",
+    "name": "Agência Brasil — Educação",
+    "url": "https://agenciabrasil.ebc.com.br/rss/educacao/feed.xml",
+    "homepage": "https://agenciabrasil.ebc.com.br/",
+    "topic": "Education",
+    "pollMinutes": 720,
+    "maxResponseBytes": 262144,
+    "maxItems": 4,
+    "kind": "rss",
+    "type": "article"
+  },
+  {
     "id": "agencia-brasil-economy",
     "name": "Ag\u00eancia Brasil \u2014 Economia",
     "url": "https://agenciabrasil.ebc.com.br/rss/economia/feed.xml",
     "homepage": "https://agenciabrasil.ebc.com.br/",
     "topic": "Economy",
-    "pollMinutes": 120,
+    "pollMinutes": 144,
     "kind": "rss",
     "type": "article"
   },
