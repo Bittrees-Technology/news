@@ -14,7 +14,7 @@ test('pending, failed, unreviewed and stale copy use an English holding message'
 test('exact approved translations are rendered in English without source fallback',()=>{
  const display=englishReaderItem(approved);assert.equal(display.title,approved.translation.title);assert.equal(display.summary,approved.translation.summary);assert.ok(!JSON.stringify(display).includes('política'));
 });
-test('unknown source language identification requires exact review before display',()=>{
+test('identified English displays the exact original without a model rewrite',()=>{
  const en={...item,title:'A public announcement',summary:'The government announced a new policy.',excerpt:'The government announced a new policy.'};
  const recognized={...en,translation_key:translationKey(en),translation_status:'done',translation:{language:'en',model:'fixture'}};
  assert.equal(englishReaderItem(recognized).title,'English translation awaiting review');

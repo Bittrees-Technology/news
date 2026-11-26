@@ -17,6 +17,13 @@ export function translationFingerprint(key:string,payload:unknown,result:unknown
   return createHash('sha256').update(JSON.stringify(canonical({key,payload,result}))).digest('hex');
 }
 export function isTranslationApproved(row:{key:string;payload:unknown;result:any;review_category?:string|null;review_note?:string|null}) {
+  // An English classification carries no model-authored replacement text.
+  // Still fail closed for Portuguese-looking source text or a malformed payload.
+  if (row.result?.language === 'en') {
+    if (row.review_category === 'translation_rejected') return false;
+    const source=row.payload as {title?:unknown;summary?:unknown}|null;
+    return typeof source?.title==='string' && typeof source.summary==='string' && !looksPortuguese(source.title+' '+source.summary);
+  }
   if (row.review_category !== 'translation_approved' || !row.review_note) return false;
   try {
     const approval=JSON.parse(row.review_note);
@@ -34,6 +41,7 @@ export async function translationReviewQueue() {
   const pending=(await pool().query(`SELECT t.key,t.payload,t.result,t.completed_at,q.category AS review_category,q.note AS review_note
     FROM translations t LEFT JOIN quality_reviews q ON q.task='translation' AND q.artifact_id=t.key
     WHERE t.status='done' AND t.result->>'language' IS NOT NULL
+      AND (t.result->>'language'<>'en' OR lower(coalesce(t.payload->>'title','')||' '||coalesce(t.payload->>'summary','')) ~ '(não|são|também|está|após|notícias|será|portugal|segundo|uma|dos|das|pelo|pela)')
       AND (q.artifact_id IS NULL OR t.completed_at>q.reviewed_at)
     ORDER BY (t.result->>'language'='en') ASC,t.completed_at ASC,t.key LIMIT 20`)).rows;
   const approved=(await pool().query(`SELECT t.key,t.payload,t.result,t.completed_at,q.category AS review_category,q.note AS review_note
