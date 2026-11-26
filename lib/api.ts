@@ -1,3 +1,4 @@
+import {translationReviewQueue,reviewTranslation} from './translation-review';
 import {coverageHistory,reviewDesk,saveCoverage} from './coverage-store';
 import {startEmailSubscription, verifyEmailSubscription} from "./email-subscription";
 import {authenticationCookieName,currentAuthentication} from './auth';
@@ -420,6 +421,11 @@ export async function api(r: Request) {
         if(!canApprove(a!.role))throw new HttpError(403,"Editorial approval required.");
         return json(await saveCoverage(a!.id,await body(r)));
       }
+    }
+    if(path === "staff/translation-reviews") {
+      requireScores(a!.role);
+      if(method === "GET") return json(await translationReviewQueue());
+      if(method === "POST") return json(await reviewTranslation(a!.id,await body(r)));
     }
     if(path === "staff/quality"){requireScores(a!.role);if(method === "GET")return json(await qualityQueue());if(method === "POST")return json(await saveQualityReview(a!.id,await body(r)));}
     if (path === "subscriptions/email" && method === "POST")

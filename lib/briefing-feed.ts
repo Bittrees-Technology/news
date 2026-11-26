@@ -5,8 +5,26 @@ import {pool} from './db';
 import {sourceIsEnglish,translationNumbersSupported,translationKey,translationStatus} from './translation';
 import {sourceEvidence,evidenceLabel} from './source-evidence';
 async function displayEntries(items:any[]){
- const translations=new Map((await translationStatus(items.map(translationKey))).map(r=>[r.key,r]));
- return items.map(raw=>{const failed=failedEvidence(raw);const i=correctProstDisplay(raw);const t=translations.get(translationKey(i)),evidence=i.document?.evidence||sourceEvidence(i);const {source_context,...display}=i;return cleanFailureText(correctProstDisplay({...display,...(i.cid&&i.document?archivedBriefingDisplay(i):{}),...(i.cid===prostBriefingCid || failed?{document:undefined}:{}),...(failed?{quality_issue:'The source feed returned an error message. This briefing is withheld pending review.'}:{}),translation:t?.status==='done' && t.result && i.id!==prostStoryId && !sourceIsEnglish(i) && translationNumbersSupported({title:i.title,summary:i.summary||i.excerpt},t.result)?t.result:undefined,evidence,evidence_label:evidenceLabel(evidence.kind)}));});
+ const prepared=items.map(raw=>{
+  const failed=failedEvidence(raw);
+  const evidence=raw.document?.evidence||sourceEvidence(raw);
+  const {source_context,...display}=raw;
+  const item=cleanFailureText(correctProstDisplay({
+   ...display,...(raw.cid&&raw.document?archivedBriefingDisplay(raw):{}),
+   ...(raw.cid===prostBriefingCid||failed?{document:undefined}:{}),
+   ...(failed?{quality_issue:'The source feed returned an error message. This briefing is withheld pending review.'}:{}),
+   evidence,evidence_label:evidenceLabel(evidence.kind),
+  }));
+  return item;
+ });
+ const translations=new Map((await translationStatus(prepared.map(translationKey))).map(row=>[row.key,row]));
+ return prepared.map(i=>{
+  const row=translations.get(translationKey(i));
+  const translation=row?.status==='done' && row.result && i.id!==prostStoryId &&
+   !sourceIsEnglish(i) && translationNumbersSupported({title:i.title,summary:i.summary||i.excerpt},row.result)
+   ? row.result : undefined;
+  return {...i,translation,translation_status:row?.status};
+ });
 }
 export async function briefingBatch(before:string|null=null,selected:string|null=null,snapshot=new Date().toISOString()):Promise<{entries:any[];next:string|null;snapshot:string;selectedId?:string}>{
  // Direct links select an identity, never just a position in the completed queue.

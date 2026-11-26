@@ -1,3 +1,5 @@
+import {translationNumbersSupported} from './translation-integrity';
+import {isTranslationApproved} from './translation-review';
 import {sourceLanguage} from './catalog';
 import {cleanFailureText} from './feed-safeguards';
 import {prostStoryId,correctProstDisplay} from './briefing-search-review';
@@ -24,13 +26,7 @@ export const translationKey = (item: Item) =>
       ]),
     )
     .digest("hex");
-// Numeric claims must occur in the source text. This is a screening check,
- // not a semantic accuracy judgment.
-export function translationNumbersSupported(original:{title:string;summary:string}, translated:{title?:string;summary?:string}) {
-  const numbers=(text:string)=>[...text.matchAll(/(?<![\p{L}\p{N}])\d+(?:[.,]\d+)*/gu)].map(m=>m[0]);
-  const permitted=new Set(numbers(original.title+' '+original.summary));
-  return numbers((translated.title||'')+' '+(translated.summary||'')).every(n=>permitted.has(n));
-}
+export {translationNumbersSupported} from './translation-integrity';
 export const translationResultSchema = z.object({
   key: z.string().regex(/^[a-f0-9]{64}$/),
   lease: z.uuid(),
@@ -65,13 +61,19 @@ export async function translationStatus(keys: string[]) {
   if (!keys.length) return [];
   return (
     await pool().query(
-      "SELECT key,status,result FROM translations WHERE key=ANY($1::text[])",
+      `SELECT t.key,t.status,t.payload,t.result,q.category AS review_category,q.note AS review_note
+       FROM translations t LEFT JOIN quality_reviews q ON q.task='translation' AND q.artifact_id=t.key
+       WHERE t.key=ANY($1::text[])`,
       [keys],
     )
-  ).rows;
+  ).rows.map(row => row.status==='done' && row.result && !isTranslationApproved(row)
+    ? {key:row.key,status:'review',result:null}
+    : {key:row.key,status:row.status,result:row.result?.language==='en'
+      ? {language:'en',model:row.result.model}
+      : row.result});
 }
 export async function withTranslations(items: Item[]): Promise<Item[]> {
-  items = items.map(i => cleanFailureText(correctProstDisplay(i)));
+  items = items.map(i => ({...cleanFailureText(correctProstDisplay(i)), translation:undefined, translation_reviewed:false}));
   try {
     return await attachTranslations(items);
   } catch {
@@ -127,6 +129,7 @@ async function attachTranslations(items: Item[]): Promise<Item[]> {
     return {
       ...i,
       translation_key: key,
+      translation_reviewed: supported && row?.status === 'done' && !!row.result,
       translation_status: supported ? row?.status || "pending" : "failed",
       translation: supported && row?.status === "done" ? row.result : undefined,
     };
