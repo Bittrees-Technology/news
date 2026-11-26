@@ -1,4 +1,4 @@
-import {prostStoryId,correctProstDisplay} from './briefing-search-review';
+import {prostStoryId,prostBriefingCid,correctProstDisplay} from './briefing-search-review';
 import {pool} from './db';
 import {evidenceLabel,sourceEvidence} from './source-evidence';
 // Snapshot content is immutable; current public ownership is still checked on every read.
@@ -10,6 +10,7 @@ export async function briefingVersion(shortId:string){
  // Match the frozen title, never a newer item title. Read cached output only.
  const translated=(await pool().query(`SELECT result FROM translations WHERE status='done' AND payload->>'title'=$1 ORDER BY completed_at DESC NULLS LAST,key LIMIT 1`,[item.title])).rows[0];
  if(item.id!==prostStoryId && translated?.result?.title)item.translation={title:translated.result.title,language:translated.result.language};
+ if(item.cid===prostBriefingCid) item.document=undefined;
  return item;
 }
 export function archivedBriefingDisplay(row:any){
