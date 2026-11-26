@@ -2,6 +2,8 @@ import {addedTopics,normalizeTopic} from "./tags";
 import raw from "./catalog.json";
 export type Source = {
   pollMinutes?: number;
+  maxResponseBytes?: number;
+  maxItems?: number;
   publisherFamily?: string;
   id: string;
   name: string;

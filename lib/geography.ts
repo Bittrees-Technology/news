@@ -6,7 +6,7 @@ export const regions = [
   "Middle East",
 ].sort();
 const aliases: Record<string, string[]> = {
-  PT: ["Portuguese", "Lisbon", "Lisboa", "Porto"],
+  PT: ["Portuguese", "português", "portuguesa", "portugueses", "portuguesas", "Lisbon", "Lisboa", "Porto"],
   US: [
     "United States of America",
     "American",
@@ -29,7 +29,8 @@ const aliases: Record<string, string[]> = {
   FR: ["French", "Paris"],
   ES: ["Spanish", "Madrid"],
   IT: ["Italian"],
-  BR: ["Brazilian"],
+  BR: ["Brazilian", "Brasil", "Brasília", "São Paulo", "Porto Alegre", "Porto Velho"],
+  ZA: ["South African", "África do Sul", "Johannesburg", "Pretoria", "Cape Town"],
   CA: ["Canadian"],
   AU: ["Australian"],
   UA: ["Ukrainian", "Kyiv"],
@@ -68,6 +69,15 @@ const matchers = countries.map((c) => ({
   match: pattern([c.name, ...(aliases[c.code] || [])].map(normalize)),
   short: abbreviations[c.code] ? pattern(abbreviations[c.code], "u") : null,
 }));
+// These Brazilian city names also contain the full name of a Portuguese city.
+const brazilianPorto = /\bporto (?:alegre|velho)\b/gu;
+const portugalMatcher = matchers.find(country => country.code === "PT")!.match;
+function mentionsPortugal(normalized: string) {
+  return portugalMatcher.test(normalized.replace(brazilianPorto, " "));
+}
+export function portugalInSource(title: string, excerpt: string) {
+  return mentionsPortugal(normalize([title, excerpt].join(" ")));
+}
 const middleEast = new Set([
   "AE",
   "BH",
@@ -115,7 +125,7 @@ export function geographyFor(
   ].join(" ");
   const text = normalize(original);
   const found = matchers.filter(
-    (c) => c.match.test(text) || c.short?.test(original),
+    (c) => c.code === "PT" ? mentionsPortugal(text) : c.match.test(text) || c.short?.test(original),
   );
   const regional = new Set(found.map((c) => c.region));
   for (const { name, match } of regionMatchers)
@@ -125,7 +135,7 @@ export function geographyFor(
 }
 // Conservative event-place hints for editorial review. Demonyms and a publisher's
 // origin are insufficient, and multiple explicit locations require a reviewer.
-const cityCountry:Record<string,string>={Lisbon:'PT',Lisboa:'PT',Porto:'PT','Moçambique':'MZ',Maputo:'MZ',Brasil:'BR',Tokyo:'JP'};
+const cityCountry:Record<string,string>={Lisbon:'PT',Lisboa:'PT',Porto:'PT','Porto Alegre':'BR','Porto Velho':'BR','Moçambique':'MZ',Maputo:'MZ',Brasil:'BR',Tokyo:'JP'};
 const locationCodes=new Map([...countries.map(c=>[c.name.toLowerCase(),c.code] as const),
   ...Object.entries(cityCountry).map(([name,code])=>[name.toLowerCase(),code] as const)]);
 const locationCue=new RegExp('(?:^|\\s)(?:in|across|near|em|no|na|nos|nas)\\s+('+

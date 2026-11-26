@@ -1,4 +1,6 @@
 import {subjectEvidence,subjectLabels} from './story-subjects';
+import {portugalInSource} from './geography';
+import catalog from './catalog.json';
 import type {Item} from './model';
 export const addedTopics=['Bitcoin','Crypto','Politics','DAOs',...(process.env.NEXT_PUBLIC_NEWS_SPECIFIC_TOPICS==='1'?subjectLabels:[])];
 export const normalizeTopic=(topic:string)=>topic==='Apple'?'Tech':topic==='Nintendo'?'Gaming':topic;
@@ -8,9 +10,18 @@ const rules:[string,RegExp][]=[
  ['Politics',/\b(politic\w*|elections?|parliament|congress|senate|government|president|legislation|geopolitic\w*)\b/i],
  ['DAOs',/\b(daos?|decentralized autonomous organi[sz]ations?)\b/i],
 ];
-export function articleTags(i:Pick<Item,'topic'|'title'|'excerpt'|'summary'|'tags'|'translation'>){
- const text=[i.title,i.excerpt,i.summary,i.translation?.title,i.translation?.summary].filter(Boolean).join(' ');
- return [...new Set([normalizeTopic(i.topic),...(i.tags||[]).map(normalizeTopic),...(process.env.NEXT_PUBLIC_NEWS_SPECIFIC_TOPICS==='1'?subjectEvidence(i).flatMap(s=>[s.label,s.parent]):[]),...rules.filter(([,re])=>re.test(text)).map(([tag])=>tag)])].filter(Boolean);
+const portugalFeeds = new Set(catalog.filter(s => s.topic === 'Portugal').map(s => s.id));
+type TaggedItem = Pick<Item, 'source_id'|'owner_id'|'topic'|'title'|'excerpt'|'summary'|'tags'|'translation'>;
+export function articleTags(i: TaggedItem) {
+ const text = [i.title, i.excerpt, i.summary, i.translation?.title, i.translation?.summary].filter(Boolean).join(' ');
+ const tags = new Set([normalizeTopic(i.topic), ...(i.tags || []).map(normalizeTopic),
+   ...(process.env.NEXT_PUBLIC_NEWS_SPECIFIC_TOPICS === '1' ? subjectEvidence(i).flatMap(s => [s.label, s.parent]) : []),
+   ...rules.filter(([, re]) => re.test(text)).map(([tag]) => tag)].filter(Boolean));
+ if (tags.has('Portugal') && !i.owner_id && portugalFeeds.has(i.source_id) && !portugalInSource(i.title, i.excerpt)) {
+   tags.delete('Portugal');
+ }
+ if (!i.owner_id && tags.size > 1) tags.delete('General');
+ return tags.size ? [...tags] : ['General'];
 }
 export function tagStyle(tag:string){
  const fixed:Record<string,number>={Bitcoin:32,Crypto:265,Blockchain:265,DAOs:160,Governance:160,Politics:210,World:210,Economy:32,Tech:220,AI:220,Security:220,Science:175,Quantum:175,Space:175,Health:150,Biotech:150,Climate:145,Energy:145,Nuclear:145,Gaming:315};

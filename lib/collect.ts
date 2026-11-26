@@ -2,7 +2,7 @@ import {saveAnnotations} from './persist-annotations';
 import {rankingColumns,uniqueChangedIds} from "./ranking-projection";
 import {annualObservation} from "./data-dates";
 import {editorialBase} from "./editorial-priority";
-import {articleTags,normalizeTopic} from "./tags";
+import {articleTags} from "./tags";
 import {feedParser,feedAuthors} from "./feed-attribution";
 import { createHash } from "node:crypto";
 import {collectionMinutes,retryMinutes,nextSourcePoll} from "./collection-policy";
@@ -62,8 +62,8 @@ export async function fetchSourceSnapshot(s: Source, owner?: string, previousHas
   // Catalogue feeds often include years of episodes. Keep custom endpoints on
   // the smaller limit and enforce a hard byte limit on every response.
   const catalogued =
-    !owner && sources.some((entry) => entry.id === s.id && entry.url === s.url);
-  const response = await safeFetchResponse(s.url, catalogued ? 32_000_000 : 2_000_000,previousHash?validators:{});
+    !owner ? sources.find((entry) => entry.id === s.id && entry.url === s.url) : undefined;
+  const response = await safeFetchResponse(s.url, catalogued?.maxResponseBytes ?? (catalogued ? 32_000_000 : 2_000_000),previousHash?validators:{});
   if(response.notModified && previousHash)return {...response,hash:previousHash};
   const {body}=response;
   const hash=createHash("sha256").update(body).digest("hex");
@@ -125,17 +125,7 @@ export async function fetchSourceSnapshot(s: Source, owner?: string, previousHas
         ),
       );
   } else {
-    const feed = await parser.parseString(body);
-    for (const e of (feed.items || []).slice(0, 15)) {
-      if (!e.link || !e.title) continue;
-      const row=item(
-        s,e.title,e.link,
-        e["content:encodedSnippet"] || e.contentSnippet || e.summary || e.content || "",
-        e.isoDate || e.pubDate || now,owner,
-      );
-      if(row){row.authors=feedAuthors(e);row.publication=clean(feed.title||s.name,200);}
-      list.push(row);
-    }
+    list.push(...await rssItems(s, body, now, owner, catalogued));
   }
   return {...response,hash,items:list
     .filter((i): i is Item => !!i)
@@ -146,6 +136,37 @@ export async function fetchSourceSnapshot(s: Source, owner?: string, previousHas
         s.type === "data",
     )};
 }
+function isBrazilEducationReport(link: URL, authors: string[]) {
+  const staffByline = /^(?:Agência Brasil|[\p{L}][\p{L} .’'-]+ [-–—] Repórter da Agência Brasil)$/iu;
+  return link.pathname.startsWith('/educacao/noticia/') && authors.length > 0 &&
+    authors.every(name => staffByline.test(name) && !/\b(?:Reuters|AFP|Associated Press)\b/iu.test(name));
+}
+
+export async function rssItems(s: Source, body: string, now: string, owner?: string, catalogued?: Source) {
+  const feed = await parser.parseString(body);
+  const items: Item[] = [];
+  for (const entry of (feed.items || []).slice(0, 15)) {
+    if (!entry.link || !entry.title) continue;
+    const date = entry.isoDate || entry.pubDate;
+    const row = item(s, entry.title, entry.link, entry["content:encodedSnippet"] ||
+      entry.contentSnippet || entry.summary || entry.content || "", date || now, owner);
+    if (!row) continue;
+    row.authors = feedAuthors(entry);
+    row.publication = clean(feed.title || s.name, 200);
+    if (catalogued?.maxItems) {
+      const link = new URL(row.url);
+      const age = Date.parse(now) - Date.parse(row.published_at);
+      if (!date || age < 0 || age >= 14 * 86400000 || !row.excerpt ||
+        link.username || link.password || link.origin !== new URL(catalogued.homepage).origin) continue;
+      if (catalogued.id === 'agencia-brasil-education' && !isBrazilEducationReport(link, row.authors)) continue;
+      row.publication = catalogued.name;
+      if (items.some(i => i.id === row.id)) continue;
+    }
+    items.push(row);
+    if (catalogued?.maxItems && items.length >= catalogued.maxItems) break;
+  }
+  return items;
+}
 export async function storeItems(items: Item[]) {
   if (!items.length) return;
   await tx(async db => {
@@ -153,19 +174,20 @@ export async function storeItems(items: Item[]) {
     const priorities = new Map<string, number>();
     // Lock shared article URLs in the same order across concurrent source batches.
     for (const i of [...items].sort((a,b) => a.id.localeCompare(b.id))) {
+      const tags = articleTags(i);
       const stored = await db.query<Item>(
         `INSERT INTO items(id,source_id,topic,kind,title,url,excerpt,published_at,owner_id,tags,authors,publication,source_context,observation_period,released_at,retrieved_at,date_basis) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) ON CONFLICT(id) DO UPDATE SET observation_period=EXCLUDED.observation_period,released_at=EXCLUDED.released_at,retrieved_at=EXCLUDED.retrieved_at,date_basis=EXCLUDED.date_basis,published_at=CASE WHEN EXCLUDED.date_basis='observation' THEN EXCLUDED.published_at ELSE items.published_at END,fetched_at=CASE WHEN (items.title,items.excerpt,items.source_context) IS DISTINCT FROM (EXCLUDED.title,EXCLUDED.excerpt,EXCLUDED.source_context) THEN now() ELSE items.fetched_at END,summary=CASE WHEN (items.title,items.excerpt) IS DISTINCT FROM (EXCLUDED.title,EXCLUDED.excerpt) THEN NULL ELSE items.summary END,excerpt=EXCLUDED.excerpt,title=EXCLUDED.title,tags=EXCLUDED.tags,topic=EXCLUDED.topic,authors=CASE WHEN items.attribution IS NOT NULL THEN items.authors ELSE EXCLUDED.authors END,publication=EXCLUDED.publication,source_context=EXCLUDED.source_context RETURNING ${rankingColumns}`,
         [
           i.id,
           i.source_id,
-          normalizeTopic(i.topic),
+          tags[0],
           i.kind,
           i.title,
           i.url,
           i.excerpt,
           i.published_at,
           i.owner_id,
-          articleTags(i),i.authors||[],i.publication||null,i.source_context||i.excerpt,i.observation_period||null,i.released_at||null,i.retrieved_at||null,i.date_basis||'publication',
+          tags,i.authors||[],i.publication||null,i.source_context||i.excerpt,i.observation_period||null,i.released_at||null,i.retrieved_at||null,i.date_basis||'publication',
         ],
       );
       const original = stored.rows[0];
