@@ -3,18 +3,18 @@ import {briefingSearchNote} from './briefing-search-review';
 
 type Briefing = {
  title:string; translation?:{title?:string}; url:string; authors?:string[]; cid?:string|null;
- publication?:string; published_at?:string;
+ publication?:string; published_at?:string; quality_issue?:string;
  document?:{generatedAt?:string;briefing:{overview:string}};
 };
 export function briefingMetadata(item:Briefing,path:string){
- const note=briefingSearchNote(item.cid);
+ const note=briefingSearchNote(item.cid)||item.quality_issue;
  if(note)return {...pageMetadata('Archived briefing under editorial review',note,path),robots:{index:false,follow:true}};
  const metadata=pageMetadata(item.translation?.title||item.title,item.document?.briefing.overview.slice(0,160)||'A source-linked TBN briefing.',path);
  return {...metadata,...(!item.document?{robots:{index:false,follow:true}}:{}),openGraph:{...metadata.openGraph,type:'article' as const,...(item.document?.generatedAt?{publishedTime:item.document.generatedAt}:{})}};
 }
 // TBN authors the briefing; original reporting and its authors remain attributed separately.
 export function briefingSchema(item:Briefing,path:string){
- if(!item.document||briefingSearchNote(item.cid))return null;
+ if(!item.document||item.quality_issue||briefingSearchNote(item.cid))return null;
  const url=new URL(path,siteUrl).href;
  return {'@context':'https://schema.org','@type':'Article','@id':url+'#briefing',url,
  headline:item.translation?.title||item.title,description:item.document.briefing.overview,

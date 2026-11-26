@@ -1,3 +1,5 @@
+import {sourceLanguage} from './catalog';
+import {cleanFailureText} from './feed-safeguards';
 import {prostStoryId,correctProstDisplay} from './briefing-search-review';
 import {editorialBase,queueScoreSql} from './editorial-priority';
 import {rankingColumns} from './ranking-projection';
@@ -8,6 +10,9 @@ import { isSourcePassage } from "./grounding";
 import { z } from "zod";
 import { pool,tx } from "./db";
 import { HttpError, type Item } from "./model";
+export function sourceIsEnglish(item: Pick<Item, "source_id" | "owner_id">) {
+  return !item.owner_id && sourceLanguage(item.source_id) === "en";
+}
 export const translationKey = (item: Item) =>
   createHash("sha256")
     .update(
@@ -19,6 +24,13 @@ export const translationKey = (item: Item) =>
       ]),
     )
     .digest("hex");
+// Numeric claims must occur in the source text. This is a screening check,
+ // not a semantic accuracy judgment.
+export function translationNumbersSupported(original:{title:string;summary:string}, translated:{title?:string;summary?:string}) {
+  const numbers=(text:string)=>[...text.matchAll(/(?<![\p{L}\p{N}])\d+(?:[.,]\d+)*/gu)].map(m=>m[0]);
+  const permitted=new Set(numbers(original.title+' '+original.summary));
+  return numbers((translated.title||'')+' '+(translated.summary||'')).every(n=>permitted.has(n));
+}
 export const translationResultSchema = z.object({
   key: z.string().regex(/^[a-f0-9]{64}$/),
   lease: z.uuid(),
@@ -59,7 +71,7 @@ export async function translationStatus(keys: string[]) {
   ).rows;
 }
 export async function withTranslations(items: Item[]): Promise<Item[]> {
-  items = items.map(correctProstDisplay);
+  items = items.map(i => cleanFailureText(correctProstDisplay(i)));
   try {
     return await attachTranslations(items);
   } catch {
@@ -69,8 +81,8 @@ export async function withTranslations(items: Item[]): Promise<Item[]> {
 }
 async function attachTranslations(items: Item[]): Promise<Item[]> {
   // The public editorial worker only receives public-source text, never private curation or account data.
-  const candidates = items.filter((i) => !i.owner_id && i.id !== prostStoryId);
-  if (!candidates.length) return items;
+  const candidates = items.filter((i) => !i.owner_id && i.id !== prostStoryId && !sourceIsEnglish(i));
+  if (!candidates.length) return items.map(knownEnglish);
   const originals = (
     await pool().query(
       `SELECT ${rankingColumns} FROM items WHERE id=ANY($1::text[]) AND owner_id IS NULL`,
@@ -108,16 +120,22 @@ async function attachTranslations(items: Item[]): Promise<Item[]> {
       ],
     );
   return items.map((i) => {
-    if (!publicItems.includes(i)) return i;
+    if (!publicItems.includes(i)) return knownEnglish(i);
     const key = translationKey(i),
       row = found.get(key);
+    const supported = !row?.result || translationNumbersSupported({title:i.title,summary:i.summary||i.excerpt},row.result);
     return {
       ...i,
       translation_key: key,
-      translation_status: row?.status || "pending",
-      translation: row?.status === "done" ? row.result : undefined,
+      translation_status: supported ? row?.status || "pending" : "failed",
+      translation: supported && row?.status === "done" ? row.result : undefined,
     };
   });
+}
+function knownEnglish(i: Item): Item {
+  if (!sourceIsEnglish(i)) return i;
+  return {...i, translation_key:translationKey(i), translation_status:'done',
+    translation:{language:'en',model:'source language'}};
 }
 export async function claimTranslation() {return tx(async d=>{
   // A separate outbound worker can retry a failed item without blocking an edition.
@@ -146,13 +164,14 @@ export async function saveTranslation(
     const r=await d.query("UPDATE translations SET status='pending',attempts=greatest(0,attempts-1),lease=NULL,claimed_at=NULL,available_at=now()+interval '30 seconds' WHERE key=$1 AND lease=$2 AND status='working' AND claimed_at>now()-interval '40 minutes' RETURNING key",[b.key,b.lease]);
     if(!r.rowCount)throw new HttpError(409,'Translation lease is no longer active');await recordOutcome(d,b.lease,'deferred');return {ok:true};
   }
-  const result = b.error ? null : translatedResult(b, active.payload);
+  const rejected = !!b.error || (b.language !== 'en' && !translationNumbersSupported(active.payload, b));
+  const result = rejected ? null : translatedResult(b, active.payload);
   const r = await d.query(
     `UPDATE translations SET status=CASE WHEN $3::boolean THEN CASE WHEN attempts>=3 THEN 'failed' ELSE 'pending' END ELSE 'done' END,result=$4,completed_at=now(),available_at=CASE WHEN $3::boolean THEN now()+interval '5 minutes'*attempts ELSE available_at END WHERE key=$1 AND lease=$2 AND status='working' AND claimed_at>now()-interval '40 minutes' RETURNING key,status`,
-    [b.key, b.lease, !!b.error, result ? JSON.stringify(result) : null],
+    [b.key, b.lease, rejected, result ? JSON.stringify(result) : null],
   );
   if (!r.rowCount)
     throw new HttpError(409, "Translation lease is no longer active");
-  await recordOutcome(d,b.lease,b.error?(r.rows[0].status==='failed'?'review':'retry'):'translated');
+  await recordOutcome(d,b.lease,rejected?(r.rows[0].status==='failed'?'review':'retry'):'translated');
   return { ok: true };
  });}

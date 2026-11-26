@@ -860,6 +860,7 @@
   },
   {
     "id": "bbc-world",
+    "language": "en",
     "publisherFamily": "bbc",
     "name": "BBC World",
     "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
@@ -870,6 +871,7 @@
   },
   {
     "id": "bbc-business",
+    "language": "en",
     "publisherFamily": "bbc",
     "name": "BBC Business",
     "url": "https://feeds.bbci.co.uk/news/business/rss.xml",
@@ -880,6 +882,7 @@
   },
   {
     "id": "bbc-europe",
+    "language": "en",
     "publisherFamily": "bbc",
     "name": "BBC Europe",
     "url": "https://feeds.bbci.co.uk/news/world/europe/rss.xml",
@@ -899,6 +902,7 @@
   },
   {
     "id": "the-guardian-world",
+    "language": "en",
     "name": "The Guardian World",
     "url": "https://www.theguardian.com/world/rss",
     "homepage": "https://www.theguardian.com",
@@ -908,6 +912,7 @@
   },
   {
     "id": "the-guardian-economics",
+    "language": "en",
     "name": "The Guardian Economics",
     "url": "https://www.theguardian.com/business/economics/rss",
     "homepage": "https://www.theguardian.com",
@@ -917,6 +922,7 @@
   },
   {
     "id": "al-jazeera",
+    "language": "en",
     "name": "Al Jazeera",
     "url": "https://www.aljazeera.com/xml/rss/all.xml",
     "homepage": "https://www.aljazeera.com",
@@ -1269,6 +1275,7 @@
   },
   {
     "id": "propublica",
+    "language": "en",
     "name": "ProPublica",
     "url": "https://www.propublica.org/feeds/propublica/main",
     "homepage": "https://www.propublica.org/",
@@ -1431,6 +1438,7 @@
   },
   {
     "id": "techdirt",
+    "language": "en",
     "name": "Techdirt",
     "url": "https://www.techdirt.com/feed/",
     "homepage": "https://www.techdirt.com/",
@@ -1481,6 +1489,7 @@
   },
   {
     "id": "times-of-israel",
+    "language": "en",
     "name": "The Times of Israel",
     "url": "https://www.timesofisrael.com/feed/",
     "homepage": "https://www.timesofisrael.com/",
