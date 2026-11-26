@@ -1,3 +1,4 @@
+import {reviewedBriefingItems} from './briefing-semantic-review';
 import {failedEvidence,cleanFailureText} from './feed-safeguards';
 import {prostStoryId,prostBriefingCid,correctProstDisplay} from './briefing-search-review';
 import {archivedBriefingDisplay} from './briefing-versions';
@@ -5,13 +6,15 @@ import {pool} from './db';
 import {sourceIsEnglish,translationNumbersSupported,translationKey,translationStatus} from './translation';
 import {sourceEvidence,evidenceLabel} from './source-evidence';
 async function displayEntries(items:any[]){
- const prepared=items.map(raw=>{
+ const checked=await reviewedBriefingItems(items);
+ const prepared=checked.map(raw=>{
   const failed=failedEvidence(raw);
   const evidence=raw.document?.evidence||sourceEvidence(raw);
   const {source_context,...display}=raw;
   const item=cleanFailureText(correctProstDisplay({
    ...display,...(raw.cid&&raw.document?archivedBriefingDisplay(raw):{}),
-   ...(raw.cid===prostBriefingCid||failed?{document:undefined}:{}),
+   ...(raw.cid===prostBriefingCid||failed||!raw.briefing_semantic_approved?{document:undefined}:{}),
+   ...(!raw.briefing_semantic_approved?{quality_issue:'This generated briefing is awaiting editorial review of the source and meaning.'}:{}),
    ...(failed?{quality_issue:'The source feed returned an error message. This briefing is withheld pending review.'}:{}),
    evidence,evidence_label:evidenceLabel(evidence.kind),
   }));

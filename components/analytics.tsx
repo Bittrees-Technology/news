@@ -1,4 +1,5 @@
 "use client";
+import {BriefingSemanticReview} from './briefing-semantic-review';
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { call } from "@/lib/browser-api";
@@ -35,7 +36,7 @@ export function Analytics({ role }: { role: string }) {
   }, []);
   return (
     <>
-      {scores&&<><AnalyticsCoverage key={role+"coverage"}/><ProcessingStatus key={role}/><QualityReview key={role+"quality"}/><TranslationReview key={role+"translations"}/></>}
+      {scores&&<><AnalyticsCoverage key={role+"coverage"}/><ProcessingStatus key={role}/><QualityReview key={role+"quality"}/><TranslationReview key={role+"translations"}/><BriefingSemanticReview key={role+"briefing-semantics"}/></>}
       {error && (
         <p className="notice" role="alert">
           {error}

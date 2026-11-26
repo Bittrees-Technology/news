@@ -1,3 +1,4 @@
+import {briefingApprovedSql,englishSourceIds,reviewedBriefingItems} from './briefing-semantic-review';
 import {failedEvidence,failureSql,isFeedFailure} from './feed-safeguards';
 import {prostStoryId} from './briefing-search-review';
 import {queueScoreSql} from './editorial-priority';
@@ -18,13 +19,14 @@ export async function claimStory(input:unknown={}){const {phase}=z.object({phase
    FROM story_documents s JOIN items i ON i.id=s.item_id
    WHERE i.owner_id IS NULL AND s.cid IS NULL
    AND NOT ${failureSql("coalesce(nullif(i.source_context,''),i.excerpt)")}
+   AND (s.document IS NULL OR ${briefingApprovedSql('i','s.document','$4')})
    AND (s.document IS NOT NULL OR s.attempts<3 OR s.claimed_at<now()-interval '30 minutes')
    AND ($2='both' OR ($2='generation' AND s.document IS NULL) OR ($2='archive' AND s.document IS NOT NULL))
    AND s.available_at<=now() AND (s.claimed_at IS NULL OR s.claimed_at<now()-interval '30 minutes')
    ORDER BY (s.document IS NOT NULL) DESC,
      CASE WHEN (s.document IS NULL AND $1) OR (s.document IS NOT NULL AND $3) THEN coalesce(s.enqueued_at,i.fetched_at) END ASC NULLS LAST,
      (i.published_at>=now()-interval '24 hours') DESC,dispatch_priority DESC,i.published_at DESC,s.item_id
-   FOR UPDATE OF s SKIP LOCKED LIMIT 1`,[slots.generation===9,phase,slots.archive===9])).rows[0];
+   FOR UPDATE OF s SKIP LOCKED LIMIT 1`,[slots.generation===9,phase,slots.archive===9,englishSourceIds])).rows[0];
  if(!row)return null;
  const lane=row.document?'archive':'generation';
  slots[lane]=((slots[lane]||0)+1)%10;
@@ -46,10 +48,11 @@ export async function saveStory(input:unknown){return tx(async d=>{
  const payload={version:2,evidence:sourceEvidence(i),id:i.id,title:i.title,kind:i.kind,source:{url:i.url,license:sourceLicense(i.source_id),authors:i.authors,attribution:i.attribution||undefined,publication:i.publication||sourceName(i.source_id),publishedAt:i.published_at},briefing:b.briefing,model:b.model,generatedAt:new Date().toISOString(),url:`https://news.bittrees.org/story/${i.id}`,notice:'Bittrees briefing generated from publisher-provided feed evidence. Not the original full article; consult the linked source.'};
  const r=await d.query('UPDATE story_documents SET document=coalesce(document,$2),generated_at=coalesce(generated_at,now()),error=NULL,claimed_at=CASE WHEN $4 THEN NULL ELSE claimed_at END,lease=CASE WHEN $4 THEN NULL ELSE lease END,attempts=CASE WHEN $4 THEN 0 ELSE attempts END,available_at=CASE WHEN $4 THEN now() ELSE available_at END WHERE item_id=$1 AND cid IS NULL AND lease=$3 AND claimed_at>now()-interval \'30 minutes\' RETURNING item_id,document',[b.id,JSON.stringify(payload),b.lease,b.release]);if(!r.rowCount)throw new HttpError(409,'Briefing lease is no longer active');await recordOutcome(d,b.lease,'generated');return r.rows[0].document;
  });}
-export async function saveStoryCid(input:unknown){return tx(async d=>{const b=z.object({id:z.string().regex(/^[a-f0-9]{64}$/),lease:z.uuid(),cid:z.string().regex(/^b[a-z2-7]{30,120}$/)}).parse(input);const r=await d.query('UPDATE story_documents s SET cid=$2,pinned_at=now(),error=NULL FROM items i WHERE s.item_id=$1 AND i.id=s.item_id AND i.owner_id IS NULL AND s.document IS NOT NULL AND (s.cid IS NULL OR s.cid=$2) AND s.lease=$3 AND s.claimed_at>now()-interval \'30 minutes\' RETURNING s.item_id',[b.id,b.cid,b.lease]);if(!r.rowCount)throw new HttpError(404,'Public briefing not found');await d.query('INSERT INTO briefing_versions(short_id,cid,item_id,document) SELECT right(cid,20),cid,item_id,document FROM story_documents WHERE item_id=$1 ON CONFLICT(cid) DO NOTHING',[b.id]);await recordOutcome(d,b.lease,'archived');return {ok:true};});}
+export async function saveStoryCid(input:unknown){return tx(async d=>{const b=z.object({id:z.string().regex(/^[a-f0-9]{64}$/),lease:z.uuid(),cid:z.string().regex(/^b[a-z2-7]{30,120}$/)}).parse(input);const r=await d.query(`UPDATE story_documents s SET cid=$2,pinned_at=now(),error=NULL FROM items i WHERE s.item_id=$1 AND i.id=s.item_id AND i.owner_id IS NULL AND s.document IS NOT NULL AND ${briefingApprovedSql('i','s.document','$4')} AND (s.cid IS NULL OR s.cid=$2) AND s.lease=$3 AND s.claimed_at>now()-interval '30 minutes' RETURNING s.item_id`,[b.id,b.cid,b.lease,englishSourceIds]);if(!r.rowCount)throw new HttpError(404,'Public briefing not found');await d.query('INSERT INTO briefing_versions(short_id,cid,item_id,document) SELECT right(cid,20),cid,item_id,document FROM story_documents WHERE item_id=$1 ON CONFLICT(cid) DO NOTHING',[b.id]);await recordOutcome(d,b.lease,'archived');return {ok:true};});}
 
 export async function withBriefings<T extends {id:string;owner_id?:string|null}>(items:T[]){
  const rows=(await pool().query("SELECT s.item_id,s.document,i.title,i.kind,i.source_id,i.source_context,i.excerpt,i.fetched_at FROM story_documents s JOIN items i ON i.id=s.item_id WHERE s.item_id=ANY($1::text[]) AND i.owner_id IS NULL AND s.document IS NOT NULL",[items.map(i=>i.id)])).rows;
- const summaries=new Map(rows.filter(r=>!failedEvidence(r)).map(r=>[r.item_id,r.document.briefing.overview]));
+ const reviewed=await reviewedBriefingItems(rows.map(r=>({...r,id:r.item_id})));
+ const summaries=new Map(reviewed.filter(r=>r.briefing_semantic_approved&&!failedEvidence(r)).map(r=>[r.item_id,r.document.briefing.overview]));
  return items.map(i=>({...i,...(!i.owner_id&&i.id!==prostStoryId&&summaries.has(i.id)?{briefing_preview:summaries.get(i.id).slice(0,600)}:{})}));
 }
