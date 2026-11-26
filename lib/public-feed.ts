@@ -13,7 +13,7 @@ export async function feedDisplay(items:Item[]){
  return (await reviewedCoverage(items,'web')).map(i=>{
   const key=translationKey(i),row=found.get(key);
   const tags = articleTags(i);
-  return {...(i.coverage?{coverage:i.coverage}:{}),id:i.id,source_id:i.source_id,topic:tags[0],tags,kind:i.kind,title:i.title,url:i.url,excerpt:i.excerpt,summary:i.summary,summary_kind:i.summary_kind,published_at:i.published_at,observation_period:i.observation_period,translation_status:row?.status||'pending',translation:row?.status==='done'?row.result:undefined};
+  return {...(i.coverage?{coverage:i.coverage}:{}),id:i.id,source_id:i.source_id,authors:i.authors,topic:tags[0],tags,kind:i.kind,title:i.title,url:i.url,excerpt:i.excerpt,summary:i.summary,summary_kind:i.summary_kind,published_at:i.published_at,observation_period:i.observation_period,translation_status:row?.status||'pending',translation:row?.status==='done'?row.result:undefined};
  });
 }
 export async function publicFeedBatch(snapshot:string,before:string|null=null,category:FeedCategory='all',balanced=false){
@@ -28,7 +28,7 @@ export async function publicFeedBatch(snapshot:string,before:string|null=null,ca
  SELECT id,published_at FROM candidates WHERE (NOT $4::boolean OR kind<>'article' OR publisher_position<=2)
  AND ($2::text IS NULL OR (published_at,id)<(SELECT published_at,id FROM items WHERE id=$2 AND owner_id IS NULL))
  ORDER BY published_at DESC,id DESC LIMIT 31
- ) SELECT i.id,i.source_id,i.topic,i.tags,i.kind,i.title,i.url,i.excerpt,i.summary,i.summary_kind,i.published_at,i.observation_period
+ ) SELECT i.id,i.source_id,i.authors,i.topic,i.tags,i.kind,i.title,i.url,i.excerpt,i.summary,i.summary_kind,i.published_at,i.observation_period
  FROM selected x JOIN items i ON i.id=x.id ORDER BY x.published_at DESC,x.id DESC`,[snapshot,before,category,balanced,JSON.stringify(families)])).rows;
  const items=rows.slice(0,30);
  return {items:await feedDisplay(items),next:rows.length>30?items.at(-1).id:null,snapshot};

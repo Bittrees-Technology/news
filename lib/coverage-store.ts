@@ -43,7 +43,7 @@ export function checkedCoverage(edit:Edit,rows:Item[],version:number):Coverage {
       throw new HttpError(409,'A report changed or is unavailable. Review the current version.');
     const u=new URL(item.url);
     if(!['http:','https:'].includes(u.protocol)||u.username||u.password)throw new HttpError(400,'Invalid report URL.');
-    return {id:r.id,outlet:sourceName(item.source_id),title:item.title,url:u.href,
+    return {id:r.id,sourceId:item.source_id,outlet:sourceName(item.source_id),title:item.title,url:u.href,
       publishedAt:new Date(item.published_at).toISOString(),authors:item.authors||[]};
   });
   if(new Set(edit.reports.map(r=>publisherFamily(lookup.get(r.id)!))).size<2)throw new HttpError(400,'Select reporting from at least two outlets.');

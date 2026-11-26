@@ -16,6 +16,7 @@ import {feedOrder,variedPages} from "@/lib/feed-order";
 import {useLiveLeads} from '@/lib/use-live-leads';
 import Link from "next/link";
 import { call } from "./client";
+import {SourceCredit} from "./source-credit";
 import { sourceName, topics as catalogTopics } from "@/lib/catalog";
 import {
   countries,
@@ -481,6 +482,7 @@ export function Newspaper({
                   {i.translation?.title || i.title}
                 </a>
               </h2>
+              <SourceCredit sourceId={i.source_id} authors={i.authors}/>
               <p>{i.translation?.summary ?? i.summary ?? i.excerpt}</p></>}
               {i.translation?.language && i.translation.language !== "en" && (
                 <details className="translation-original">

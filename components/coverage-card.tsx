@@ -1,3 +1,4 @@
+import {SourceCredit} from './source-credit';
 import type {Coverage} from '@/lib/coverage';
 export function CoverageCard({event}:{event:Coverage}) {
   return <>
@@ -12,7 +13,8 @@ export function CoverageCard({event}:{event:Coverage}) {
       <ul>{event.reports.map(r=><li key={r.id}><a href={r.url} rel="noopener noreferrer">{r.title}</a>
         {' · '}{r.outlet}{r.authors.length?' · '+r.authors.join(', '):''}{' · '}
         <time dateTime={r.publishedAt}>{r.publishedAt.slice(0,16).replace('T',' ')} UTC</time>{' · '}
-        <a href={'/story/'+r.id}>Individual briefing</a></li>)}</ul>
+        <a href={'/story/'+r.id}>Individual briefing</a>{' '}
+        <SourceCredit sourceId={r.sourceId}/></li>)}</ul>
     </details>
   </>;
 }

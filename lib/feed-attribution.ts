@@ -1,7 +1,8 @@
 import Parser from 'rss-parser';
 // Keep repeated RSS/Atom bylines; the parser's defaults retain only the first.
-type AttributionEntry={tbnAuthors?:unknown;tbnCreators?:unknown;author?:unknown;creator?:unknown;'dc:creator'?:unknown;'content:encodedSnippet'?:string};
+type AttributionEntry={tbnDescription?:unknown;tbnAuthors?:unknown;tbnCreators?:unknown;author?:unknown;creator?:unknown;'dc:creator'?:unknown;'content:encodedSnippet'?:string};
 export const feedParser=new Parser<Record<string,unknown>,AttributionEntry>({customFields:{item:[
+ ['description','tbnDescription'],
  ['author','tbnAuthors',{keepArray:true}],
  ['dc:creator','tbnCreators',{keepArray:true}],
 ]}});
