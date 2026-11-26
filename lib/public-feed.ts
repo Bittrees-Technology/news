@@ -1,3 +1,4 @@
+import {prostStoryId,correctProstDisplay} from './briefing-search-review';
 import {reviewedCoverage} from './coverage-store';
 import {articleTags} from './tags';
 import {allSources} from './catalog';
@@ -10,10 +11,11 @@ export type FeedPage={next:string|null;snapshot:string;leadIds:string[];balanced
 export async function feedDisplay(items:Item[]){
  const found=new Map((await translationStatus(items.map(translationKey))).map(row=>[row.key,row]));
  // Explicit projection: no source body, model payload or account data in the feed.
- return (await reviewedCoverage(items,'web')).map(i=>{
+ return (await reviewedCoverage(items,'web')).map(raw=>{
+  const i=correctProstDisplay(raw);
   const key=translationKey(i),row=found.get(key);
   const tags = articleTags(i);
-  return {...(i.coverage?{coverage:i.coverage}:{}),id:i.id,source_id:i.source_id,authors:i.authors,topic:tags[0],tags,kind:i.kind,title:i.title,url:i.url,excerpt:i.excerpt,summary:i.summary,summary_kind:i.summary_kind,published_at:i.published_at,observation_period:i.observation_period,translation_status:row?.status||'pending',translation:row?.status==='done'?row.result:undefined};
+  return {...(i.coverage?{coverage:i.coverage}:{}),id:i.id,source_id:i.source_id,authors:i.authors,topic:tags[0],tags,kind:i.kind,title:i.title,url:i.url,excerpt:i.excerpt,summary:i.summary,summary_kind:i.summary_kind,published_at:i.published_at,observation_period:i.observation_period,translation_status:row?.status||'pending',translation:row?.status==='done' && i.id!==prostStoryId?row.result:undefined};
  });
 }
 export async function publicFeedBatch(snapshot:string,before:string|null=null,category:FeedCategory='all',balanced=false){

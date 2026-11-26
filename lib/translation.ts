@@ -1,3 +1,4 @@
+import {prostStoryId,correctProstDisplay} from './briefing-search-review';
 import {editorialBase,queueScoreSql} from './editorial-priority';
 import {rankingColumns} from './ranking-projection';
 import {recordClaim,recordOutcome} from "./job-ledger";
@@ -58,6 +59,7 @@ export async function translationStatus(keys: string[]) {
   ).rows;
 }
 export async function withTranslations(items: Item[]): Promise<Item[]> {
+  items = items.map(correctProstDisplay);
   try {
     return await attachTranslations(items);
   } catch {
@@ -67,7 +69,7 @@ export async function withTranslations(items: Item[]): Promise<Item[]> {
 }
 async function attachTranslations(items: Item[]): Promise<Item[]> {
   // The public editorial worker only receives public-source text, never private curation or account data.
-  const candidates = items.filter((i) => !i.owner_id);
+  const candidates = items.filter((i) => !i.owner_id && i.id !== prostStoryId);
   if (!candidates.length) return items;
   const originals = (
     await pool().query(
