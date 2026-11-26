@@ -31,3 +31,9 @@ test('unreviewed translations do not enter English digests',()=>{
  assert.deepEqual(englishDigestItems([candidate]),[]);
  assert.equal(englishDigestItems([{...candidate,translation_reviewed:true}])[0].title,result.title);
 });
+
+test('language recognition requires review for unclassified sources',()=>{
+ const recognized={language:'en',model:'fixture'};
+ assert.equal(isTranslationApproved({key,payload,result:recognized}),false);
+ assert.equal(isTranslationApproved({key,payload,result:recognized,review_category:'translation_approved',review_note:JSON.stringify({fingerprint:translationFingerprint(key,payload,recognized)})}),true);
+});

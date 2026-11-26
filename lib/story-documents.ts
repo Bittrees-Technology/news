@@ -1,3 +1,4 @@
+import {briefingLooksPortuguese,looksPortuguese} from './language-guard';
 import {briefingApprovedSql,englishSourceIds,reviewedBriefingItems} from './briefing-semantic-review';
 import {failedEvidence,failureSql,isFeedFailure} from './feed-safeguards';
 import {prostStoryId} from './briefing-search-review';
@@ -44,6 +45,7 @@ export async function saveStory(input:unknown){return tx(async d=>{
  const b=z.object({id:z.string().regex(/^[a-f0-9]{64}$/),lease:z.uuid(),briefing:briefingSchema,release:z.boolean().default(false),model:z.string().max(100)}).parse(input);
  const i=(await d.query('SELECT * FROM items WHERE id=$1 AND owner_id IS NULL',[b.id])).rows[0];
  if(!i)throw new HttpError(404,'Public story not found');
+ if(briefingLooksPortuguese(b.briefing))throw new HttpError(422,'Briefing must be in English; output held for review.');
  if(isFeedFailure(i.source_context?.trim() || i.excerpt)) throw new HttpError(422,'Source evidence is an error message; briefing held for review');
  const payload={version:2,evidence:sourceEvidence(i),id:i.id,title:i.title,kind:i.kind,source:{url:i.url,license:sourceLicense(i.source_id),authors:i.authors,attribution:i.attribution||undefined,publication:i.publication||sourceName(i.source_id),publishedAt:i.published_at},briefing:b.briefing,model:b.model,generatedAt:new Date().toISOString(),url:`https://news.bittrees.org/story/${i.id}`,notice:'Bittrees briefing generated from publisher-provided feed evidence. Not the original full article; consult the linked source.'};
  const r=await d.query('UPDATE story_documents SET document=coalesce(document,$2),generated_at=coalesce(generated_at,now()),error=NULL,claimed_at=CASE WHEN $4 THEN NULL ELSE claimed_at END,lease=CASE WHEN $4 THEN NULL ELSE lease END,attempts=CASE WHEN $4 THEN 0 ELSE attempts END,available_at=CASE WHEN $4 THEN now() ELSE available_at END WHERE item_id=$1 AND cid IS NULL AND lease=$3 AND claimed_at>now()-interval \'30 minutes\' RETURNING item_id,document',[b.id,JSON.stringify(payload),b.lease,b.release]);if(!r.rowCount)throw new HttpError(409,'Briefing lease is no longer active');await recordOutcome(d,b.lease,'generated');return r.rows[0].document;
@@ -53,6 +55,6 @@ export async function saveStoryCid(input:unknown){return tx(async d=>{const b=z.
 export async function withBriefings<T extends {id:string;owner_id?:string|null}>(items:T[]){
  const rows=(await pool().query("SELECT s.item_id,s.document,i.title,i.kind,i.source_id,i.source_context,i.excerpt,i.fetched_at FROM story_documents s JOIN items i ON i.id=s.item_id WHERE s.item_id=ANY($1::text[]) AND i.owner_id IS NULL AND s.document IS NOT NULL",[items.map(i=>i.id)])).rows;
  const reviewed=await reviewedBriefingItems(rows.map(r=>({...r,id:r.item_id})));
- const summaries=new Map(reviewed.filter(r=>r.briefing_semantic_approved&&!failedEvidence(r)).map(r=>[r.item_id,r.document.briefing.overview]));
+ const summaries=new Map(reviewed.filter(r=>r.briefing_semantic_approved&&!failedEvidence(r)&&!looksPortuguese(r.document.briefing.overview)).map(r=>[r.item_id,r.document.briefing.overview]));
  return items.map(i=>({...i,...(!i.owner_id&&i.id!==prostStoryId&&summaries.has(i.id)?{briefing_preview:summaries.get(i.id).slice(0,600)}:{})}));
 }

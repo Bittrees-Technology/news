@@ -1,3 +1,4 @@
+import {briefingLooksPortuguese} from './language-guard';
 import {randomUUID} from 'node:crypto';
 import {z} from 'zod';
 import {allSources} from './catalog';
@@ -28,6 +29,7 @@ export async function reviewBriefingSemantics(actor:string,input:unknown) {
   const row=(await d.query(`SELECT i.title,i.source_context,i.excerpt,s.document,${briefingFingerprintSql('i','s.document')} AS fingerprint FROM story_documents s JOIN items i ON i.id=s.item_id WHERE i.id=$1 AND i.owner_id IS NULL AND s.document IS NOT NULL FOR UPDATE OF i,s`,[b.id])).rows[0];
   if(!row)throw new HttpError(404,'Briefing is unavailable for review');
   if(row.fingerprint!==b.fingerprint)throw new HttpError(409,'The source or briefing changed. Reload before reviewing.');
+  if(b.decision==='approve'&&briefingLooksPortuguese(row.document?.briefing))throw new HttpError(422,'The briefing appears to be Portuguese; English review is required.');
   if(b.decision==='approve'&&isFeedFailure(row.source_context?.trim()||row.excerpt))throw new HttpError(422,'The source is an error message and cannot support this briefing.');
   await d.query(`INSERT INTO quality_reviews(task,artifact_id,actor,category,note) VALUES('briefing_semantics',$1,$2,$3,$4) ON CONFLICT(task,artifact_id) DO UPDATE SET actor=$2,category=$3,note=$4,reviewed_at=now()`,[b.id,actor,b.decision==='approve'?'briefing_approved':'briefing_rejected',b.fingerprint+':'+b.note]);
   await d.query("INSERT INTO news_staff_audit(id,actor,action,detail) VALUES($1,$2,'review_briefing_semantics',$3)",[randomUUID(),actor,JSON.stringify({item_id:b.id,fingerprint:b.fingerprint,decision:b.decision,note:b.note})]);

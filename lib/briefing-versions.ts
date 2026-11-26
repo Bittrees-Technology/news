@@ -1,3 +1,4 @@
+import {englishReaderItem} from './english-reader';
 import {reviewedBriefingItems} from './briefing-semantic-review';
 import {failedEvidence,cleanFailureText} from './feed-safeguards';
 import {sourceIsEnglish,translationKey,translationNumbersSupported,translationStatus} from './translation';
@@ -14,11 +15,11 @@ export async function briefingVersion(shortId:string){
  const item=cleanFailureText(correctProstDisplay(archivedBriefingDisplay(row)));
  // Match the frozen title, never a newer item title. Read cached output only.
  const translated=(await translationStatus([translationKey(item)])).find(row=>row.status==='done');
- if(item.id!==prostStoryId && !sourceIsEnglish(item) && translated?.result?.title && translationNumbersSupported({title:item.title,summary:item.summary||item.excerpt},translated.result))item.translation={title:translated.result.title,language:translated.result.language};
+ if(item.id!==prostStoryId && !sourceIsEnglish(item) && translated?.result && translationNumbersSupported({title:item.title,summary:item.summary||item.excerpt},translated.result)){item.translation=translated.result;item.translation_status='done';item.translation_reviewed=true;item.translation_key=translationKey(item);}
  if(failed) item.quality_issue="The source feed returned an error message. This briefing is withheld pending review.";
  if(!checked.briefing_semantic_approved) item.quality_issue="This generated briefing is awaiting editorial review of the source and meaning.";
  if(failed || item.cid===prostBriefingCid || !checked.briefing_semantic_approved) item.document=undefined;
- return item;
+ return englishReaderItem(item);
 }
 export function archivedBriefingDisplay(row:any){
  const d=row.document;

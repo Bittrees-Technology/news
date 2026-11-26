@@ -1,3 +1,4 @@
+import {englishReaderItem} from './english-reader';
 import {cleanFailureText} from './feed-safeguards';
 import {prostStoryId,correctProstDisplay} from './briefing-search-review';
 import {reviewedCoverage} from './coverage-store';
@@ -16,7 +17,7 @@ export async function feedDisplay(items:Item[]){
   const i=cleanFailureText(correctProstDisplay(raw));
   const key=translationKey(i),row=found.get(key);
   const tags = articleTags(i);
-  return {...(i.coverage?{coverage:i.coverage}:{}),id:i.id,source_id:i.source_id,authors:i.authors,topic:tags[0],tags,kind:i.kind,title:i.title,url:i.url,excerpt:i.excerpt,summary:i.summary,summary_kind:i.summary_kind,published_at:i.published_at,observation_period:i.observation_period,translation_status:row?.status||'pending',translation:row?.status==='done' && row.result && i.id!==prostStoryId && !sourceIsEnglish(i) && translationNumbersSupported({title:i.title,summary:i.summary||i.excerpt},row.result)?row.result:undefined};
+  return englishReaderItem({...(i.coverage?{coverage:i.coverage}:{}),id:i.id,source_id:i.source_id,authors:i.authors,topic:tags[0],tags,kind:i.kind,title:i.title,url:i.url,excerpt:i.excerpt,summary:i.summary,summary_kind:i.summary_kind,published_at:i.published_at,observation_period:i.observation_period,translation_key:key,translation_reviewed:row?.status==='done'&&!!row.result,translation_status:row?.status||'pending',translation:row?.status==='done' && row.result && i.id!==prostStoryId && !sourceIsEnglish(i) && translationNumbersSupported({title:i.title,summary:i.summary||i.excerpt},row.result)?row.result:undefined} as Item);
  });
 }
 export async function publicFeedBatch(snapshot:string,before:string|null=null,category:FeedCategory='all',balanced=false){

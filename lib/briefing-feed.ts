@@ -1,3 +1,4 @@
+import {englishReaderItem} from './english-reader';
 import {reviewedBriefingItems} from './briefing-semantic-review';
 import {failedEvidence,cleanFailureText} from './feed-safeguards';
 import {prostStoryId,prostBriefingCid,correctProstDisplay} from './briefing-search-review';
@@ -26,7 +27,7 @@ async function displayEntries(items:any[]){
   const translation=row?.status==='done' && row.result && i.id!==prostStoryId &&
    !sourceIsEnglish(i) && translationNumbersSupported({title:i.title,summary:i.summary||i.excerpt},row.result)
    ? row.result : undefined;
-  return {...i,translation,translation_status:row?.status};
+  return englishReaderItem({...i,translation_key:translationKey(i),translation_reviewed:row?.status==='done'&&!!row.result,translation,translation_status:row?.status});
  });
 }
 export async function briefingBatch(before:string|null=null,selected:string|null=null,snapshot=new Date().toISOString()):Promise<{entries:any[];next:string|null;snapshot:string;selectedId?:string}>{

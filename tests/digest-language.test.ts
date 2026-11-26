@@ -18,6 +18,6 @@ test("pending, failed, unavailable, malformed and stale translations cannot leak
 });
 test("verified English original keeps its wording and metadata",()=>{
  const item={...source,title:"English headline",summary:"English summary"};
- const verified={...item,translation_key:translationKey(item),translation_status:"done",translation:{language:"en",model:"test"}};
+ const verified={...item,translation_key:translationKey(item),translation_status:"done",translation_reviewed:true,translation:{language:"en",model:"test"}};
  assert.deepEqual(englishDigestItems([verified]),[verified]);
 });
