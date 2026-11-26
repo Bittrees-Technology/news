@@ -142,14 +142,25 @@ function isBrazilEducationReport(link: URL, authors: string[]) {
     authors.every(name => staffByline.test(name) && !/\b(?:Reuters|AFP|Associated Press)\b/iu.test(name));
 }
 
+// This publisher syndicates a plain subheadline, sometimes followed by a photo.
+function linkingSubheadline(description: unknown) {
+  if (typeof description !== 'string') return '';
+  const text = description.replace(/<figure\b[^>]*>[\s\S]*?<\/figure>\s*$/i, '').trim();
+  if (text.length > 400 || /<[^>]+>|[\r\n]/.test(text)) return '';
+  return text;
+}
+
 export async function rssItems(s: Source, body: string, now: string, owner?: string, catalogued?: Source) {
   const feed = await parser.parseString(body);
   const items: Item[] = [];
   for (const entry of (feed.items || []).slice(0, 15)) {
     if (!entry.link || !entry.title) continue;
     const date = entry.isoDate || entry.pubDate;
+    const syndicated = catalogued?.id === 'times-of-israel'
+      ? linkingSubheadline(entry.tbnDescription)
+      : entry.tbnDescription ? entry.contentSnippet : entry.summary;
     const evidence = catalogued?.feedDescriptionOnly
-      ? clean((entry.tbnDescription ? entry.contentSnippet : entry.summary) || "", 1200)
+      ? clean(syndicated || "", 1200)
       : entry["content:encodedSnippet"] || entry.contentSnippet || entry.summary || entry.content || "";
     const row = item(s, entry.title, entry.link, evidence, date || now, owner);
     if (!row) continue;
@@ -164,6 +175,8 @@ export async function rssItems(s: Source, body: string, now: string, owner?: str
       if (!date || age < 0 || age >= 14 * 86400000 || !row.excerpt ||
         link.username || link.password || link.origin !== new URL(catalogued.homepage).origin) continue;
       if (catalogued.id === 'agencia-brasil-education' && !isBrazilEducationReport(link, row.authors)) continue;
+      if (catalogued.id === 'factly' && (entry.categories || []).some(c => /^videos?$/i.test(String(c)))) continue;
+      if (catalogued.id === 'techdirt' && /^(?:daily deals?|sponsored(?: post)?):/i.test(row.title)) continue;
       if (items.some(i => i.id === row.id)) continue;
     }
     items.push(row);
