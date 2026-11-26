@@ -1,3 +1,4 @@
+import {prostStoryId} from './briefing-search-review';
 import {queueScoreSql} from './editorial-priority';
 import {recordClaim,recordOutcome} from "./job-ledger";
 import {sourceEvidence} from "./source-evidence";
@@ -47,5 +48,5 @@ export async function saveStoryCid(input:unknown){return tx(async d=>{const b=z.
 export async function withBriefings<T extends {id:string;owner_id?:string|null}>(items:T[]){
  const rows=(await pool().query("SELECT s.item_id,s.document FROM story_documents s JOIN items i ON i.id=s.item_id WHERE s.item_id=ANY($1::text[]) AND i.owner_id IS NULL AND s.document IS NOT NULL",[items.map(i=>i.id)])).rows;
  const summaries=new Map(rows.map(r=>[r.item_id,r.document.briefing.overview]));
- return items.map(i=>({...i,...(!i.owner_id&&summaries.has(i.id)?{briefing_preview:summaries.get(i.id).slice(0,600)}:{})}));
+ return items.map(i=>({...i,...(!i.owner_id&&i.id!==prostStoryId&&summaries.has(i.id)?{briefing_preview:summaries.get(i.id).slice(0,600)}:{})}));
 }

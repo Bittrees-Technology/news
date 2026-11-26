@@ -1,10 +1,11 @@
+import {prostStoryId,correctProstDisplay} from './briefing-search-review';
 import {archivedBriefingDisplay} from './briefing-versions';
 import {pool} from './db';
 import {translationKey,translationStatus} from './translation';
 import {sourceEvidence,evidenceLabel} from './source-evidence';
 async function displayEntries(items:any[]){
  const translations=new Map((await translationStatus(items.map(translationKey))).map(r=>[r.key,r]));
- return items.map(i=>{const t=translations.get(translationKey(i)),evidence=i.document?.evidence||sourceEvidence(i);const {source_context,...display}=i;return {...display,...(i.cid&&i.document?archivedBriefingDisplay(i):{}),translation:t?.status==='done'?t.result:undefined,evidence,evidence_label:evidenceLabel(evidence.kind)};});
+ return items.map(raw=>{const i=correctProstDisplay(raw);const t=translations.get(translationKey(i)),evidence=i.document?.evidence||sourceEvidence(i);const {source_context,...display}=i;return correctProstDisplay({...display,...(i.cid&&i.document?archivedBriefingDisplay(i):{}),translation:t?.status==='done' && i.id!==prostStoryId?t.result:undefined,evidence,evidence_label:evidenceLabel(evidence.kind)});});
 }
 export async function briefingBatch(before:string|null=null,selected:string|null=null,snapshot=new Date().toISOString()):Promise<{entries:any[];next:string|null;snapshot:string;selectedId?:string}>{
  // Direct links select an identity, never just a position in the completed queue.

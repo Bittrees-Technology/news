@@ -43,7 +43,7 @@ test('an editorial note and search hold apply only to the reviewed briefing vers
   assert.equal(briefingMetadata(later,canonical).robots,undefined);
   assert.ok(briefingSchema(later,canonical));
  }
- assert.equal(heldBriefingCids.length,6);
+ assert.equal(heldBriefingCids.length,7);
 });
 test('sitemap selects only public completed stories and published snapshot feeds',async()=>{
  const oldUrl=process.env.DATABASE_URL;process.env.DATABASE_URL="postgresql://unused";
