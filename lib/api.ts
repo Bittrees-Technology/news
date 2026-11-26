@@ -669,7 +669,7 @@ export async function api(r: Request) {
       await saveAccountPreferences(a!.id,p);
       return json({ ok: true });
     }
-    if (path === "feed" && method === "GET") {
+    if ((path === "personal-feed" || path === "feed") && method === "GET") {
       const c = await accountCandidates(a!.id);
       return json(
         await withTranslations(
