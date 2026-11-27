@@ -1,3 +1,4 @@
+import {briefingSchema} from './story-documents';
 import {englishReaderItem} from './english-reader';
 import {reviewedBriefingItems} from './briefing-semantic-review';
 import {failedEvidence,cleanFailureText} from './feed-safeguards';
@@ -18,8 +19,9 @@ export async function briefingVersion(shortId:string){
  if(item.id!==prostStoryId && !sourceIsEnglish(item) && translated?.result && translationNumbersSupported({title:item.title,summary:item.summary||item.excerpt},translated.result)){item.translation=translated.result;item.translation_status='done';item.translation_reviewed=true;item.translation_key=translationKey(item);}
  if(failed) item.quality_issue="The source feed returned an error message. This briefing is withheld pending review.";
  if(!checked.briefing_semantic_approved) item.quality_issue="This generated briefing is awaiting editorial review of the source and meaning.";
- if(failed || item.cid===prostBriefingCid || !checked.briefing_semantic_approved) item.document=undefined;
- return englishReaderItem(item);
+ if(failed || item.cid===prostBriefingCid || !checked.briefing_semantic_approved || row.document?.evidence?.revision!==sourceEvidence(row).revision || !briefingSchema.safeParse(row.document?.briefing).success) return null;
+ const display=englishReaderItem(item);
+ return display.publication_ready&&display.document&&!display.quality_issue ? display : null;
 }
 export function archivedBriefingDisplay(row:any){
  const d=row.document;

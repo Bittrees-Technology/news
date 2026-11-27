@@ -97,7 +97,7 @@ export function Broadsheet({
                 </p>
                 <SourceCredit sourceId={i.source_id} authors={i.authors}/>
                 <p className="paper-copy">
-                  {i.translation?.summary ?? i.summary ?? i.excerpt}
+                  {i.briefing_preview || i.translation?.summary || i.summary || i.excerpt}
                 </p>
                 {!preview && <ArticleFeedback id={i.id} />}
                 {!preview&&!i.owner_id&&<a href={`/story/${i.id}`}>Briefings ↗</a>}

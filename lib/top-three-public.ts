@@ -1,3 +1,4 @@
+import {completedBriefings} from './completed-briefings';
 import {reviewedCoverage} from './coverage-store';
 import {groupCoverage} from './coverage';
 import {unstable_cache} from 'next/cache';
@@ -21,14 +22,16 @@ export const publicInterestLearning=unstable_cache(readInterestLearning,['top-th
 export async function publicTopThree(preference:EditionPreference,at=new Date()){
  const snapshot=new Date(Math.floor(+at/60000)*60000).toISOString();
  const [items,learning]=await Promise.all([liveCandidates(snapshot),publicInterestLearning().catch(()=>undefined)]);
- const result=selectTopThree(items,preference,new Date(snapshot),learning);
- return {...result,learning:{available:!!learning,windowDays:30,minReaders:5,minTopicVotes:20,maxAdjustment:6},items:await feedDisplay(result.items)};
+ const shortlist=rankEditorialCandidates(items,preference,new Date(snapshot),learning).slice(0,120);
+ const display=await feedDisplay(shortlist),byId=new Map(display.map(i=>[i.id,i]));
+ const result=selectTopThree(shortlist.filter(i=>byId.has(i.id)),preference,new Date(snapshot),learning);
+ return {...result,learning:{available:!!learning,windowDays:30,minReaders:5,minTopicVotes:20,maxAdjustment:6},items:result.items.map(i=>byId.get(i.id)!)};
 }
 
 export async function publicDailyEmailLeads(preference:EditionPreference,at:Date) {
  const snapshot=new Date(Math.floor(+at/60000)*60000).toISOString();
  const [items,learning]=await Promise.all([liveCandidates(snapshot),publicInterestLearning().catch(()=>undefined)]);
- const shortlist=rankEditorialCandidates(items,preference,new Date(snapshot),learning).slice(0,50);
+ const shortlist=await completedBriefings(rankEditorialCandidates(items,preference,new Date(snapshot),learning).slice(0,120));
  const receipts=new Map((await translationStatus(shortlist.map(translationKey))).map(r=>[r.key,r]));
  return readyDailyLeads(await reviewedCoverage(shortlist,'email'),receipts);
 }

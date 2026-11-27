@@ -1,4 +1,4 @@
-import {englishReaderItems} from './english-reader';
+import {publishedReaderItems} from './completed-briefings';
 import {briefingSemanticReviewQueue,reviewBriefingSemantics} from './briefing-semantic-review';
 import {translationReviewQueue,reviewTranslation} from './translation-review';
 import {coverageHistory,reviewDesk,saveCoverage} from './coverage-store';
@@ -685,7 +685,7 @@ export async function api(r: Request) {
     if ((path === "personal-feed" || path === "feed") && method === "GET") {
       const c = await accountCandidates(a!.id);
       return json(
-        englishReaderItems(await withTranslations(
+        await publishedReaderItems(await withTranslations(
           scoreVisibility(
             await rankedItems(c.items, c.preferences, c.profile, a!.id),
             a!.role,
@@ -735,7 +735,7 @@ export async function api(r: Request) {
       );
     if (path === "saved" && method === "GET")
       return json(
-        englishReaderItems(await withTranslations(
+        await publishedReaderItems(await withTranslations(
           (
             await pool().query(
               "SELECT i.* FROM reading r JOIN items i ON i.id=r.item_id WHERE r.account_id=$1 AND r.saved=true AND (i.owner_id IS NULL OR i.owner_id=$1) ORDER BY i.published_at DESC LIMIT 500",

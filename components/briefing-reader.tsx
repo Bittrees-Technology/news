@@ -11,7 +11,7 @@ export function BriefingReader({initial}:{initial:Batch}){
  const [reviewAllowed,setReviewAllowed]=useState(false);
  const [flagNote,setFlagNote]=useState('');const flagDialog=useRef<HTMLDialogElement>(null);
  const [flagged,setFlagged]=useState(false),[flagReady,setFlagReady]=useState(false),[flagBusy,setFlagBusy]=useState(false);
- const [items,setItems]=useState(initial.entries),[next,setNext]=useState(initial.next);
+ const [items,setItems]=useState(initial.entries),[next,setNext]=useState(initial.next),[emptyBatch,setEmptyBatch]=useState(false);
  const [reading,setReading]=useState<ReadingState>({}),[signed,setSigned]=useState(false),[ready,setReady]=useState(false),[busy,setBusy]=useState<string|null>(null),[error,setError]=useState(''),[skipped,setSkipped]=useState<string[]>([]),[loading,setLoading]=useState(false),[loadError,setLoadError]=useState('');
  const fetching=useRef(false),heading=useRef<HTMLHeadingElement>(null);
  useEffect(()=>{
@@ -22,7 +22,7 @@ export function BriefingReader({initial}:{initial:Batch}){
  },[]);
  const loadMore=useCallback(async()=>{
   if(!next||fetching.current)return;fetching.current=true;setLoading(true);setLoadError('');
-  try{const response=await fetch(`/api/briefings?before=${next}&snapshot=${encodeURIComponent(initial.snapshot)}`,{cache:'no-store'});if(!response.ok)throw Error();const batch:Batch=await response.json();setItems(old=>[...new Map([...old,...batch.entries].map(i=>[i.id,i])).values()]);setNext(batch.next);}
+  try{const response=await fetch(`/api/briefings?before=${next}&snapshot=${encodeURIComponent(initial.snapshot)}`,{cache:'no-store'});if(!response.ok)throw Error();const batch:Batch=await response.json();setItems(old=>[...new Map([...old,...batch.entries].map(i=>[i.id,i])).values()]);setNext(batch.next);setEmptyBatch(batch.entries.length===0);}
   catch{setLoadError('Could not load older briefings. Try again.');}
   finally{fetching.current=false;setLoading(false);}
  },[next,initial.snapshot]);
@@ -45,8 +45,8 @@ export function BriefingReader({initial}:{initial:Batch}){
  },[ready,current?.id,current?.cid]);
  // Fetch older batches only as the reader approaches the end; never poll for new posts.
  useEffect(()=>{
-  if(ready&&!loadError&&next&&visible.length<3)void loadMore();
- },[ready,loadError,next,visible.length,loadMore]);
+  if(ready&&!loadError&&!emptyBatch&&next&&visible.length>0&&visible.length<3)void loadMore();
+ },[ready,loadError,emptyBatch,next,visible.length,loadMore]);
  async function advance(id:string,mark:boolean){
   if(busy)return;setBusy(id);setError('');
   try{
@@ -98,6 +98,7 @@ export function BriefingReader({initial}:{initial:Batch}){
    </div>}
    {!current&&!next&&!loading&&<p>You’re caught up. Reload the page to check for new briefings.</p>}
    {!current&&loading&&<p role="status">Loading older briefings…</p>}
+   {next&&!loading&&!loadError&&(!current||emptyBatch)&&<button onClick={()=>void loadMore()}>Load older briefings</button>}
    {loadError&&<p role="alert">{loadError}</p>}
    {loadError&&next&&<button disabled={loading} onClick={()=>void loadMore()}>Retry loading older briefings</button>}
   </>

@@ -1,8 +1,9 @@
 import {SourceCredit} from './source-credit';
 import type {Coverage} from '@/lib/coverage';
-export function CoverageCard({event}:{event:Coverage}) {
+export function CoverageCard({event,briefing}:{event:Coverage;briefing?:string}) {
   return <>
     <h2>{event.title}</h2>
+    {!event.claims.length&&briefing&&<p>{briefing}</p>}
     {event.claims.map((claim,n)=><p key={n}>{claim.text}{' '}
       {claim.reports.map(id=>{
         const report=event.reports.find(r=>r.id===id)!;
