@@ -1,3 +1,4 @@
+import {completedBriefings} from './completed-briefings';
 import { withTranslations } from "./translation";
 import { englishDigestItems } from "./digest-language";
 import { newspaperEmail, coverageText, creditText, compactSummary, digestArticles } from "./newspaper-email";
@@ -45,7 +46,7 @@ export async function queueDigests(now = new Date()) {
       d.kind === "email" ? 50 : prefs.length,
     );
     const selected = d.kind === "email"
-      ? englishDigestItems(await withTranslations(candidates)).slice(0, 3)
+      ? englishDigestItems(await withTranslations(await completedBriefings(candidates))).slice(0, 3)
       : candidates;
     if (!selected.length) continue;
     const unsubscribe = `${process.env.APP_URL}/unsubscribe?id=${d.id}&token=${unsubscribeToken(d.id)}`;
@@ -56,7 +57,7 @@ export async function queueDigests(now = new Date()) {
       selected
         .map(
           (i) =>
-            `${i.title}\n${d.kind === "email" ? compactSummary(i.summary || i.excerpt) : i.summary || i.excerpt}\n${i.url}${creditText(i.source_id,i.authors)}`,
+            `${i.title}\n${d.kind === "email" ? compactSummary(i.briefing_preview || i.summary || i.excerpt) : i.summary || i.excerpt}\n${i.url}${creditText(i.source_id,i.authors)}`,
         )
         .join("\n\n") +
       `\n\nRead more: ${readMore}\nManage your sources: ${process.env.APP_URL}/account\nPause these deliveries: ${unsubscribe}`;
@@ -100,7 +101,7 @@ export async function queueSubscriptions(now = new Date()) {
     const profile = rankingSchema.parse(s.ranking);
     const mainDaily=s.target==='main'&&s.cadence==='daily';
     const selected = mainDaily ? edition.items : email
-      ? englishDigestItems(await withTranslations(digestArticles(edition.items, prefs, profile, now, 50))).slice(0, 3)
+      ? englishDigestItems(await withTranslations(await completedBriefings(digestArticles(edition.items, prefs, profile, now, 50)))).slice(0, 3)
       : edition.items;
     if (!selected.length) continue;
     const readMore = new URL(edition.readMorePath, process.env.APP_URL).href;
@@ -110,7 +111,7 @@ export async function queueSubscriptions(now = new Date()) {
       selected
         .map(
           (i,index) => mainDaily && email && i.coverage ? (index===0?'Lead story\n':'')+coverageText(i) :
-            `${mainDaily && index===0 ? "Lead story\n" : ""}${i.title}\n${email ? compactSummary(i.summary || i.excerpt) : i.summary || i.excerpt}\n${i.user_edited ? "Edited by the newspaper owner.\n" : ""}${i.url}${creditText(i.source_id,i.authors)}`,
+            `${mainDaily && index===0 ? "Lead story\n" : ""}${i.title}\n${email ? compactSummary(i.briefing_preview || i.summary || i.excerpt) : i.summary || i.excerpt}\n${i.user_edited ? "Edited by the newspaper owner.\n" : ""}${i.url}${creditText(i.source_id,i.authors)}`,
         )
         .join("\n\n") +
       `\n\nRead more: ${readMore}\nManage subscriptions: ${process.env.APP_URL}/account/delivery\nPause this subscription: ${unsubscribe}`;

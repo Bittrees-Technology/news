@@ -1,3 +1,4 @@
+import {completedBriefings} from './completed-briefings';
 import {englishReaderItem} from './english-reader';
 import {cleanFailureText} from './feed-safeguards';
 import {prostStoryId,correctProstDisplay} from './briefing-search-review';
@@ -11,14 +12,15 @@ import {sourceIsEnglish,translationNumbersSupported,translationKey,translationSt
 export type FeedCategory='all'|'news'|'podcasts'|'data';
 export type FeedPage={next:string|null;snapshot:string;leadIds:string[];balanced?:boolean};
 export async function feedDisplay(items:Item[]){
+ items=await completedBriefings(items);
  const found=new Map((await translationStatus(items.map(translationKey))).map(row=>[row.key,row]));
  // Explicit projection: no source body, model payload or account data in the feed.
  return (await reviewedCoverage(items,'web')).map(raw=>{
   const i=cleanFailureText(correctProstDisplay(raw));
   const key=translationKey(i),row=found.get(key);
   const tags = articleTags(i);
-  return englishReaderItem({...(i.coverage?{coverage:i.coverage}:{}),id:i.id,source_id:i.source_id,authors:i.authors,topic:tags[0],tags,kind:i.kind,title:i.title,url:i.url,excerpt:i.excerpt,summary:i.summary,summary_kind:i.summary_kind,published_at:i.published_at,observation_period:i.observation_period,translation_key:key,translation_reviewed:row?.status==='done'&&!!row.result,translation_status:row?.status||'pending',translation:row?.status==='done' && row.result && i.id!==prostStoryId && !sourceIsEnglish(i) && translationNumbersSupported({title:i.title,summary:i.summary||i.excerpt},row.result)?row.result:undefined} as Item);
- });
+  return englishReaderItem({...(i.coverage?{coverage:i.coverage}:{}),id:i.id,source_id:i.source_id,authors:i.authors,topic:tags[0],tags,kind:i.kind,title:i.title,url:i.url,excerpt:i.excerpt,summary:i.summary,summary_kind:i.summary_kind,briefing_preview:i.briefing_preview,published_at:i.published_at,observation_period:i.observation_period,translation_key:key,translation_reviewed:row?.status==='done'&&!!row.result,translation_status:row?.status||'pending',translation:row?.status==='done' && row.result && i.id!==prostStoryId && !sourceIsEnglish(i) && translationNumbersSupported({title:i.title,summary:i.summary||i.excerpt},row.result)?row.result:undefined} as Item);
+ }).filter(i=>i.publication_ready);
 }
 export async function publicFeedBatch(snapshot:string,before:string|null=null,category:FeedCategory='all',balanced=false){
  const families=Object.fromEntries(allSources.map(s=>[s.id,publisherFamily({source_id:s.id})]));
@@ -31,9 +33,13 @@ export async function publicFeedBatch(snapshot:string,before:string|null=null,ca
  ), selected AS (
  SELECT id,published_at FROM candidates WHERE (NOT $4::boolean OR kind<>'article' OR publisher_position<=2)
  AND ($2::text IS NULL OR (published_at,id)<(SELECT published_at,id FROM items WHERE id=$2 AND owner_id IS NULL))
- ORDER BY published_at DESC,id DESC LIMIT 31
+ ORDER BY published_at DESC,id DESC LIMIT 121
  ) SELECT i.id,i.source_id,i.authors,i.topic,i.tags,i.kind,i.title,i.url,i.excerpt,i.summary,i.summary_kind,i.published_at,i.observation_period
  FROM selected x JOIN items i ON i.id=x.id ORDER BY x.published_at DESC,x.id DESC`,[snapshot,before,category,balanced,JSON.stringify(families)])).rows;
- const items=rows.slice(0,30);
- return {items:await feedDisplay(items),next:rows.length>30?items.at(-1).id:null,snapshot};
+ const scanned=rows.slice(0,120);
+ const ready=await feedDisplay(scanned);
+ const items=ready.slice(0,30);
+ const cursor=ready.length>=30?items.at(-1)?.id:scanned.at(-1)?.id;
+ const hasMore=ready.length>30 || rows.length>120 || (ready.length===30 && scanned.at(-1)?.id!==cursor);
+ return {items,next:hasMore?cursor||null:null,snapshot};
 }

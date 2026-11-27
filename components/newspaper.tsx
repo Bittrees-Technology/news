@@ -474,7 +474,7 @@ export function Newspaper({
                   })}
                 </span>
               </div>
-              {paged && mode==='public' && i.coverage ? <CoverageCard event={i.coverage}/> : <><h2>
+              {paged && mode==='public' && i.coverage ? <CoverageCard event={i.coverage} briefing={i.briefing_preview}/> : <><h2>
                 <a
                   data-source-link="true"
                   href={i.url}
@@ -486,7 +486,7 @@ export function Newspaper({
                 </a>
               </h2>
               <SourceCredit sourceId={i.source_id} authors={i.authors}/>
-              <p>{i.translation?.summary ?? i.summary ?? i.excerpt}</p></>}
+              <p>{i.briefing_preview || i.translation?.summary || i.summary || i.excerpt}</p></>}
               {i.translation?.language && i.translation.language !== "en" && (
                 <details className="translation-original">
                   <summary>Translated to English · View original</summary>

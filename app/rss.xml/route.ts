@@ -1,8 +1,8 @@
+import {completedBriefings} from '@/lib/completed-briefings';
 import {englishDigestItems} from '@/lib/digest-language';
 import {createHash} from 'node:crypto';
 import {pool} from '@/lib/db';
 import {recentPublicRanked} from '@/lib/ranking';
-import {withBriefings} from '@/lib/story-documents';
 import {withTranslations} from '@/lib/translation';
 import {rssDocument} from '@/lib/rss';
 import {siteUrl,siteName,siteDescription} from '@/lib/seo';
@@ -23,7 +23,7 @@ export async function GET(request:Request){
   items=feed?section.items:p.snapshot.front;title=p.name+(feed?' / '+(section.name||feed):'');description=p.description||`Published stories from ${title}`;url+=`/${paper}`+(feed?`/${feed}`:'');self.searchParams.set('newspaper',paper);if(feed)self.searchParams.set('feed',feed);
  }else items=await recentPublicRanked();
  // Preserve owner edits in published newspapers; enrich only the main newsroom feed.
- items=englishDigestItems(await withTranslations(paper?items:await withBriefings(items.slice(0,100))));
+ items=englishDigestItems(await withTranslations(await completedBriefings(paper?items:items.slice(0,100))));
  const body=rssDocument({title,description,url,self:self.href,items:items.slice(0,100)});
  const etag='"'+createHash('sha256').update(body).digest('hex')+'"';
  const headers={'Content-Type':'application/rss+xml; charset=utf-8','Cache-Control':paper?'no-store':'public, max-age=300','ETag':etag,'X-Content-Type-Options':'nosniff'};

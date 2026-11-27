@@ -26,6 +26,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - name: Completed public stories and briefing pagination
+        run: npx tsx scripts/checks/completed-publication.ts
+        env:
+          DATABASE_URL: postgresql://integration:ci-only@127.0.0.1:5432/news_test
       - name: Signed daily brief receipts and account delivery history
         run: npx tsx scripts/checks/delivery-webhook.ts
         env:

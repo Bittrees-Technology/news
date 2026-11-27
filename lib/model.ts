@@ -32,6 +32,7 @@ export type Item = {
   date_basis?: string;
   published_at: string;
   owner_id?: string | null;
+  publication_ready?: boolean;
   translation_reviewed?: boolean;
   translation_key?: string;
   translation_status?: string;

@@ -17,8 +17,8 @@ export function englishReaderItem<T extends Item>(item:T):T {
  const title=originalEnglish?item.title:translatedEnglish?translated!.title!:'English translation awaiting review';
  const document=briefingLooksPortuguese(output.document?.briefing)?undefined:output.document?{...output.document,title}:undefined;
  const safe={...copy,...(output.document?{document}:{}),...(output.document&&!document?{quality_issue:'This briefing is awaiting an English-language review.'}:{}),...(looksPortuguese(copy.briefing_preview||'')?{briefing_preview:undefined}:{})};
- if(originalEnglish) return {...safe,coverage:safeCoverage,translation:undefined} as T;
- if(translatedEnglish) return {...safe,coverage:safeCoverage,title,summary:translated!.summary!,excerpt:translated!.summary!,translation:undefined} as T;
- return {...safe,coverage:undefined,title,summary:'This story will appear in English after editorial review.',excerpt:'This story will appear in English after editorial review.',briefing_preview:undefined,translation:undefined,translation_status:'review'} as T;
+ if(originalEnglish) return {...safe,coverage:safeCoverage,publication_ready:true,translation:undefined} as T;
+ if(translatedEnglish) return {...safe,coverage:safeCoverage,title,summary:translated!.summary!,excerpt:translated!.summary!,publication_ready:true,translation:undefined} as T;
+ return {...safe,coverage:undefined,title,summary:'This story will appear in English after editorial review.',excerpt:'This story will appear in English after editorial review.',briefing_preview:undefined,publication_ready:false,translation:undefined,translation_status:'review'} as T;
 }
 export const englishReaderItems=<T extends Item>(items:T[])=>items.map(englishReaderItem);

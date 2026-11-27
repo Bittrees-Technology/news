@@ -1,4 +1,4 @@
-import {englishReaderItems} from '@/lib/english-reader';
+import {publishedReaderItems} from '@/lib/completed-briefings';
 import { EditionSchema } from "@/components/edition-schema";
 import { notFound } from "next/navigation";
 import { pageMetadata, privateMetadata } from "@/lib/seo";
@@ -41,7 +41,7 @@ export default async function Page({
   const { id } = await searchParams;
   if (id) {
     const e = await latestEdition(id);
-    if (e) e.data.items = englishReaderItems(await withTranslations(e.data.items));
+    if (e) e.data.items = await publishedReaderItems(await withTranslations(e.data.items));
     return e ? (
       <>
         <EditionSchema

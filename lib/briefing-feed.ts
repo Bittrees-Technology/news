@@ -1,3 +1,4 @@
+import {briefingSchema} from './story-documents';
 import {englishReaderItem} from './english-reader';
 import {reviewedBriefingItems} from './briefing-semantic-review';
 import {failedEvidence,cleanFailureText} from './feed-safeguards';
@@ -14,7 +15,7 @@ async function displayEntries(items:any[]){
   const {source_context,...display}=raw;
   const item=cleanFailureText(correctProstDisplay({
    ...display,...(raw.cid&&raw.document?archivedBriefingDisplay(raw):{}),
-   ...(raw.cid===prostBriefingCid||failed||!raw.briefing_semantic_approved?{document:undefined}:{}),
+   ...(raw.cid===prostBriefingCid||failed||!raw.briefing_semantic_approved||raw.document?.evidence?.revision!==sourceEvidence(raw).revision||!briefingSchema.safeParse(raw.document?.briefing).success?{document:undefined}:{}),
    ...(!raw.briefing_semantic_approved?{quality_issue:'This generated briefing is awaiting editorial review of the source and meaning.'}:{}),
    ...(failed?{quality_issue:'The source feed returned an error message. This briefing is withheld pending review.'}:{}),
    evidence,evidence_label:evidenceLabel(evidence.kind),
@@ -28,15 +29,16 @@ async function displayEntries(items:any[]){
    !sourceIsEnglish(i) && translationNumbersSupported({title:i.title,summary:i.summary||i.excerpt},row.result)
    ? row.result : undefined;
   return englishReaderItem({...i,translation_key:translationKey(i),translation_reviewed:row?.status==='done'&&!!row.result,translation,translation_status:row?.status});
- });
+ }).filter(i=>i.publication_ready&&i.document&&!i.quality_issue);
 }
 export async function briefingBatch(before:string|null=null,selected:string|null=null,snapshot=new Date().toISOString()):Promise<{entries:any[];next:string|null;snapshot:string;selectedId?:string}>{
  // Direct links select an identity, never just a position in the completed queue.
  if(selected){
   const item=(await pool().query(`SELECT i.*,s.document,s.cid FROM items i LEFT JOIN story_documents s ON s.item_id=i.id WHERE i.id=$1 AND i.owner_id IS NULL`,[selected])).rows[0];
   if(!item)return {entries:[],next:null,snapshot};
-  const older=await briefingBatch(item.document?selected:null,null,snapshot);
   const entries=await displayEntries([item]);
+  if(!entries.length)return {entries:[],next:null,snapshot};
+  const older=await briefingBatch(selected,null,snapshot);
   return JSON.parse(JSON.stringify({...older,entries:[...entries,...older.entries.filter(i=>i.id!==selected)],selectedId:selected}));
  }
 
@@ -45,8 +47,9 @@ export async function briefingBatch(before:string|null=null,selected:string|null
  WHERE s.document IS NOT NULL AND i.owner_id IS NULL AND COALESCE(s.generated_at,i.published_at)<=$3 AND i.fetched_at<=$3
  AND ($1::text IS NULL OR (COALESCE(s.generated_at,i.published_at),i.id)<(SELECT COALESCE(d.generated_at,x.published_at),x.id FROM items x JOIN story_documents d ON d.item_id=x.id WHERE x.id=$1 AND x.owner_id IS NULL))
  AND ($2::text IS NULL OR (COALESCE(s.generated_at,i.published_at),i.id)<=(SELECT COALESCE(d.generated_at,x.published_at),x.id FROM items x JOIN story_documents d ON d.item_id=x.id WHERE x.id=$2 AND x.owner_id IS NULL))
- ORDER BY COALESCE(s.generated_at,i.published_at) DESC,i.id DESC LIMIT 9`,[before,selected,snapshot])).rows;
- const hasMore=rows.length>8,items=rows.slice(0,8);
- const entries=await displayEntries(items);
- return JSON.parse(JSON.stringify({entries,next:hasMore?items.at(-1)?.id:null,snapshot}));
+ ORDER BY COALESCE(s.generated_at,i.published_at) DESC,i.id DESC LIMIT 65`,[before,selected,snapshot])).rows;
+ const scanned=rows.slice(0,64),ready=await displayEntries(scanned),entries=ready.slice(0,8);
+ const cursor=ready.length>=8?entries.at(-1)?.id:scanned.at(-1)?.id;
+ const hasMore=ready.length>8||rows.length>64||(ready.length===8&&scanned.at(-1)?.id!==cursor);
+ return JSON.parse(JSON.stringify({entries,next:hasMore?cursor||null:null,snapshot}));
 }

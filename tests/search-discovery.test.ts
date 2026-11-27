@@ -1,3 +1,4 @@
+import {sourceEvidence} from '../lib/source-evidence';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createElement} from 'react';
@@ -9,7 +10,9 @@ import {generateMetadata as queryMetadata,default as Briefings} from '../app/bri
 import {generateMetadata as versionMetadata,default as ArchivedBriefing} from '../app/briefings/[shortId]/page';
 
 const id='a'.repeat(64),cid='b'+'c'.repeat(45);
-const item={id,cid,title:'A source title',url:'https://example.org/report',kind:'news',source_id:'example',publication:'Example',authors:[],published_at:'2026-10-20T00:00:00Z',document:{title:'A source title',kind:'news',generatedAt:'2026-10-21T00:00:00Z',source:{url:'https://example.org/report',publication:'Example',authors:[],publishedAt:'2026-10-20T00:00:00Z'},briefing:{overview:'A grounded overview.',points:['A key point.'],limitations:'A source-linked briefing.'}}};
+const item={id,cid,title:'A source title',url:'https://example.org/report',kind:'news',source_id:'bbc-world',excerpt:'A source excerpt.',publication:'Example',authors:[],published_at:'2026-10-20T00:00:00Z',document:{title:'A source title',kind:'news',generatedAt:'2026-10-21T00:00:00Z',source:{url:'https://example.org/report',publication:'Example',authors:[],publishedAt:'2026-10-20T00:00:00Z'},briefing:{overview:'A grounded overview describing the reported event in detail.',points:['A key point supported by the source.'],context:'The original source provides the background.',limitations:'The available excerpt does not establish further details.'}}};
+
+(item.document as any).evidence=sourceEvidence(item);
 
 test('story, archived and legacy query metadata agree with the sitemap canonical',async()=>{
  const state=globalThis as any,previous=state.newsPool,old=process.env.DATABASE_URL;
@@ -26,8 +29,8 @@ test('story, archived and legacy query metadata agree with the sitemap canonical
   assert.ok(!entries.some(entry=>entry.url.endsWith('/story/'+id)));
   served={...item,cid:null,document:null};
   const preparing=await storyMetadata({params:Promise.resolve({id})});
-  assert.ok('alternates' in preparing);assert.equal(preparing.alternates?.canonical,'https://news.bittrees.org/story/'+id);
   assert.equal((preparing.robots as {index:boolean}).index,false);
+  await assert.rejects(Story({params:Promise.resolve({id})}),/NEXT_HTTP_ERROR_FALLBACK;404/);
   await assert.rejects(Briefings({searchParams:Promise.resolve({before:'invalid'})}),/NEXT_HTTP_ERROR_FALLBACK;404/);
  }finally{state.newsPool=previous;if(old===undefined)delete process.env.DATABASE_URL;else process.env.DATABASE_URL=old;}
 });
