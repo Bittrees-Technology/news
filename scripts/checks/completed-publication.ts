@@ -6,6 +6,7 @@ import {briefingBatch} from '../../lib/briefing-feed';
 import {translationKey} from '../../lib/translation';
 import {translationFingerprint} from '../../lib/translation-review';
 import {briefingFingerprintSql} from '../../lib/briefing-semantic-review';
+import {publisherFamily} from '../../lib/diversity-shadow';
 
 if(!process.env.DATABASE_URL)throw Error('Set DATABASE_URL to a disposable local PostgreSQL database');
 const p=new Pool({connectionString:process.env.DATABASE_URL}),d=await p.connect();
@@ -54,5 +55,28 @@ try{
  const heldPage=await publicFeedBatch(snapshot);assert.equal(heldPage.items.length,0);assert.ok(heldPage.next);
  const afterHeld=await publicFeedBatch(snapshot,heldPage.next);assert.equal(afterHeld.items.length,30);
  assert.ok(afterHeld.items.every(i=>i.publication_ready&&i.briefing_preview));
- console.log('PASS: missing, stale and incomplete briefings are held; ready posts and briefing pages paginate without duplicates, including a dense held backlog.');
+ // Snapshot isolation and private ownership still apply after readiness filtering.
+ const readyId=(8).toString(16).padStart(64,'0');
+ await d.query("UPDATE items SET fetched_at=$2::timestamptz+interval '1 second' WHERE id=$1",[readyId,snapshot]);
+ assert.ok(!(await publicFeedBatch(snapshot,heldPage.next)).items.some(i=>i.id===readyId));
+ await d.query("UPDATE items SET fetched_at=$2::timestamptz-interval '1 day',owner_id='00000000-0000-0000-0000-000000000001' WHERE id=$1",[readyId,snapshot]);
+ assert.equal((await briefingBatch(null,readyId,snapshot)).entries.length,0);
+ await d.query("UPDATE items SET owner_id=NULL WHERE id=$1",[readyId]);
+ // Category selection precedes the page limit.
+ await d.query("UPDATE items SET kind='podcast' WHERE id BETWEEN $1 AND $2",[(10).toString(16).padStart(64,'0'),(24).toString(16).padStart(64,'0')]);
+ const podcasts=await publicFeedBatch(snapshot,null,'podcasts');assert.equal(podcasts.items.length,15);assert.ok(podcasts.items.every(i=>i.kind==='podcast'));
+ await d.query('DELETE FROM quality_reviews');await d.query('DELETE FROM translations');await d.query('DELETE FROM story_documents');await d.query('DELETE FROM items');
+ const sources=['bbc-world','bbc-europe','bbc-business','the-guardian-world','the-guardian-economics','al-jazeera','propublica','techdirt','times-of-israel'];
+ let number=2000;
+ for(const source of sources)for(let k=0;k<3;k++){
+  const id=(++number).toString(16).padStart(64,'0'),i={id,title:'English report '+number,kind:'article',source_id:source,excerpt:'A source excerpt providing evidence.',source_context:null};
+  await d.query(`INSERT INTO items(id,source_id,authors,topic,tags,kind,title,url,excerpt,summary_kind,published_at,fetched_at) VALUES($1,$2,'{}','World','{}','article',$3,'https://example.org/'||$1,$4,'excerpt',$5::timestamptz-interval '10 minutes'-($6||' seconds')::interval,$5::timestamptz-interval '1 day')`,[id,source,i.title,i.excerpt,snapshot,number-2000]);
+  const doc={title:i.title,kind:i.kind,source:{url:'https://example.org/'+id,authors:[]},evidence:sourceEvidence(i),briefing};
+  await d.query('INSERT INTO story_documents VALUES($1,$2,NULL,$3::timestamptz-interval \'10 minutes\')',[id,JSON.stringify(doc),snapshot]);
+ }
+ const balanced=await publicFeedBatch(snapshot,null,'news',true),full=await publicFeedBatch(snapshot,null,'news',false);
+ const familyCount=new Set(full.items.map(publisherFamily)).size;
+ assert.equal(full.items.length,sources.length*3);assert.equal(balanced.items.length,familyCount*2);
+ for(const family of new Set(balanced.items.map(publisherFamily)))assert.equal(balanced.items.filter(i=>publisherFamily(i)===family).length,2);
+ console.log('PASS: completed publication, bounded pagination, dense held backlog, snapshot and privacy, category and publisher balance.');
 }finally{await d.query('ROLLBACK');d.release();await p.end();delete (globalThis as any).newsPool;}
