@@ -165,12 +165,9 @@ export async function api(r: Request) {
     }
     if (path === "edition" && method === "GET") {
       const viewer = await currentAccount(r, false);
-      return json(
-        scoreVisibility(
-          await latestEdition(url.searchParams.get("id") || undefined),
-          viewer?.role,
-        ),
-      );
+      const edition = await latestEdition(url.searchParams.get("id") || undefined);
+      if (edition) edition.data.items = await publishedReaderItems(await withTranslations(edition.data.items));
+      return json(scoreVisibility(edition, viewer?.role));
     }
     if (path === "editions" && method === "GET")
       return json(
